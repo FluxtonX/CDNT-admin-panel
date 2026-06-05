@@ -298,7 +298,7 @@ function UserRow({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={onView}
-      className="grid grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_0.4fr] gap-4 items-center px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors group"
+      className="grid min-w-[1040px] grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 items-center px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors group"
     >
       {/* USER */}
       <div className="flex items-center gap-3 min-w-0">
@@ -327,10 +327,20 @@ function UserRow({
       {/* RISK */}
       <div><RiskBadge level={user.risk} /></div>
       {/* ACTIONS */}
-      <div className="relative flex justify-end pr-2" onClick={e => e.stopPropagation()}>
+      <div className="relative flex justify-end gap-1.5 pr-1" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={onView}
+          title="View user overview"
+          aria-label={`View ${user.name}`}
+          className="h-8 w-8 flex items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-200 transition-colors"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
         <button
           onClick={() => setIsMenuOpen(prev => !prev)}
-          className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+          title="Open actions"
+          aria-label={`Open actions for ${user.name}`}
+          className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 transition-colors"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
@@ -566,12 +576,13 @@ export default function UsersPage() {
 
         {/* ── Table */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
           {/* Table Header */}
-          <div className="grid grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_0.4fr] gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50/70">
+          <div className="grid min-w-[1040px] grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50/70">
             {["USER", "CONTACT", "KYC STATUS", "ACCOUNT", "BALANCE", "RISK"].map(col => (
               <span key={col} className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">{col}</span>
             ))}
-            <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase"></span>
+            <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase text-right pr-1">ACTIONS</span>
           </div>
 
           {/* Rows */}
@@ -606,6 +617,7 @@ export default function UsersPage() {
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 bg-gray-50/40">
