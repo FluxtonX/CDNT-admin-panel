@@ -1,0 +1,828 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft, FileEdit, Download, Lock, Unlock,
+  CheckCircle2, Clock, XCircle, AlertTriangle, Shield,
+  User, Mail, Phone, Calendar, MapPin, Activity,
+  Smartphone, Globe, Wallet, BarChart3, FileText,
+  MessageCircle, History, Monitor, LogOut, RefreshCw,
+  Eye,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { USERS_DATA, type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
+
+/* ─── Badge helpers ──────────────────────────────────────────────── */
+function KycBadge({ status }: { status: KycStatus }) {
+  const map: Record<KycStatus, { cls: string; icon: React.ReactNode }> = {
+    "Verified":    { cls: "bg-green-50 text-green-700 border-green-200", icon: <CheckCircle2  className="h-3.5 w-3.5" /> },
+    "Pending":     { cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock         className="h-3.5 w-3.5" /> },
+    "Rejected":    { cls: "bg-red-50   text-red-700   border-red-200",   icon: <XCircle       className="h-3.5 w-3.5" /> },
+    "Not Started": { cls: "bg-gray-100 text-gray-600  border-gray-200",  icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+  };
+  const s = map[status];
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", s.cls)}>
+      {s.icon}{status}
+    </span>
+  );
+}
+
+function AccountBadge({ status }: { status: AccountStatus }) {
+  const map: Record<AccountStatus, string> = {
+    "Active":    "bg-green-50 text-green-700 border-green-200",
+    "Suspended": "bg-red-50   text-red-700   border-red-200",
+    "Frozen":    "bg-blue-50  text-blue-700  border-blue-200",
+  };
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[status])}>
+      {status === "Frozen" && <Lock className="h-3.5 w-3.5" />}
+      {status}
+    </span>
+  );
+}
+
+function RiskBadge({ level }: { level: RiskLevel }) {
+  const map: Record<RiskLevel, string> = {
+    "Low Risk":    "bg-green-50 text-green-700 border-green-200",
+    "Medium Risk": "bg-amber-50 text-amber-700 border-amber-200",
+    "High Risk":   "bg-red-50   text-red-700   border-red-200",
+  };
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[level])}>
+      {level === "High Risk" && <AlertTriangle className="h-3.5 w-3.5" />}
+      {level}
+    </span>
+  );
+}
+
+/* ─── Info Field ─────────────────────────────────────────────────── */
+function InfoField({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+      <div>
+        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+        <p className="text-sm font-semibold text-gray-900">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Tabs config ────────────────────────────────────────────────── */
+const TABS = [
+  { id: "overview",     label: "Overview",     icon: User },
+  { id: "portfolio",    label: "Portfolio",    icon: BarChart3 },
+  { id: "transactions", label: "Transactions", icon: Activity },
+  { id: "security",     label: "Security",     icon: Shield },
+  { id: "documents",    label: "Documents",    icon: FileText },
+  { id: "support",      label: "Support",      icon: MessageCircle },
+  { id: "audit-logs",   label: "Audit Logs",   icon: History },
+];
+
+/* ─── Static tab data ────────────────────────────────────────────── */
+const SESSIONS = [
+  { id: 1, device: "Chrome on Windows", icon: Monitor,    location: "Toronto, Canada", ip: "192.168.1.1",  lastActive: "Jun 2, 2026, 10:30 a.m.", current: true  },
+  { id: 2, device: "Safari on iPhone",  icon: Smartphone, location: "Toronto, Canada", ip: "192.168.1.25", lastActive: "Jun 1, 2026, 06:20 p.m.", current: false },
+];
+
+const TRANSACTIONS = [
+  { id: "TXN-987654", type: "Deposit",    status: "completed", date: "Jun 1, 2026, 02:30 p.m.",  meta: "Hash: 0x1234...5678",       amount: "0.1234 BTC",  usd: "$7,850.00"  },
+  { id: "TXN-987653", type: "Withdrawal", status: "completed", date: "May 30, 2026, 09:15 a.m.", meta: "Method: Interac e-Transfer", amount: "2.5 ETH",     usd: "$8,750.00"  },
+  { id: "TXN-987652", type: "Deposit",    status: "completed", date: "May 28, 2026, 04:45 p.m.", meta: "Hash: 0xabcd...efgh",       amount: "15000 USDT",  usd: "$15,000.00" },
+];
+
+const TICKETS = [
+  {
+    id: "TICKET-1234",
+    subject: "Withdrawal delay",
+    status: "open",
+    priority: "high priority",
+    created: "Jun 1, 2026, 12:00 p.m.",
+    updated: "Jun 2, 2026, 09:00 a.m.",
+  },
+  {
+    id: "TICKET-1233",
+    subject: "Account verification question",
+    status: "resolved",
+    priority: "medium priority",
+    created: "May 28, 2026, 10:00 a.m.",
+    updated: "May 29, 2026, 02:30 p.m.",
+  },
+];
+
+/* ─── Freeze Account Modal ───────────────────────────────────────── */
+function FreezeModal({ onConfirm, onClose }: { onConfirm: (r: string) => void; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+  const [touched, setTouched] = useState(false);
+  const hasError = touched && !reason.trim();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        transition={{ type: "spring", damping: 28, stiffness: 340 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+      >
+        <div className="p-6">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <Lock className="h-6 w-6 text-amber-500" />
+            </div>
+            <div className="pt-0.5">
+              <h2 className="text-[17px] font-bold text-gray-900">Freeze Account</h2>
+              <p className="text-sm text-gray-500 mt-0.5">This action will suspend all account activity</p>
+            </div>
+          </div>
+          <div className="mb-5">
+            <label className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+              Reason for freezing <span className="text-red-500">*</span>
+            </label>
+            <textarea rows={4} placeholder="Enter the reason for freezing this account..."
+              value={reason}
+              onChange={(e) => { setReason(e.target.value); setTouched(true); }}
+              onBlur={() => setTouched(true)}
+              className={cn("w-full px-4 py-3 rounded-xl border text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none transition-all",
+                hasError ? "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100"
+                         : "border-gray-200 bg-gray-50 focus:border-blue-400 focus:ring-2 focus:ring-blue-50")}
+            />
+            {hasError && <p className="text-xs text-red-500 mt-1">Please provide a reason for freezing.</p>}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button onClick={() => { setTouched(true); if (reason.trim()) onConfirm(reason); }}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+              style={{ background: "#F59E0B" }}>
+              Freeze Account
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Add Admin Note Modal ───────────────────────────────────────── */
+function NoteModal({ onConfirm, onClose }: { onConfirm: (n: string) => void; onClose: () => void }) {
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const hasError = touched && !note.trim();
+
+  const handleSubmit = async () => {
+    setTouched(true);
+    if (!note.trim()) return;
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 900));
+    onConfirm(note);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        transition={{ type: "spring", damping: 28, stiffness: 340 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+      >
+        <div className="p-6">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+              <FileEdit className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="pt-0.5">
+              <h2 className="text-[17px] font-bold text-gray-900">Add Admin Note</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Internal note visible only to admins</p>
+            </div>
+          </div>
+          <div className="mb-5">
+            <textarea rows={4} placeholder="Enter your note..."
+              value={note}
+              onChange={(e) => { setNote(e.target.value); setTouched(true); }}
+              className={cn("w-full px-4 py-3 rounded-xl border text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none transition-all",
+                hasError ? "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100"
+                         : "border-gray-200 bg-blue-50/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-50")}
+            />
+            {hasError && <p className="text-xs text-red-500 mt-1">Please enter a note before saving.</p>}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button onClick={handleSubmit} disabled={loading}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-70 transition-all"
+              style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
+              {loading ? "Saving…" : "Add Note"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Tab Content Components ─────────────────────────────────────── */
+
+function OverviewTab({ user }: { user: NonNullable<ReturnType<typeof USERS_DATA.find>> }) {
+  return (
+    <div className="space-y-7">
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Personal Information</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-5">
+          <InfoField icon={User}     label="Full Name"     value={user.name} />
+          <InfoField icon={Calendar} label="Date of Birth" value={user.dateOfBirth} />
+          <InfoField icon={Mail}     label="Email Address" value={user.email} />
+          <InfoField icon={Phone}    label="Phone Number"  value={user.phone} />
+        </div>
+      </div>
+      <div className="h-px bg-gray-100" />
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Address Information</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-5">
+          <InfoField icon={MapPin} label="Street Address" value={user.street} />
+          <InfoField icon={MapPin} label="City"           value={user.city} />
+          <InfoField icon={MapPin} label="Postal Code"    value={user.postalCode} />
+          <InfoField icon={Globe}  label="Country"        value={user.country} />
+        </div>
+      </div>
+      <div className="h-px bg-gray-100" />
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Account Information</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-5">
+          <InfoField icon={Calendar}   label="Member Since"               value={user.joinedDate} />
+          <InfoField icon={Activity}   label="Last Login"                 value={user.lastLogin} />
+          <InfoField icon={Smartphone} label="Two-Factor Authentication"  value={user.twoFactor ? "Enabled" : "Disabled"} />
+          <InfoField icon={Globe}      label="Last IP Address"            value={user.lastIp} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SecurityTab() {
+  const [sessions, setSessions] = useState(SESSIONS);
+  const [revoking, setRevoking] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionDone, setActionDone] = useState<string | null>(null);
+
+  const handleRevoke = async (id: number) => {
+    setRevoking(id);
+    await new Promise((r) => setTimeout(r, 900));
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setRevoking(null);
+  };
+
+  const handleAction = async (key: string) => {
+    setActionLoading(key);
+    await new Promise((r) => setTimeout(r, 1000));
+    setActionLoading(null);
+    setActionDone(key);
+    setTimeout(() => setActionDone(null), 3000);
+  };
+
+  return (
+    <div className="space-y-7">
+      {/* Active Sessions */}
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Active Sessions</h3>
+        <div className="space-y-3">
+          {sessions.map((session) => {
+            const Icon = session.icon;
+            return (
+              <motion.div
+                key={session.id}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
+                    <Icon className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 mb-0.5">
+                      <span className="text-sm font-semibold text-gray-900">{session.device}</span>
+                      {session.current && (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">{session.location} • {session.ip}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Last active: {session.lastActive}</p>
+                  </div>
+                </div>
+                {!session.current && (
+                  <button
+                    onClick={() => handleRevoke(session.id)}
+                    disabled={revoking === session.id}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white hover:text-red-600 hover:border-red-200 transition-all disabled:opacity-60 shrink-0"
+                  >
+                    {revoking === session.id ? (
+                      <span className="h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <LogOut className="h-3.5 w-3.5" />
+                    )}
+                    Revoke
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
+          {sessions.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">No active sessions.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="h-px bg-gray-100" />
+
+      {/* Security Actions */}
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Security Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { key: "2fa",      icon: RefreshCw, title: "Reset 2FA",           desc: "Disable two-factor authentication" },
+            { key: "password", icon: Lock,      title: "Force Password Reset", desc: "Require new password on login" },
+          ].map((action) => {
+            const Icon = action.icon;
+            const isLoading = actionLoading === action.key;
+            const isDone    = actionDone    === action.key;
+            return (
+              <button
+                key={action.key}
+                onClick={() => handleAction(action.key)}
+                disabled={isLoading || isDone}
+                className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all text-left group disabled:opacity-70"
+              >
+                <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                  {isLoading ? (
+                    <span className="h-4 w-4 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin" />
+                  ) : isDone ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Icon className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {isDone ? "Done!" : action.title}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">{action.desc}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransactionsTab() {
+  const statusStyle = {
+    completed: "bg-green-50 text-green-600 border-green-200",
+    pending:   "bg-amber-50 text-amber-600 border-amber-200",
+    failed:    "bg-red-50   text-red-600   border-red-200",
+  };
+
+  return (
+    <div>
+      <h3 className="text-base font-bold text-gray-900 mb-4">Recent Transactions</h3>
+      <div className="space-y-3">
+        {TRANSACTIONS.map((tx, i) => (
+          <motion.div
+            key={tx.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
+            className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
+          >
+            <div>
+              <div className="flex items-center gap-2.5 mb-1">
+                <span className="text-sm font-bold text-gray-900">{tx.type}</span>
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[tx.status as keyof typeof statusStyle])}>
+                  {tx.status}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">{tx.id} • {tx.date}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{tx.meta}</p>
+            </div>
+            <div className="text-right shrink-0 ml-6">
+              <p className="text-sm font-bold text-gray-900">{tx.amount}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{tx.usd}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SupportTab() {
+  const statusStyle: Record<string, string> = {
+    open:     "bg-orange-50 text-orange-600 border-orange-200",
+    resolved: "bg-green-50  text-green-600  border-green-200",
+    closed:   "bg-gray-100  text-gray-500   border-gray-200",
+  };
+
+  const priorityStyle: Record<string, string> = {
+    "high priority":   "bg-red-50   text-red-600   border-red-200",
+    "medium priority": "bg-gray-100 text-gray-500  border-gray-200",
+    "low priority":    "bg-blue-50  text-blue-500  border-blue-200",
+  };
+
+  return (
+    <div>
+      <h3 className="text-base font-bold text-gray-900 mb-4">Support Tickets</h3>
+      <div className="space-y-3">
+        {TICKETS.map((ticket, i) => (
+          <motion.div
+            key={ticket.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.07 }}
+            className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                <span className="text-sm font-bold text-gray-900">{ticket.subject}</span>
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status])}>
+                  {ticket.status}
+                </span>
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", priorityStyle[ticket.priority])}>
+                  {ticket.priority}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">{ticket.id} • Created {ticket.created}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Last updated {ticket.updated}</p>
+            </div>
+            <button
+              onClick={() => alert(`Opening ticket ${ticket.id}…`)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white hover:text-blue-600 hover:border-blue-200 transition-all shrink-0 ml-4"
+            >
+              <Eye className="h-3.5 w-3.5" /> View
+            </button>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Portfolio Tab ──────────────────────────────────────────────── */
+function PortfolioTab({ user }: { user: any }) {
+  const assets = [
+    { coin: "BTC",  name: "Bitcoin",  balance: "0.1234 BTC",  usd: "$7,850.00",  alloc: "17.1%", color: "#F7931A" },
+    { coin: "ETH",  name: "Ethereum", balance: "2.5 ETH",     usd: "$8,750.00",  alloc: "19.1%", color: "#627EEA" },
+    { coin: "USDT", name: "Tether",   balance: "15,000 USDT", usd: "$15,000.00", alloc: "32.7%", color: "#26A17B" },
+    { coin: "CAD",  name: "Canadian Dollar", balance: "$14,232.50 CAD", usd: "$14,232.50", alloc: "31.1%", color: "#0A3D91" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Asset Allocation</h3>
+        <div className="h-4 w-full rounded-full bg-gray-100 flex overflow-hidden mb-5">
+          {assets.map((asset) => (
+            <div
+              key={asset.coin}
+              style={{ width: asset.alloc, backgroundColor: asset.color }}
+              className="h-full first:rounded-l-full last:rounded-r-full"
+              title={`${asset.name}: ${asset.alloc}`}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {assets.map((asset) => (
+            <div key={asset.coin} className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: asset.color }} />
+              <span className="text-xs text-gray-500 font-medium">{asset.name} ({asset.alloc})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="h-px bg-gray-100" />
+
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Balances</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {assets.map((asset) => (
+            <div key={asset.coin} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: asset.color }}>
+                  {asset.coin.slice(0, 3)}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">{asset.name}</h4>
+                  <p className="text-xs text-gray-400">{asset.coin}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-gray-900">{asset.balance}</p>
+                <p className="text-xs text-gray-400">{asset.usd}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Documents Tab ──────────────────────────────────────────────── */
+function DocumentsTab() {
+  const [docs, setDocs] = useState([
+    { id: "doc-1", type: "Passport / ID Card", name: "passport_scan.pdf", date: "Jun 1, 2026", status: "Approved" },
+    { id: "doc-2", type: "Proof of Address", name: "utility_bill.pdf", date: "Jun 1, 2026", status: "Approved" },
+  ]);
+
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
+
+  const statusStyle: Record<string, string> = {
+    Approved: "bg-green-50 text-green-600 border-green-200",
+    Pending:  "bg-amber-50 text-amber-600 border-amber-200",
+    Rejected: "bg-red-50 text-red-600 border-red-200",
+  };
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-base font-bold text-gray-900 mb-4">Uploaded Verification Documents</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {docs.map((doc) => (
+          <div key={doc.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
+                <FileText className="h-5 w-5 text-gray-500" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900">{doc.type}</h4>
+                <p className="text-xs text-gray-400">{doc.name} • {doc.date}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[doc.status])}>
+                {doc.status}
+              </span>
+              <button
+                onClick={() => setSelectedDoc(doc)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+              >
+                <Eye className="h-3.5 w-3.5" /> View
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {selectedDoc && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={() => setSelectedDoc(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900">{selectedDoc.type}</h3>
+                  <p className="text-xs text-gray-400">{selectedDoc.name}</p>
+                </div>
+                <button onClick={() => setSelectedDoc(null)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-8 bg-gray-50 flex flex-col items-center justify-center min-h-[200px] border-b border-gray-100">
+                <FileText className="h-16 w-16 text-gray-300 mb-3" />
+                <p className="text-sm font-semibold text-gray-600">Verification Document Scan</p>
+                <p className="text-xs text-gray-400 mt-1">Uploaded securely on {selectedDoc.date}</p>
+              </div>
+              <div className="p-4 bg-gray-50/50 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setDocs((prev) => prev.map((d) => d.id === selectedDoc.id ? { ...d, status: "Rejected" } : d));
+                    setSelectedDoc(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-red-600 hover:bg-red-50/50 transition-colors"
+                >
+                  Reject Document
+                </button>
+                <button
+                  onClick={() => {
+                    setDocs((prev) => prev.map((d) => d.id === selectedDoc.id ? { ...d, status: "Approved" } : d));
+                    setSelectedDoc(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
+                >
+                  Approve Document
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ─── Audit Logs Tab ─────────────────────────────────────────────── */
+function AuditLogsTab() {
+  const events = [
+    { date: "Jun 2, 2026, 10:30 a.m.", title: "User logged in", desc: "Chrome on Windows • Toronto, Canada (192.168.1.1)" },
+    { date: "Jun 1, 2026, 06:20 p.m.", title: "User logged in", desc: "Safari on iPhone • Toronto, Canada (192.168.1.25)" },
+    { date: "Jun 1, 2026, 02:30 p.m.", title: "Deposit completed", desc: "0.1234 BTC credited to user balance" },
+    { date: "Jun 1, 2026, 12:00 p.m.", title: "Support ticket created", desc: "Ticket TICKET-1234 (Withdrawal delay) opened by user" },
+    { date: "May 30, 2026, 09:15 a.m.", title: "Withdrawal completed", desc: "2.5 ETH sent to external address" },
+    { date: "May 28, 2026, 10:00 a.m.", title: "KYC Approved", desc: "Automatic systems verified and approved identity information" },
+    { date: "March 15, 2024, 09:00 a.m.", title: "Account Created", desc: "Initial email registration and confirmation" },
+  ];
+
+  return (
+    <div>
+      <h3 className="text-base font-bold text-gray-900 mb-6">Account Activity Log</h3>
+      <div className="relative border-l border-gray-100 ml-3 pl-6 space-y-6">
+        {events.map((event, i) => (
+          <div key={i} className="relative">
+            <span className="absolute -left-[31px] top-1.5 h-2 w-2 rounded-full bg-blue-600 ring-4 ring-white" />
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1">
+              <div>
+                <h4 className="text-sm font-bold text-gray-900">{event.title}</h4>
+                <p className="text-xs text-gray-500 mt-0.5">{event.desc}</p>
+              </div>
+              <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">{event.date}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────────── */
+export default function UserDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const userId = params.id as string;
+  const user = USERS_DATA.find((u) => u.id === userId);
+
+  const [activeTab, setActiveTab]         = useState("overview");
+  const [isFrozen, setIsFrozen]           = useState(user?.account === "Frozen");
+  const [showFreezeModal, setShowFreeze]  = useState(false);
+  const [showNoteModal, setShowNote]      = useState(false);
+  const [noteSaved, setNoteSaved]         = useState(false);
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
+        <User className="h-12 w-12 text-gray-300" />
+        <h2 className="text-lg font-bold text-gray-700">User not found</h2>
+        <p className="text-sm text-gray-400">The user ID &quot;{userId}&quot; does not exist.</p>
+        <button onClick={() => router.push("/dashboard/users")}
+          className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+          style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
+          Back to Users
+        </button>
+      </div>
+    );
+  }
+
+  const currentAccount: AccountStatus = isFrozen
+    ? "Frozen"
+    : user.account === "Frozen" ? "Active" : user.account;
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="space-y-5"
+      >
+        {/* ── Header */}
+        <div className="flex items-start gap-4 flex-wrap">
+          <button onClick={() => router.push("/dashboard/users")}
+            className="mt-1 h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition-colors shrink-0 shadow-sm">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[22px] font-bold text-gray-900 truncate">{user.name}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              User ID: <span className="font-medium text-gray-700">{user.id}</span> • Member since {user.joinedDate}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button onClick={() => setShowNote(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+              <FileEdit className="h-4 w-4" /> Add Note
+            </button>
+            <button onClick={() => alert("Exporting…")}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+              <Download className="h-4 w-4" /> Export
+            </button>
+            <motion.button whileTap={{ scale: 0.97 }}
+              onClick={() => isFrozen ? setIsFrozen(false) : setShowFreeze(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all"
+              style={{ background: isFrozen ? "#22C55E" : "#F59E0B" }}>
+              {isFrozen ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+              {isFrozen ? "Unfreeze Account" : "Freeze Account"}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* ── 4 Info Cards */}
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          {[
+            { label: "Total Balance",  content: <p className="text-xl font-bold text-gray-900">${user.balance.toLocaleString("en-US",{minimumFractionDigits:2})}</p>, icon: Wallet,        iconBg: "bg-blue-50",  iconColor: "text-blue-600" },
+            { label: "KYC Status",     content: <KycBadge status={user.kyc} />,          icon: CheckCircle2,  iconBg: "bg-green-50", iconColor: "text-green-500" },
+            { label: "Account Status", content: <AccountBadge status={currentAccount} />, icon: Shield,        iconBg: "bg-blue-50",  iconColor: "text-blue-500" },
+            { label: "Risk Level",     content: <RiskBadge level={user.risk} />,          icon: AlertTriangle, iconBg: "bg-amber-50", iconColor: "text-amber-500" },
+          ].map(({ label, content, icon: Icon, iconBg, iconColor }) => (
+            <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-2">{label}</p>
+                {content}
+              </div>
+              <div className={cn("h-11 w-11 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+                <Icon className={cn("h-5 w-5", iconColor)} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Tabs + Content */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="flex items-center border-b border-gray-100 overflow-x-auto no-scrollbar">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={cn("flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors relative shrink-0",
+                    isActive ? "text-blue-700" : "text-gray-500 hover:text-gray-700 hover:bg-gray-50")}>
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                  {isActive && (
+                    <motion.div layoutId="tab-underline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="p-6">
+            <AnimatePresence mode="wait">
+              <motion.div key={activeTab}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                {activeTab === "overview"      && <OverviewTab user={user} />}
+                {activeTab === "portfolio"     && <PortfolioTab user={user} />}
+                {activeTab === "transactions"  && <TransactionsTab />}
+                {activeTab === "security"      && <SecurityTab />}
+                {activeTab === "documents"     && <DocumentsTab />}
+                {activeTab === "support"       && <SupportTab />}
+                {activeTab === "audit-logs"    && <AuditLogsTab />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={() => { setIsFrozen(true); setShowFreeze(false); }} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showNoteModal && <NoteModal onClose={() => setShowNote(false)} onConfirm={() => { setShowNote(false); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 3000); }} />}
+      </AnimatePresence>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {noteSaved && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-gray-900 text-white text-sm font-medium rounded-xl shadow-xl">
+            <CheckCircle2 className="h-4 w-4 text-green-400" /> Note saved successfully.
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

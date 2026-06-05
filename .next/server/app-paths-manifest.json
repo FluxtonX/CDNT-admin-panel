@@ -1,0 +1,10 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(auth)/two-factor/page": "app/(auth)/two-factor/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/dashboard/users/[id]/page": "app/(dashboard)/dashboard/users/[id]/page.js",
+  "/(dashboard)/dashboard/users/page": "app/(dashboard)/dashboard/users/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js"
+}
