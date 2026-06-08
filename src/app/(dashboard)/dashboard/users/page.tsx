@@ -397,6 +397,13 @@ export default function UsersPage() {
   const [filter, setFilter] = useState("all");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(timer);
+  }, [currentPage, filter, search]);
   const [showAddUser, setShowAddUser] = useState(false);
   const [activeUserForFreeze, setActiveUserForFreeze] = useState<AdminUser | null>(null);
   const [activeUserForNote, setActiveUserForNote] = useState<AdminUser | null>(null);
@@ -587,12 +594,44 @@ export default function UsersPage() {
 
           {/* Rows */}
           <AnimatePresence mode="wait">
-            {pageUsers.length === 0 ? (
+            {loading ? (
+              <motion.div
+                key="skeleton"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="min-w-[1040px] divide-y divide-gray-50 bg-white"
+              >
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={idx} className="grid grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 items-center px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-gray-100 animate-pulse shrink-0" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-4 bg-gray-100 rounded-lg w-24 animate-pulse" />
+                        <div className="h-3 bg-gray-100 rounded-lg w-16 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="h-4 bg-gray-100 rounded-lg w-32 animate-pulse" />
+                      <div className="h-3 bg-gray-100 rounded-lg w-24 animate-pulse" />
+                    </div>
+                    <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
+                    <div className="h-6 bg-gray-100 rounded-full w-16 animate-pulse" />
+                    <div className="space-y-1.5">
+                      <div className="h-4 bg-gray-100 rounded-lg w-16 animate-pulse" />
+                      <div className="h-3 bg-gray-100 rounded-lg w-20 animate-pulse" />
+                    </div>
+                    <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
+                    <div className="h-8 bg-gray-100 rounded-lg w-full animate-pulse" />
+                  </div>
+                ))}
+              </motion.div>
+            ) : pageUsers.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="py-16 text-center text-gray-400 text-sm"
+                className="py-16 text-center text-gray-400 text-sm bg-white"
               >
                 No users found matching your search.
               </motion.div>

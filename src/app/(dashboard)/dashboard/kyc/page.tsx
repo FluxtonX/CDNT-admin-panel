@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -10,11 +10,22 @@ import {
   Download,
   Eye,
   FileText,
-  MoreVertical,
   Search,
   ShieldCheck,
   X,
   XCircle,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Check,
+  AlertCircle,
+  ThumbsUp,
+  ThumbsDown,
+  ZoomIn,
+  CreditCard,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USERS_DATA, type AdminUser, type RiskLevel } from "@/lib/data/users";
@@ -33,23 +44,35 @@ type KycRequest = {
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
-const INITIAL_REQUESTS: KycRequest[] = USERS_DATA.filter((user) => user.kyc !== "Not Started")
-  .slice(0, 14)
-  .map((user, index) => {
-    const status: ReviewStatus =
-      user.kyc === "Verified" ? "Approved" :
-      user.kyc === "Rejected" ? "Rejected" :
-      index % 3 === 0 ? "Under Review" : "Pending";
-
-    return {
-      requestId: `KYC-2024-${543 - index}`,
-      user,
-      documentType: index % 4 === 0 ? "Driver's License" : index % 4 === 1 ? "Passport" : index % 4 === 2 ? "National ID" : "Proof of Address",
-      documents: user.risk === "High Risk" ? ["verified", "verified", "flagged"] : ["verified", "verified", status === "Rejected" ? "flagged" : "verified"],
-      status,
-      submitted: index < 3 ? "Today" : index < 7 ? "Yesterday" : user.joinedDate,
-    };
-  });
+const INITIAL_REQUESTS: KycRequest[] = [
+  {
+    requestId: "KYC-2024-543",
+    user: USERS_DATA.find((u) => u.id === "USR-2024-12456") || USERS_DATA[2],
+    documentType: "Driver's License",
+    documents: ["verified", "verified", "verified"],
+    status: "Pending",
+    submitted: "Jun 1, 2026, 02:30 p.m.",
+  },
+  {
+    requestId: "KYC-2024-542",
+    user: USERS_DATA.find((u) => u.id === "USR-2024-12455") || USERS_DATA[3],
+    documentType: "Passport",
+    documents: ["verified", "verified", "flagged"],
+    status: "Under Review",
+    submitted: "May 30, 2026, 10:15 a.m.",
+  },
+  {
+    requestId: "KYC-2024-541",
+    user: {
+      ...(USERS_DATA.find((u) => u.id === "USR-2024-12452") || USERS_DATA[6]),
+      id: "USR-2024-12454", // Override to match mockup exactly
+    },
+    documentType: "Driver's License",
+    documents: ["verified", "verified", "verified"],
+    status: "Pending",
+    submitted: "May 29, 2026, 04:45 p.m.",
+  },
+];
 
 const TABS: Array<{ label: string; value: TabValue }> = [
   { label: "All", value: "all" },
@@ -61,7 +84,7 @@ const TABS: Array<{ label: string; value: TabValue }> = [
 
 function StatusBadge({ status }: { status: ReviewStatus }) {
   const map: Record<ReviewStatus, { cls: string; icon: React.ReactNode }> = {
-    Pending: { cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="h-3.5 w-3.5" /> },
+    Pending: { cls: "bg-amber-50 text-amber-600 border-amber-200", icon: <Clock className="h-3.5 w-3.5" /> },
     "Under Review": { cls: "bg-blue-50 text-blue-700 border-blue-200", icon: <Eye className="h-3.5 w-3.5" /> },
     Approved: { cls: "bg-green-50 text-green-700 border-green-200", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
     Rejected: { cls: "bg-red-50 text-red-700 border-red-200", icon: <XCircle className="h-3.5 w-3.5" /> },
@@ -133,13 +156,238 @@ function MetricCard({
   );
 }
 
+/* ─── Simulated Document Scan Preview Component ──────────────────── */
+function DocumentScanPreview({
+  request,
+  tab,
+}: {
+  request: KycRequest;
+  tab: "front" | "back" | "selfie";
+}) {
+  const user = request.user;
+  const isPassport = request.documentType === "Passport";
+
+  if (tab === "selfie") {
+    const matchPercent = user.risk === "High Risk" ? "61.4%" : "98.2%";
+    const isMatched = user.risk !== "High Risk";
+    return (
+      <div className="flex flex-col items-center justify-center p-2 min-h-[220px] w-full">
+        <div className="flex items-center gap-8 justify-center">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="h-24 w-20 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-400 overflow-hidden relative">
+              <User className="h-12 w-12 text-gray-400" />
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-center text-white py-0.5 font-bold uppercase tracking-wider font-mono">ID Photo</div>
+            </div>
+            <span className="text-[9px] font-bold text-gray-500 uppercase font-mono">Document</span>
+          </div>
+
+          <div className="flex flex-col items-center justify-center gap-1 shrink-0">
+            <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm", isMatched ? "bg-green-500" : "bg-red-500")}>
+              {isMatched ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+            </div>
+            <span className={cn("text-[11px] font-black tracking-tight font-mono", isMatched ? "text-green-600" : "text-red-600")}>
+              {matchPercent} Match
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="h-24 w-20 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-400 overflow-hidden relative">
+              <User className="h-12 w-12 text-gray-400" />
+              <div className="absolute bottom-0 left-0 right-0 bg-[#0A3D91]/80 text-[8px] text-center text-white py-0.5 font-bold uppercase tracking-wider font-mono">Selfie</div>
+            </div>
+            <span className="text-[9px] font-bold text-gray-500 uppercase font-mono">Live Selfie</span>
+          </div>
+        </div>
+        <p className="mt-4 text-xs font-semibold text-gray-500 text-center max-w-sm">
+          {isMatched
+            ? "Biometric facial comparison matches document identity information."
+            : "Verification warning: biometric similarity falls significantly below safety thresholds."}
+        </p>
+      </div>
+    );
+  }
+
+  if (isPassport) {
+    if (tab === "back") {
+      return (
+        <div className="flex flex-col items-center justify-center p-4 min-h-[220px] text-center w-full">
+          <FileText className="h-12 w-12 text-gray-300 mb-2" />
+          <h4 className="font-semibold text-gray-700 text-sm">Passport Signature Page</h4>
+          <p className="text-xs text-gray-400 max-w-xs mt-1">Canadian passports utilize a single primary biographical page. Use bio page preview and selfie verification metrics.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="relative w-full max-w-[420px] mx-auto rounded-2xl border border-slate-800 bg-slate-900 text-white p-4 shadow-lg overflow-hidden font-mono text-[9px] min-h-[210px] flex flex-col justify-between">
+        <div className="flex justify-between items-start border-b border-slate-700 pb-1.5 mb-2">
+          <div>
+            <h4 className="font-bold text-[8px] uppercase tracking-wider text-slate-300">PASSPORT / PASSEPORT</h4>
+            <p className="text-[6px] text-slate-400">CANADA</p>
+          </div>
+          <div className="h-4 w-7 bg-amber-500/10 rounded border border-amber-500/30 flex items-center justify-center text-[6px] text-amber-400 font-bold">CAN</div>
+        </div>
+
+        <div className="flex gap-3 items-center">
+          <div className="flex flex-col gap-1 items-center">
+            <div className="h-16 w-14 bg-slate-800 rounded border border-slate-700 flex items-center justify-center text-slate-500 relative">
+              <User className="h-8 w-8 text-slate-400" />
+            </div>
+            <span className="text-[5px] tracking-wider text-slate-500">P&lt;CAN&lt;{user.id.replace("-", "")}</span>
+          </div>
+
+          <div className="flex-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-slate-300 text-[8px]">
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Surname / Nom</span>
+              <span className="font-bold uppercase text-white">{user.name.split(" ")[1] || user.name}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Passport No. / No. du passeport</span>
+              <span className="font-bold text-white">PA-{user.id.slice(-5)}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Given Names / Prénoms</span>
+              <span className="font-bold uppercase text-white">{user.name.split(" ")[0]}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Nationality / Nationalité</span>
+              <span className="font-bold uppercase text-white">Canadian</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Date of Birth / Date de naissance</span>
+              <span className="font-bold text-white">{user.dateOfBirth}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Sex / Sexe</span>
+              <span className="font-bold text-white">{user.name === "Emma Thompson" || user.name === "Sophie Anderson" ? "F" : "M"}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Issue Date</span>
+              <span className="font-bold text-white">08 Nov 2016</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[5px] uppercase font-bold leading-none">Expiry Date</span>
+              <span className={cn("font-bold", user.risk === "High Risk" ? "text-red-400 font-extrabold" : "text-white")}>
+                08 Nov 2026 {user.risk === "High Risk" && "(EXPIRED)"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 border-t border-slate-800 pt-1.5 text-[6px] font-bold text-slate-500 leading-none">
+          P&lt;CAN{user.name.split(" ")[1]?.toUpperCase() || "SMITH"}&lt;&lt;{user.name.split(" ")[0]?.toUpperCase() || "JOHN"}&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br />
+          PA1234567&lt;8CAN9206145M2611081&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;0
+        </div>
+      </div>
+    );
+  }
+
+  // Driver's License
+  const isFront = tab === "front";
+  if (!isFront) {
+    return (
+      <div className="relative w-full max-w-[420px] mx-auto h-[210px] rounded-2xl border border-gray-300 bg-gradient-to-br from-gray-50 to-slate-100 text-gray-800 p-4 shadow-md flex flex-col justify-between font-mono text-[8px]">
+        <div className="w-full h-7 bg-slate-800 -mx-4 -mt-4 rounded-t-xl" />
+
+        <div className="flex gap-4 mt-2 items-center flex-1">
+          <div className="w-12 h-24 bg-slate-900 border border-slate-900 flex flex-col gap-0.5 justify-around py-2 px-1 rounded shrink-0">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div key={i} className="h-0.5 bg-white" style={{ opacity: Math.random() > 0.35 ? 1 : 0 }} />
+            ))}
+          </div>
+          <div className="flex-1 space-y-1 text-gray-500 text-[7px] leading-tight">
+            <p>1. THIS CARD IS THE PROPERTY OF THE PROVINCIAL JURISDICTION ISSUER.</p>
+            <p>2. ALTERATION OF THE DETAILS PRINTED HEREIN IS A PENAL OFFENSE.</p>
+            <p>3. CLASS 5 PERMIT AUTHORIZES REGULAR MOTOR VEHICLE ROAD OPERATION.</p>
+            <div className="h-px bg-gray-200 my-1" />
+            <p className="font-bold text-gray-700 uppercase">DOCUMENT ID: CAN-DL-{user.id.replace("-", "")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Driver's License Front
+  return (
+    <div className="relative w-full max-w-[420px] mx-auto h-[210px] rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50/40 to-white text-gray-800 p-4 shadow-md overflow-hidden flex flex-col justify-between font-mono text-[8px] border-b-4 border-b-sky-600">
+      <div className="flex justify-between items-start border-b border-sky-100 pb-1">
+        <div>
+          <h4 className="font-black text-sky-800 tracking-wider text-[9px] uppercase leading-none">DRIVER'S LICENSE / PERMIS DE CONDUIRE</h4>
+          <p className="text-[6px] text-sky-600 font-bold uppercase mt-0.5">CANADA - {user.city.split(",")[1]?.trim() || "QC"}</p>
+        </div>
+        <span className="text-[10px] font-black text-sky-700">CAN</span>
+      </div>
+
+      <div className="flex gap-3 my-2 flex-1 items-center">
+        <div className="h-16 w-14 bg-slate-100 rounded border border-slate-300 flex items-center justify-center text-slate-400 shrink-0 relative overflow-hidden">
+          <User className="h-8 w-8 text-gray-300" />
+          <div className="absolute inset-0 bg-sky-500/5 mix-blend-overlay" />
+        </div>
+
+        <div className="flex-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-gray-600 text-[8px]">
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">1. Surname</span>
+            <span className="font-bold uppercase text-gray-800">{user.name.split(" ")[1] || user.name}</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">4d. License No.</span>
+            <span className="font-bold text-gray-800">DL-{user.id.slice(-5)}</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">2. Given Names</span>
+            <span className="font-bold uppercase text-gray-800">{user.name.split(" ")[0]}</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">8. Address</span>
+            <span className="font-bold text-gray-800 text-[6px] leading-none uppercase block truncate max-w-[125px]">{user.street}</span>
+            <span className="font-bold text-gray-800 text-[6px] leading-none uppercase block truncate max-w-[125px]">{user.city}</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">3. Date of Birth</span>
+            <span className="font-bold text-gray-800">{user.dateOfBirth}</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">9. Class</span>
+            <span className="font-bold text-gray-800">5</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">4a. Issue Date</span>
+            <span className="font-bold text-gray-800">28 May 2024</span>
+          </div>
+          <div>
+            <span className="text-sky-700 block text-[5px] font-extrabold uppercase leading-none">4b. Expiry Date</span>
+            <span className="font-bold text-gray-800">28 May 2029</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center text-[6px] font-semibold text-gray-400 mt-1 border-t border-sky-50 pt-1">
+        <span>CONFIDENTIAL REVIEW ENCRYPTED</span>
+        <span className="text-sky-700 font-bold">SECURE TRUST</span>
+      </div>
+    </div>
+  );
+}
+
 export default function KycVerificationPage() {
   const router = useRouter();
-  const [requests, setRequests] = useState(INITIAL_REQUESTS);
+  const [requests, setRequests] = useState<KycRequest[]>(INITIAL_REQUESTS);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
+  /* ─── Modal state variables ─────────────────────────────────────── */
+  const [selectedRequest, setSelectedRequest] = useState<KycRequest | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<"id" | "selfie" | null>(null);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const counts = useMemo(() => {
     return {
@@ -167,43 +415,100 @@ export default function KycVerificationPage() {
     });
   }, [activeTab, requests, search]);
 
-  const setRequestStatus = (requestId: string, status: ReviewStatus) => {
-    setRequests((current) => current.map((request) => request.requestId === requestId ? { ...request, status } : request));
-    setOpenMenuId(null);
-    setToast(`Request ${requestId} marked ${status}.`);
-    window.setTimeout(() => setToast(null), 2600);
-  };
-
   const stats = [
     {
       label: "Pending Review",
       value: counts.Pending,
       note: "Requires attention",
       tone: "text-amber-600",
-      icon: <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600"><Clock className="h-6 w-6" /></div>,
+      icon: (
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+          <Clock className="h-6 w-6" />
+        </div>
+      ),
     },
     {
       label: "Under Review",
       value: counts["Under Review"],
       note: "In progress",
-      tone: "text-gray-500",
-      icon: <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><Eye className="h-6 w-6" /></div>,
+      tone: "text-blue-700",
+      icon: (
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+          <Eye className="h-6 w-6" />
+        </div>
+      ),
     },
     {
       label: "Approved Today",
-      value: requests.filter((r) => r.status === "Approved" && r.submitted === "Today").length,
-      note: "+8 from yesterday",
+      value: requests.filter((r) => r.status === "Approved").length,
+      note: "From current session",
       tone: "text-green-600",
-      icon: <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-green-600"><CheckCircle2 className="h-6 w-6" /></div>,
+      icon: (
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-green-600">
+          <CheckCircle2 className="h-6 w-6" />
+        </div>
+      ),
     },
     {
       label: "High Risk",
-      value: requests.filter((r) => r.user.risk === "High Risk").length,
+      value: requests.filter((r) => r.user.risk === "High Risk" && r.status !== "Approved").length,
       note: "Review carefully",
       tone: "text-red-600",
-      icon: <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600"><AlertTriangle className="h-6 w-6" /></div>,
+      icon: (
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+      ),
     },
   ];
+
+  /* ─── Modal Handlers ─────────────────────────────────────────────── */
+  const handleStartReview = (req: KycRequest) => {
+    setSelectedRequest(req);
+    setPreviewDoc(null);
+    setShowApproveModal(false);
+    setShowRejectModal(false);
+    setRejectionReason("");
+
+    // Automatically transition to 'Under Review' when viewed if 'Pending'
+    if (req.status === "Pending") {
+      setRequests((current) =>
+        current.map((r) =>
+          r.requestId === req.requestId ? { ...r, status: "Under Review" } : r
+        )
+      );
+      setToast(`Request ${req.requestId} status updated to Under Review.`);
+      window.setTimeout(() => setToast(null), 2500);
+    }
+  };
+
+  const handleCloseReviewModal = () => {
+    setSelectedRequest(null);
+  };
+
+  const handleConfirmApprove = () => {
+    if (!selectedRequest) return;
+    const reqId = selectedRequest.requestId;
+    setRequests((current) =>
+      current.map((r) => (r.requestId === reqId ? { ...r, status: "Approved" } : r))
+    );
+    setSelectedRequest(null);
+    setShowApproveModal(false);
+    setToast(`KYC verification for ${selectedRequest.user.name} approved successfully ✓`);
+    window.setTimeout(() => setToast(null), 2600);
+  };
+
+  const handleConfirmReject = () => {
+    if (!selectedRequest || !rejectionReason.trim()) return;
+    const reqId = selectedRequest.requestId;
+    setRequests((current) =>
+      current.map((r) => (r.requestId === reqId ? { ...r, status: "Rejected" } : r))
+    );
+    setSelectedRequest(null);
+    setShowRejectModal(false);
+    setToast(`KYC Request ${reqId} rejected: ${rejectionReason}`);
+    window.setTimeout(() => setToast(null), 2600);
+  };
 
   return (
     <>
@@ -219,8 +524,11 @@ export default function KycVerificationPage() {
             <p className="mt-1 text-sm text-gray-500 sm:text-base">Review and approve user identity verification documents</p>
           </div>
           <button
-            onClick={() => setToast("KYC report export prepared.")}
-            className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            onClick={() => {
+              setToast("KYC report export prepared.");
+              window.setTimeout(() => setToast(null), 2500);
+            }}
+            className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"
           >
             <Download className="h-4 w-4" />
             Export Report
@@ -247,7 +555,7 @@ export default function KycVerificationPage() {
                 <button
                   onClick={() => setSearch("")}
                   aria-label="Clear search"
-                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -255,7 +563,7 @@ export default function KycVerificationPage() {
             </div>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto border-b border-gray-200 px-4">
+          <div className="flex gap-3 overflow-x-auto border-b border-gray-200 px-4 no-scrollbar">
             {TABS.map((tab) => {
               const active = activeTab === tab.value;
               return (
@@ -263,7 +571,7 @@ export default function KycVerificationPage() {
                   key={tab.value}
                   onClick={() => setActiveTab(tab.value)}
                   className={cn(
-                    "relative flex h-14 shrink-0 items-center gap-2 px-2 text-sm font-semibold transition-colors sm:px-4",
+                    "relative flex h-14 shrink-0 items-center gap-2 px-2 text-sm font-semibold transition-colors sm:px-4 cursor-pointer",
                     active ? "text-blue-700" : "text-gray-500 hover:text-gray-800"
                   )}
                 >
@@ -277,20 +585,46 @@ export default function KycVerificationPage() {
             })}
           </div>
 
+          {/* Table Container with scroll styling */}
           <div className="overflow-x-auto">
-            <div className="grid min-w-[1050px] grid-cols-[1.3fr_1.8fr_1.4fr_1fr_1.2fr_1fr_112px] gap-4 bg-gray-50 px-5 py-3">
-              {["REQUEST", "USER", "DOCUMENT TYPE", "DOCUMENTS", "STATUS", "RISK", "ACTIONS"].map((heading) => (
+            {/* Table headers */}
+            <div className="grid min-w-[1150px] grid-cols-[1.1fr_1.7fr_1.3fr_1fr_1.1fr_1fr_1.6fr_120px] gap-4 bg-gray-50 px-5 py-3 border-b border-gray-200/80">
+              {["REQUEST", "USER", "DOCUMENT TYPE", "DOCUMENTS", "STATUS", "RISK", "SUBMITTED", "ACTIONS"].map((heading) => (
                 <span key={heading} className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{heading}</span>
               ))}
             </div>
 
             <AnimatePresence mode="wait">
-              {filteredRequests.length === 0 ? (
+              {loading ? (
+                <motion.div
+                  key="skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="min-w-[1150px] divide-y divide-gray-100 bg-white"
+                >
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="grid grid-cols-[1.1fr_1.7fr_1.3fr_1fr_1.1fr_1fr_1.6fr_120px] gap-4 items-center px-5 py-4.5 border-b border-gray-50">
+                      <div className="h-4 bg-gray-100 rounded-lg w-16 animate-pulse" />
+                      <div className="space-y-1.5">
+                        <div className="h-4 bg-gray-100 rounded-lg w-28 animate-pulse" />
+                        <div className="h-3 bg-gray-100 rounded-lg w-36 animate-pulse" />
+                      </div>
+                      <div className="h-4 bg-gray-100 rounded-lg w-24 animate-pulse" />
+                      <div className="h-4 bg-gray-100 rounded-lg w-16 animate-pulse" />
+                      <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
+                      <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
+                      <div className="h-4 bg-gray-100 rounded-lg w-28 animate-pulse" />
+                      <div className="h-8 bg-gray-100 rounded-lg w-full animate-pulse" />
+                    </div>
+                  ))}
+                </motion.div>
+              ) : filteredRequests.length === 0 ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="min-w-[1050px] py-16 text-center text-sm font-medium text-gray-400"
+                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-400 bg-white"
                 >
                   No KYC requests found.
                 </motion.div>
@@ -299,63 +633,38 @@ export default function KycVerificationPage() {
                   {filteredRequests.map((request) => (
                     <div
                       key={request.requestId}
-                      className="grid min-w-[1050px] grid-cols-[1.3fr_1.8fr_1.4fr_1fr_1.2fr_1fr_112px] items-center gap-4 border-t border-gray-100 px-5 py-4 transition-colors hover:bg-blue-50/30"
+                      className="grid min-w-[1150px] grid-cols-[1.1fr_1.7fr_1.3fr_1fr_1.1fr_1fr_1.6fr_120px] items-center gap-4 border-b border-gray-100 bg-white px-5 py-4 transition-colors hover:bg-blue-50/20"
                     >
                       <div>
                         <p className="font-bold text-gray-900">{request.requestId}</p>
-                        <p className="text-sm text-gray-500">{request.user.id}</p>
+                        <p className="text-xs text-gray-400">{request.user.id}</p>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-gray-900">{request.user.name}</p>
-                        <p className="truncate text-sm text-gray-500">{request.user.email}</p>
+                        <p className="truncate text-xs text-gray-400">{request.user.email}</p>
                       </div>
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                         <FileText className="h-4 w-4 text-gray-400" />
                         {request.documentType}
                       </div>
                       <DocumentDots docs={request.documents} />
-                      <StatusBadge status={request.status} />
-                      <RiskBadge level={request.user.risk} />
-                      <div className="relative flex justify-end gap-1.5">
+                      <div>
+                        <StatusBadge status={request.status} />
+                      </div>
+                      <div>
+                        <RiskBadge level={request.user.risk} />
+                      </div>
+                      <div className="text-xs font-semibold text-gray-500">
+                        {request.submitted}
+                      </div>
+                      <div className="relative flex justify-end">
                         <button
-                          onClick={() => router.push(`/dashboard/users/${request.user.id}`)}
-                          title="View overview"
-                          aria-label={`View ${request.user.name}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-700 transition-colors hover:bg-blue-100"
+                          onClick={() => handleStartReview(request)}
+                          className="inline-flex h-8.5 w-full items-center justify-center gap-1.5 rounded-lg bg-[#0A3D91] px-3 text-xs font-bold text-white transition-all hover:bg-[#1650AB] active:scale-[0.98] shadow-sm cursor-pointer"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3.5 w-3.5" />
+                          Review
                         </button>
-                        <button
-                          onClick={() => setOpenMenuId((current) => current === request.requestId ? null : request.requestId)}
-                          title="KYC actions"
-                          aria-label={`Open KYC actions for ${request.user.name}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                        <AnimatePresence>
-                          {openMenuId === request.requestId && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                              className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl"
-                            >
-                              <button onClick={() => setRequestStatus(request.requestId, "Under Review")} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                                <Eye className="h-3.5 w-3.5 text-blue-600" />
-                                Start Review
-                              </button>
-                              <button onClick={() => setRequestStatus(request.requestId, "Approved")} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-green-700 hover:bg-green-50">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Approve
-                              </button>
-                              <button onClick={() => setRequestStatus(request.requestId, "Rejected")} className="flex w-full items-center gap-2 border-t border-gray-100 px-4 py-2.5 text-left text-xs font-semibold text-red-700 hover:bg-red-50">
-                                <XCircle className="h-3.5 w-3.5" />
-                                Reject
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
                       </div>
                     </div>
                   ))}
@@ -369,23 +678,339 @@ export default function KycVerificationPage() {
               Showing <strong className="text-gray-700">{filteredRequests.length}</strong> of <strong className="text-gray-700">{requests.length}</strong> verification requests
             </span>
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
-              <ShieldCheck className="h-4 w-4 text-blue-700" />
-              CDNT secure review queue
+              <ShieldCheck className="h-4 w-4 text-[#0A3D91]" />
+              CDNT secure identity queue
             </div>
           </div>
         </section>
       </motion.div>
 
+      {/* ─── MODALS STACK ───────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Dark blur backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={handleCloseReviewModal}
+            />
+
+            {/* SCREEN 1: Centered KYC Review Modal */}
+            {(!previewDoc && !showApproveModal && !showRejectModal) && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", damping: 30, stiffness: 350 }}
+                className="relative bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10 border border-gray-100"
+              >
+                {/* Close Button */}
+                <button
+                  onClick={handleCloseReviewModal}
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <div className="px-8 pt-7 pb-4">
+                  <h2 className="text-[22px] font-bold text-gray-900 leading-tight">KYC Review</h2>
+                  <p className="text-[11px] text-gray-400 font-semibold mt-1">
+                    {selectedRequest.requestId} • Submitted {selectedRequest.submitted}
+                  </p>
+                  
+                  {/* Badges */}
+                  <div className="flex gap-2.5 mt-3">
+                    <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-100 px-3 py-1 rounded-full text-xs font-semibold">
+                      <Clock className="h-3.5 w-3.5" />
+                      Pending
+                    </span>
+                    <span className="inline-flex items-center bg-green-50 text-green-600 border border-green-100 px-3 py-1 rounded-full text-xs font-semibold">
+                      {selectedRequest.user.risk}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Modal Body */}
+                <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                  {/* User Information Box */}
+                  <div>
+                    <h3 className="text-[13px] font-bold text-[#0F172A] uppercase tracking-wider mb-2.5">
+                      User Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 bg-gray-50/60 border border-gray-100/60 rounded-2xl p-5">
+                      {[
+                        { label: "Full Name", value: selectedRequest.user.name, icon: User },
+                        { label: "Email", value: selectedRequest.user.email, icon: Mail },
+                        { label: "Phone", value: selectedRequest.user.phone, icon: Phone },
+                        { label: "Country", value: selectedRequest.user.country, icon: MapPin },
+                      ].map((field, idx) => {
+                        const Icon = field.icon;
+                        return (
+                          <div key={idx} className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-white border border-gray-150/60 flex items-center justify-center text-gray-400 shrink-0 shadow-sm">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">
+                                {field.label}
+                              </p>
+                              <p className="text-sm font-semibold text-gray-900 mt-1 truncate">
+                                {field.value}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Submitted Documents Box */}
+                  <div>
+                    <h3 className="text-[13px] font-bold text-[#0F172A] uppercase tracking-wider mb-2.5">
+                      Submitted Documents
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* Card 1: ID Document */}
+                      <div
+                        onClick={() => setPreviewDoc("id")}
+                        className="border border-gray-200/80 rounded-2xl p-5 hover:border-blue-400 transition-colors cursor-pointer bg-white group flex flex-col justify-between min-h-[200px]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <CreditCard className="h-4.5 w-4.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            <span className="text-sm font-bold">{selectedRequest.documentType}</span>
+                          </div>
+                          <span className="bg-green-50 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            Uploaded
+                          </span>
+                        </div>
+                        <div className="mt-4 h-32 bg-gray-50 border border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 font-semibold text-xs group-hover:bg-gray-100/60 transition-colors">
+                          <CreditCard className="h-6 w-6 stroke-[1.5]" />
+                          <span>Click to view</span>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Selfie Document */}
+                      <div
+                        onClick={() => setPreviewDoc("selfie")}
+                        className="border border-gray-200/80 rounded-2xl p-5 hover:border-blue-400 transition-colors cursor-pointer bg-white group flex flex-col justify-between min-h-[200px]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <UserCheck className="h-4.5 w-4.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            <span className="text-sm font-bold">Selfie Verification</span>
+                          </div>
+                          <span className="bg-green-50 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            Uploaded
+                          </span>
+                        </div>
+                        <div className="mt-4 h-32 bg-gray-50 border border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 font-semibold text-xs group-hover:bg-gray-100/60 transition-colors">
+                          <User className="h-6 w-6 stroke-[1.5]" />
+                          <span>Click to view</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions footer inside the modal */}
+                  <div className="flex gap-3 justify-end pt-5 border-t border-gray-100">
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      className="px-6 py-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-700 text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <ThumbsDown className="h-4 w-4" />
+                      Reject KYC
+                    </button>
+                    <button
+                      onClick={() => setShowApproveModal(true)}
+                      className="px-6 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 cursor-pointer"
+                      style={{ background: BRAND_GRADIENT }}
+                    >
+                      <ThumbsUp className="h-4 w-4" />
+                      Approve KYC
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SCREEN 2: Centered ID Document Preview Modal */}
+            {previewDoc && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", damping: 28, stiffness: 340 }}
+                className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col z-20 border border-gray-100 p-6"
+              >
+                {/* Close button in top-right */}
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <div className="mb-4">
+                  <h3 className="text-base font-bold text-gray-900">
+                    {previewDoc === "id"
+                      ? `${selectedRequest.documentType} Scan Preview`
+                      : "Selfie Verification Biometrics"}
+                  </h3>
+                  <p className="text-xs text-gray-400 font-medium">
+                    Review and match details against registered user profile.
+                  </p>
+                </div>
+
+                {/* Preview Frame */}
+                <div className="p-6 bg-slate-50 border border-gray-200/80 rounded-2xl flex flex-col items-center justify-center min-h-[260px] w-full">
+                  <DocumentScanPreview request={selectedRequest} tab={previewDoc === "id" ? "front" : "selfie"} />
+                </div>
+
+                {/* Subtext and Actions */}
+                <div className="mt-5 flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                    <ZoomIn className="h-4 w-4 text-gray-400 shrink-0" />
+                    <span>ID Document Preview Mode</span>
+                  </div>
+                  <button
+                    onClick={() => setPreviewDoc(null)}
+                    className="px-5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    Back to Review
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SCREEN 3: Centered Reject KYC Modal */}
+            {showRejectModal && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", damping: 28, stiffness: 350 }}
+                className="relative bg-white w-full max-w-[420px] rounded-2xl shadow-2xl p-6 z-20 border border-gray-100"
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                {/* Warning Icon Header */}
+                <div className="h-11 w-11 rounded-full bg-red-50 border border-red-100 text-red-500 flex items-center justify-center mb-4">
+                  <XCircle className="h-6 w-6" />
+                </div>
+
+                <h3 className="text-lg font-bold text-gray-900 leading-tight">Reject KYC</h3>
+                <p className="text-xs text-gray-400 mt-1 font-semibold">Deny verification request</p>
+
+                {/* Reason Field */}
+                <div className="mt-5 space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">
+                    Rejection Reason *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Explain why this KYC verification is being rejected..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/40 text-sm outline-none resize-none focus:border-red-400 focus:ring-2 focus:ring-red-50 min-h-[100px] text-gray-800 placeholder:text-gray-400 font-medium transition-all"
+                  />
+                  <p className="text-[11px] text-gray-400">
+                    This reason will be sent to the user
+                  </p>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowRejectModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmReject}
+                    disabled={!rejectionReason.trim()}
+                    className="flex-1 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Reject KYC
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SCREEN 4: Centered Approve KYC Modal */}
+            {showApproveModal && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", damping: 28, stiffness: 350 }}
+                className="relative bg-white w-full max-w-[420px] rounded-2xl shadow-2xl p-6 z-20 border border-gray-100"
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowApproveModal(false)}
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                {/* Check Icon Header */}
+                <div className="h-11 w-11 rounded-full bg-green-50 border border-green-100 text-green-500 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+
+                <h3 className="text-lg font-bold text-gray-900 leading-tight">Approve KYC</h3>
+                <p className="text-xs text-gray-400 mt-1 font-semibold">Verify user identity</p>
+
+                {/* Confirmation Body */}
+                <p className="text-xs text-gray-500 leading-relaxed mt-4 font-semibold">
+                  Are you sure you want to approve KYC verification for{" "}
+                  <strong className="text-gray-900 font-extrabold">{selectedRequest.user.name}</strong>?
+                  This will grant them full account access and increase their transaction limits.
+                </p>
+
+                {/* Footer Buttons */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowApproveModal(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmApprove}
+                    className="flex-1 py-2.5 rounded-xl text-white bg-green-600 hover:bg-green-700 text-sm font-bold shadow-sm transition-colors cursor-pointer"
+                  >
+                    Approve KYC
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Success Toast Notification */}
       <AnimatePresence>
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2.5 rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl"
+            className="fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2.5 rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl border border-slate-800"
           >
-            <CheckCircle2 className="h-4 w-4 text-green-400" />
-            {toast}
+            <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+            <span className="truncate">{toast}</span>
           </motion.div>
         )}
       </AnimatePresence>

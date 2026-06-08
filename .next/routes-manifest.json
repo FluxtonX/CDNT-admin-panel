@@ -57,10 +57,82 @@
       "namedRegex": "^/dashboard(?:/)?$"
     },
     {
+      "page": "/dashboard/admin-roles",
+      "regex": "^/dashboard/admin\\-roles(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/admin\\-roles(?:/)?$"
+    },
+    {
+      "page": "/dashboard/interac",
+      "regex": "^/dashboard/interac(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/interac(?:/)?$"
+    },
+    {
+      "page": "/dashboard/kyc",
+      "regex": "^/dashboard/kyc(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/kyc(?:/)?$"
+    },
+    {
+      "page": "/dashboard/live-chat",
+      "regex": "^/dashboard/live\\-chat(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/live\\-chat(?:/)?$"
+    },
+    {
+      "page": "/dashboard/notifications",
+      "regex": "^/dashboard/notifications(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/notifications(?:/)?$"
+    },
+    {
+      "page": "/dashboard/portfolio",
+      "regex": "^/dashboard/portfolio(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/portfolio(?:/)?$"
+    },
+    {
+      "page": "/dashboard/reports",
+      "regex": "^/dashboard/reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/reports(?:/)?$"
+    },
+    {
+      "page": "/dashboard/security",
+      "regex": "^/dashboard/security(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/security(?:/)?$"
+    },
+    {
+      "page": "/dashboard/settings",
+      "regex": "^/dashboard/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/settings(?:/)?$"
+    },
+    {
+      "page": "/dashboard/transactions",
+      "regex": "^/dashboard/transactions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/transactions(?:/)?$"
+    },
+    {
       "page": "/dashboard/users",
       "regex": "^/dashboard/users(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/dashboard/users(?:/)?$"
+    },
+    {
+      "page": "/dashboard/wallets",
+      "regex": "^/dashboard/wallets(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/wallets(?:/)?$"
+    },
+    {
+      "page": "/dashboard/withdrawals",
+      "regex": "^/dashboard/withdrawals(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/withdrawals(?:/)?$"
     },
     {
       "page": "/login",

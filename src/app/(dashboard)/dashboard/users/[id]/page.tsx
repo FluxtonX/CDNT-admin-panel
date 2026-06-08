@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -644,8 +644,38 @@ function DocumentsTab() {
 }
 
 /* ─── Audit Logs Tab ─────────────────────────────────────────────── */
-function AuditLogsTab() {
-  const events = [
+function AuditLogsTab({ user }: { user: any }) {
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem("platform_notifications");
+      if (raw) {
+        try {
+          const list = JSON.parse(raw);
+          const received = list.filter((notif: any) => {
+            const aud = notif.audience || "";
+            if (!aud || aud === "All") return true;
+            if (aud === "Verified" && user.kyc === "Verified") return true;
+            if (aud === "Unverified" && user.kyc !== "Verified") return true;
+            if (aud === "High Value" && user.balance >= 50000) return true;
+            return false;
+          }).map((notif: any) => ({
+            date: notif.timestamp,
+            title: `System Broadcast: ${notif.title}`,
+            desc: notif.message,
+            isAnnouncement: true,
+            badgeType: notif.type,
+          }));
+          setAnnouncements(received);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, [user]);
+
+  const baseEvents = [
     { date: "Jun 2, 2026, 10:30 a.m.", title: "User logged in", desc: "Chrome on Windows • Toronto, Canada (192.168.1.1)" },
     { date: "Jun 1, 2026, 06:20 p.m.", title: "User logged in", desc: "Safari on iPhone • Toronto, Canada (192.168.1.25)" },
     { date: "Jun 1, 2026, 02:30 p.m.", title: "Deposit completed", desc: "0.1234 BTC credited to user balance" },
@@ -655,16 +685,33 @@ function AuditLogsTab() {
     { date: "March 15, 2024, 09:00 a.m.", title: "Account Created", desc: "Initial email registration and confirmation" },
   ];
 
+  const events = [...announcements, ...baseEvents];
+
   return (
     <div>
       <h3 className="text-base font-bold text-gray-900 mb-6">Account Activity Log</h3>
       <div className="relative border-l border-gray-100 ml-3 pl-6 space-y-6">
         {events.map((event, i) => (
           <div key={i} className="relative">
-            <span className="absolute -left-[31px] top-1.5 h-2 w-2 rounded-full bg-blue-600 ring-4 ring-white" />
+            <span className={cn(
+              "absolute -left-[31px] top-1.5 h-2 w-2 rounded-full ring-4 ring-white",
+              event.isAnnouncement
+                ? event.badgeType === "Warning" ? "bg-amber-500"
+                  : event.badgeType === "Success" ? "bg-green-500"
+                  : event.badgeType === "Error" ? "bg-red-500"
+                  : "bg-blue-500"
+                : "bg-blue-600"
+            )} />
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1">
               <div>
-                <h4 className="text-sm font-bold text-gray-900">{event.title}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-gray-900">{event.title}</h4>
+                  {event.isAnnouncement && (
+                    <span className="text-[8px] bg-blue-50 text-blue-700 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-150 animate-pulse">
+                      Announcement
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500 mt-0.5">{event.desc}</p>
               </div>
               <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">{event.date}</span>
@@ -799,7 +846,7 @@ export default function UserDetailPage() {
                 {activeTab === "security"      && <SecurityTab />}
                 {activeTab === "documents"     && <DocumentsTab />}
                 {activeTab === "support"       && <SupportTab />}
-                {activeTab === "audit-logs"    && <AuditLogsTab />}
+                {activeTab === "audit-logs"    && <AuditLogsTab user={user} />}
               </motion.div>
             </AnimatePresence>
           </div>
