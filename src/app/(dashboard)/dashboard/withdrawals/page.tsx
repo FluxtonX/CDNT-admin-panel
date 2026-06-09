@@ -303,7 +303,7 @@ export default function WithdrawalRequestsPage() {
       {
         label: "Rejected Today",
         value: requests.filter(r => r.status === "Rejected").length,
-        tone: "text-red-650 font-bold",
+        tone: "text-red-600 font-bold",
         icon: (
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
             <XCircle className="h-6 w-6" />
@@ -797,7 +797,7 @@ export default function WithdrawalRequestsPage() {
                   <button
                     onClick={handleConfirmReject}
                     disabled={!rejectionReason.trim()}
-                    className="flex-1 py-2.5 rounded-xl text-white bg-red-650 hover:bg-red-700 text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     Confirm Rejection
                   </button>

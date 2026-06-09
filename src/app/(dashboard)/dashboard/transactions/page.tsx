@@ -426,7 +426,7 @@ export default function TransactionsDashboard() {
                   <span className={cn(
                     "text-[10px] font-extrabold px-1.5 py-0.5 rounded-md",
                     stat.badge.trend === "up" ? "bg-green-50 text-green-600" :
-                    stat.badge.trend === "down" ? "bg-red-50 text-red-650" : "bg-gray-100 text-gray-500"
+                    stat.badge.trend === "down" ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-500"
                   )}>
                     {stat.badge.text}
                   </span>

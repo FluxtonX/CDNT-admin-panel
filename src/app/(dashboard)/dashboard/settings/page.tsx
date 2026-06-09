@@ -21,8 +21,8 @@ export default function AdminSettingsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // General Settings State
-  const [platformName, setPlatformName] = useState("North Union Bank");
-  const [supportEmail, setSupportEmail] = useState("support@northunion.ca");
+  const [platformName, setPlatformName] = useState("Canadian Digital National Trust Bank");
+  const [supportEmail, setSupportEmail] = useState("support@cdntb.ca");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   // Financial Settings State
@@ -221,7 +221,7 @@ export default function AdminSettingsPage() {
               {/* Maintenance Mode */}
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
-                  <p className="text-xs font-extrabold text-gray-805">Maintenance Mode</p>
+                  <p className="text-xs font-extrabold text-gray-800">Maintenance Mode</p>
                   <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Temporarily disable platform access</p>
                 </div>
                 <ToggleSwitch

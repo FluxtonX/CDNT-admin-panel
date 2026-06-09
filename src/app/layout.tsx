@@ -3,10 +3,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "CDB Admin Panel",
-    template: "%s | CDB Admin",
+    default: "CDNTB Admin Panel",
+    template: "%s | CDNTB Admin",
   },
-  description: "Modern admin dashboard panel for CDB platform management.",
+  description: "Modern admin dashboard panel for CDNTB platform management.",
   robots: "noindex, nofollow",
 };
 

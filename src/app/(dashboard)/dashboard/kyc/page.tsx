@@ -29,17 +29,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USERS_DATA, type AdminUser, type RiskLevel } from "@/lib/data/users";
+import { supabase } from "@/lib/supabase";
 
 type ReviewStatus = "Pending" | "Under Review" | "Approved" | "Rejected";
 type TabValue = "all" | ReviewStatus;
 
 type KycRequest = {
   requestId: string;
-  user: AdminUser;
-  documentType: "Driver's License" | "Passport" | "National ID" | "Proof of Address";
+  user: any;
+  documentType: string;
   documents: Array<"verified" | "missing" | "flagged">;
   status: ReviewStatus;
   submitted: string;
+  rawImages?: { front: string; back: string; selfie: string; };
 };
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
@@ -164,6 +166,29 @@ function DocumentScanPreview({
   request: KycRequest;
   tab: "front" | "back" | "selfie";
 }) {
+  if (request.rawImages) {
+    if (tab === "selfie") {
+      return (
+        <div className="flex items-center justify-center w-full h-full p-2">
+          <img src={request.rawImages.selfie} alt="Selfie" className="max-h-[400px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
+        </div>
+      );
+    } else if (tab === "front") {
+      return (
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full h-full p-2 overflow-y-auto">
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-bold text-gray-500">FRONT</span>
+            <img src={request.rawImages.front} alt="Front ID" className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-bold text-gray-500">BACK</span>
+            <img src={request.rawImages.back} alt="Back ID" className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
+          </div>
+        </div>
+      );
+    }
+  }
+
   const user = request.user;
   const isPassport = request.documentType === "Passport";
 
@@ -377,10 +402,52 @@ export default function KycVerificationPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 700);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
+    const fetchSubmissions = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/kyc", { cache: "no-store" });
+        if (res.ok) {
+          const { submissions } = await res.json();
+          if (submissions && submissions.length > 0) {
+            const mapped: KycRequest[] = submissions.map((item: any) => {
+              const statusMap: any = { pending: "Pending", approved: "Approved", rejected: "Rejected" };
+              const fullReqId = item.id?.toString() || item.user_id;
+              const fullUserId = item.user_id;
+              return {
+                requestId: fullReqId.slice(0, 8).toUpperCase(),
+                fullRequestId: fullReqId,
+                user: {
+                  id: fullUserId.slice(0, 8).toUpperCase(),
+                  fullUserId: fullUserId,
+                  name: item.full_name,
+                  email: `${item.full_name.split(' ').join('.').toLowerCase()}@email.com`,
+                  phone: "N/A",
+                  country: item.country,
+                  risk: "Low Risk",
+                  dateOfBirth: item.date_of_birth,
+                  street: item.street_address,
+                  city: item.city,
+                },
+                documentType: "Government ID",
+                documents: ["verified", "verified", "verified"],
+                status: statusMap[item.status] || "Pending",
+                submitted: item.submitted_at ? new Date(item.submitted_at).toLocaleString() : "Recently",
+                rawImages: { front: item.id_front_url, back: item.id_back_url, selfie: item.selfie_url }
+              };
+            });
+            setRequests(mapped);
+          } else {
+            setRequests([]); // If empty array from DB, clear initial static data
+          }
+        }
+      } catch (err) {
+        console.error("KYC fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubmissions();
+  }, []);
 
   /* ─── Modal state variables ─────────────────────────────────────── */
   const [selectedRequest, setSelectedRequest] = useState<KycRequest | null>(null);
@@ -486,9 +553,17 @@ export default function KycVerificationPage() {
     setSelectedRequest(null);
   };
 
-  const handleConfirmApprove = () => {
+  const handleConfirmApprove = async () => {
     if (!selectedRequest) return;
     const reqId = selectedRequest.requestId;
+    const fullUserId = (selectedRequest.user as any).fullUserId || selectedRequest.user.id;
+    
+    await fetch("/api/kyc", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: fullUserId, status: "approved" }),
+    });
+
     setRequests((current) =>
       current.map((r) => (r.requestId === reqId ? { ...r, status: "Approved" } : r))
     );
@@ -498,9 +573,17 @@ export default function KycVerificationPage() {
     window.setTimeout(() => setToast(null), 2600);
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!selectedRequest || !rejectionReason.trim()) return;
     const reqId = selectedRequest.requestId;
+    const fullUserId = (selectedRequest.user as any).fullUserId || selectedRequest.user.id;
+
+    await fetch("/api/kyc", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: fullUserId, status: "rejected" }),
+    });
+
     setRequests((current) =>
       current.map((r) => (r.requestId === reqId ? { ...r, status: "Rejected" } : r))
     );

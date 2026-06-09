@@ -2,7 +2,7 @@
  * Application-wide constants
  */
 
-export const APP_NAME = "CDB Admin";
+export const APP_NAME = "CDNTB Admin";
 export const APP_VERSION = "1.0.0";
 
 export const SIDEBAR_WIDTH = 260;
@@ -19,6 +19,7 @@ export const ROUTES = {
   settings: "/dashboard/settings",
   profile: "/dashboard/profile",
   notifications: "/dashboard/notifications",
+  kyc: "/dashboard/kyc",
 } as const;
 
 export const STATUS_LABELS = {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell,
@@ -152,6 +154,30 @@ const formatMillions = (v: number) =>
 
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function DashboardPage() {
+  const [stats, setStats] = useState({ total: 0, verified: 0, pending: 0, loading: true });
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("/api/users", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          const users = data.users || [];
+          setStats({
+            total: users.length,
+            verified: users.filter((u: any) => u.kyc === "Verified").length,
+            pending: users.filter((u: any) => u.kyc === "Pending").length,
+            loading: false,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+        setStats(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchUsers();
+  }, []);
+
   return (
     <div className="space-y-5">
       {/* ── Page Header */}
@@ -162,9 +188,9 @@ export default function DashboardPage() {
 
       {/* ── Stats Row 1 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard1 label="Total Users"     value="12,458"  change="+12.5%" icon={Users}          iconBg="#06B6D4" />
-        <StatCard1 label="Verified Users"  value="10,234"  change="+8.2%"  icon={CheckCircle2}   iconBg="#22C55E" />
-        <StatCard1 label="Pending KYC"     value="156"     change="+25%"   icon={Clock}          iconBg="#F97316" />
+        <StatCard1 label="Total Users"     value={stats.loading ? "..." : stats.total.toString()}    change="Live" icon={Users}          iconBg="#06B6D4" />
+        <StatCard1 label="Verified Users"  value={stats.loading ? "..." : stats.verified.toString()} change="Live"  icon={CheckCircle2}   iconBg="#22C55E" />
+        <StatCard1 label="Pending KYC"     value={stats.loading ? "..." : stats.pending.toString()}  change="Live"   icon={Clock}          iconBg="#F97316" />
         <StatCard1 label="Platform Assets" value="$42.5M"  change="+15.3%" icon={DollarSign}     iconBg="#F59E0B" />
       </div>
 

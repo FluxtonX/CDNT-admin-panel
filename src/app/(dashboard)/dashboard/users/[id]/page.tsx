@@ -728,7 +728,28 @@ export default function UserDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
-  const user = USERS_DATA.find((u) => u.id === userId);
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("/api/users", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setUsers(data.users || []);
+        }
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const user = users.find((u) => u.id === userId);
 
   const [activeTab, setActiveTab]         = useState("overview");
   const [isFrozen, setIsFrozen]           = useState(user?.account === "Frozen");
@@ -736,12 +757,21 @@ export default function UserDetailPage() {
   const [showNoteModal, setShowNote]      = useState(false);
   const [noteSaved, setNoteSaved]         = useState(false);
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
+        <span className="h-8 w-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></span>
+        <p className="text-sm text-gray-500">Loading user profile...</p>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
         <User className="h-12 w-12 text-gray-300" />
         <h2 className="text-lg font-bold text-gray-700">User not found</h2>
-        <p className="text-sm text-gray-400">The user ID &quot;{userId}&quot; does not exist.</p>
+        <p className="text-sm text-gray-400">The user ID &quot;{userId}&quot; does not exist in the database.</p>
         <button onClick={() => router.push("/dashboard/users")}
           className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
           style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>

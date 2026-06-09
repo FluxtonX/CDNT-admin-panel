@@ -7,7 +7,6 @@ import { KeyRound, Shield, AlertCircle, Loader2, ArrowLeft } from "lucide-react"
 import { CdntLogo } from "@/components/ui/CdntLogo";
 
 const DEMO_CODE = "123456";
-const CORRECT_CODE = "123456";
 
 export default function TwoFactorPage() {
   const router = useRouter();
@@ -60,11 +59,27 @@ export default function TwoFactorPage() {
 
     await new Promise((res) => setTimeout(res, 1200));
 
-    if (code === CORRECT_CODE) {
+    const authHash = sessionStorage.getItem("auth_hash");
+    let isValid = false;
+    
+    if (authHash) {
+      try {
+        const expectedCode = atob(authHash);
+        if (code === expectedCode) {
+          isValid = true;
+        }
+      } catch (err) {
+        console.error("Invalid hash");
+      }
+    }
+
+    if (isValid) {
+      // Set a client-side cookie to authenticate the admin
+      document.cookie = "admin_auth=true; path=/; max-age=86400; SameSite=Lax";
       router.push("/dashboard");
     } else {
       setLoading(false);
-      setError("Invalid code. Use the demo code: 123456");
+      setError("Invalid code. Please check your email.");
       triggerShake();
     }
   };

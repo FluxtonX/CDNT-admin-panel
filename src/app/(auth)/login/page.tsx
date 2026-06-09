@@ -17,7 +17,7 @@ interface FormErrors {
   password?: string;
 }
 
-const DEMO_EMAIL = "admin@northunion.ca";
+const DEMO_EMAIL = "admin@cdntb.ca";
 const DEMO_PASSWORD = "admin123";
 
 /* ─── Validation ─────────────────────────────────────────────────── */
@@ -82,9 +82,29 @@ export default function LoginPage() {
     await new Promise((res) => setTimeout(res, 1200));
 
     if (values.email === DEMO_EMAIL && values.password === DEMO_PASSWORD) {
-      // Store email in sessionStorage for 2FA page
-      sessionStorage.setItem("auth_email", values.email);
-      router.push("/two-factor");
+      try {
+        // --- Static Mode Reversion ---
+        const staticCode = "123456";
+        
+        // Uncomment below to enable dynamic Brevo emails later:
+        /*
+        const dynamicCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const res = await fetch("/api/send-2fa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: values.email, code: dynamicCode }),
+        });
+        if (!res.ok) throw new Error("Failed to send 2FA email");
+        sessionStorage.setItem("auth_hash", btoa(dynamicCode));
+        */
+        
+        sessionStorage.setItem("auth_email", values.email);
+        sessionStorage.setItem("auth_hash", btoa(staticCode)); // Storing static hash for now
+        router.push("/two-factor");
+      } catch (err) {
+        setLoading(false);
+        setAuthError("Failed to send verification code. Please try again.");
+      }
     } else {
       setLoading(false);
       setAuthError("Invalid credentials. Use the demo credentials below.");
@@ -146,7 +166,7 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="admin@northunion.ca"
+                  placeholder="admin@cdntb.ca"
                   value={values.email}
                   onChange={handleChange("email")}
                   onBlur={handleBlur("email")}
@@ -247,7 +267,7 @@ export default function LoginPage() {
               onClick={() => setValues({ email: DEMO_EMAIL, password: DEMO_PASSWORD })}
               className="text-blue-600 hover:underline font-medium"
             >
-              admin@northunion.ca / admin123
+              admin@cdntb.ca / admin123
             </button>
           </p>
         </div>

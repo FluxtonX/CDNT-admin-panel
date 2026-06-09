@@ -9,7 +9,7 @@ import {
   User, Mail, Phone, Lock, Unlock, MoreVertical, FileEdit, Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { USERS_DATA, type AdminUser, type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
+import { type AdminUser, type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
 import { useClickOutside } from "@/hooks/useHelpers";
 
 /* ─── Config ─────────────────────────────────────────────────────── */
@@ -307,7 +307,7 @@ function UserRow({
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{user.name}</p>
-          <p className="text-xs text-gray-400 truncate">{user.id}</p>
+          <p className="text-xs text-gray-400 truncate">{(user as any).shortId || user.id}</p>
         </div>
       </div>
       {/* CONTACT */}
@@ -392,7 +392,7 @@ function UserRow({
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function UsersPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<AdminUser[]>(USERS_DATA);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -400,10 +400,22 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 700);
-    return () => clearTimeout(timer);
-  }, [currentPage, filter, search]);
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/users", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setUsers(data.users || []);
+        }
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
   const [showAddUser, setShowAddUser] = useState(false);
   const [activeUserForFreeze, setActiveUserForFreeze] = useState<AdminUser | null>(null);
   const [activeUserForNote, setActiveUserForNote] = useState<AdminUser | null>(null);

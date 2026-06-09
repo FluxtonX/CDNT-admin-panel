@@ -62,7 +62,7 @@ export function PageLoader() {
         {/* Animated logo mark */}
         <div className="relative">
           <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-glow-lg animate-pulse">
-            <span className="text-white font-bold text-xl tracking-tight">CDB</span>
+            <span className="text-white font-bold text-xl tracking-tight">CDNTB</span>
           </div>
           {/* Spinning ring */}
           <div className="absolute -inset-2 rounded-3xl border-2 border-transparent border-t-indigo-500 border-r-purple-500 animate-spin" />
