@@ -187,7 +187,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stats Row 1 */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard1 label="Total Users"     value={stats.loading ? "..." : stats.total.toString()}    change="Live" icon={Users}          iconBg="#06B6D4" />
         <StatCard1 label="Verified Users"  value={stats.loading ? "..." : stats.verified.toString()} change="Live"  icon={CheckCircle2}   iconBg="#22C55E" />
         <StatCard1 label="Pending KYC"     value={stats.loading ? "..." : stats.pending.toString()}  change="Live"   icon={Clock}          iconBg="#F97316" />

@@ -31,30 +31,38 @@ export default function PortfolioManagementPage() {
   const [hoveredSegment, setHoveredSegment] = useState<AllocationSegment | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
 
-  /* Simulated Loading Delay */
-  useEffect(() => {
+  const [allocations, setAllocations] = useState<AllocationSegment[]>([]);
+  const [totalAum, setTotalAum] = useState(42500);
+  const [userCount, setUserCount] = useState(10234);
+  const [performanceGrowth, setPerformanceGrowth] = useState(3200000);
+
+  const loadData = async () => {
     setLoading(true);
-    const timer = setTimeout(() => {
+    try {
+      const res = await fetch("/api/portfolio");
+      if (res.ok) {
+        const data = await res.json();
+        setAllocations(data.allocations || []);
+        setTotalAum(data.totalAum || 0);
+        setUserCount(data.userCount || 0);
+        setPerformanceGrowth(data.performanceGrowth || 0);
+      }
+    } catch (e) {
+      console.error("Error loading portfolio metrics:", e);
+    } finally {
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [refreshCount]);
 
-  const allocations: AllocationSegment[] = useMemo(() => [
-    { asset: "Bitcoin", percentage: 43.5, valueCad: 18500, color: "bg-amber-500", strokeColor: "#f59e0b" },
-    { asset: "USDT", percentage: 20.7, valueCad: 8800, color: "bg-emerald-500", strokeColor: "#10b981" },
-    { asset: "Ethereum", percentage: 35.8, valueCad: 15200, color: "bg-blue-600", strokeColor: "#2563eb" },
-  ], []);
-
   const cardAllocations = useMemo(() => {
-    const btc = allocations.find(a => a.asset === "Bitcoin")!;
-    const eth = allocations.find(a => a.asset === "Ethereum")!;
-    const usdt = allocations.find(a => a.asset === "USDT")!;
+    const btc = allocations.find(a => a.asset === "Bitcoin") || { asset: "Bitcoin", percentage: 0, valueCad: 0, color: "bg-amber-500", strokeColor: "#f59e0b" };
+    const eth = allocations.find(a => a.asset === "Ethereum") || { asset: "Ethereum", percentage: 0, valueCad: 0, color: "bg-blue-600", strokeColor: "#2563eb" };
+    const usdt = allocations.find(a => a.asset === "USDT") || { asset: "USDT", percentage: 0, valueCad: 0, color: "bg-emerald-500", strokeColor: "#10b981" };
     return [btc, eth, usdt];
-  }, [allocations]);
-
-  const totalAum = useMemo(() => {
-    return allocations.reduce((acc, alloc) => acc + alloc.valueCad, 0);
   }, [allocations]);
 
   // Calculate SVG Pie Segments
@@ -312,9 +320,27 @@ export default function PortfolioManagementPage() {
             ) : (
               <div className="flex-1 flex flex-col justify-center space-y-4 py-6">
                 {[
-                  { label: "30-Day Performance", value: "+$3.2M", desc: "Estimated net yield growth", trend: "+8.5%", tone: "text-green-600" },
-                  { label: "Total User Portfolios", value: "10,234", desc: "Active custodial wallets audited", trend: "Normal", tone: "text-gray-900" },
-                  { label: "Average Portfolio Size", value: "$4,152.82", desc: "Combined average CAD value per client", trend: "Balanced", tone: "text-gray-900" },
+                  { 
+                    label: "30-Day Performance", 
+                    value: `+$${(performanceGrowth >= 1000000 ? (performanceGrowth / 1000000).toFixed(1) + "M" : performanceGrowth.toLocaleString())}`, 
+                    desc: "Estimated net yield growth", 
+                    trend: performanceGrowth > 0 ? `+${((performanceGrowth / (totalAum || 1)) * 100).toFixed(1)}%` : "0%", 
+                    tone: "text-green-600" 
+                  },
+                  { 
+                    label: "Total User Portfolios", 
+                    value: userCount.toLocaleString(), 
+                    desc: "Active custodial wallets audited", 
+                    trend: "Normal", 
+                    tone: "text-gray-900" 
+                  },
+                  { 
+                    label: "Average Portfolio Size", 
+                    value: `$${(userCount > 0 ? (totalAum / userCount) : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
+                    desc: "Combined average CAD value per client", 
+                    trend: "Balanced", 
+                    tone: "text-gray-900" 
+                  },
                 ].map((perf) => (
                   <div key={perf.label} className="p-4 border border-gray-150/60 bg-gray-50/25 rounded-2xl flex items-center justify-between shadow-sm">
                     <div>

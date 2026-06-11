@@ -227,7 +227,7 @@ function TypeBadge({ type }: { type: TransactionType }) {
 
 export default function TransactionsDashboard() {
   const router = useRouter();
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [toast, setToast] = useState<string | null>(null);
@@ -241,14 +241,88 @@ export default function TransactionsDashboard() {
   });
   const [statusComment, setStatusComment] = useState("");
 
-  /* Loader effect simulator */
-  useEffect(() => {
+  const loadData = async () => {
     setLoading(true);
-    const timer = setTimeout(() => {
+    try {
+      const [depRes, wdrRes] = await Promise.all([
+        fetch("/api/deposits"),
+        fetch("/api/withdrawals")
+      ]);
+      
+      const depositsData = depRes.ok ? await depRes.json() : { deposits: [] };
+      const withdrawalsData = wdrRes.ok ? await wdrRes.json() : { withdrawals: [] };
+      
+      const list: Transaction[] = [];
+      
+      (depositsData.deposits || []).forEach((d: any) => {
+        list.push({
+          txId: `DEP-${d.id.slice(0, 8).toUpperCase()}`,
+          realId: d.id,
+          user: {
+            id: d.user_id,
+            name: d.user?.name || "Unknown User",
+            email: d.user?.email || "N/A",
+            avatar: "",
+            role: "viewer",
+            status: "active",
+            joinedAt: "",
+            lastActive: "",
+            balance: 0
+          },
+          type: "Deposit",
+          amountCad: Number(d.expected_amount) * 1.35,
+          cryptoAmount: `${d.expected_amount} ${d.asset}`,
+          cryptoCurrency: d.asset,
+          status: d.status === "approved" ? "Completed" : d.status === "rejected" ? "Failed" : "Pending",
+          riskScore: "Low Risk",
+          timestamp: new Date(d.created_at).toISOString().replace("T", " ").slice(0, 19),
+          toAddress: d.company_address,
+          txHash: d.tx_hash,
+          network: d.network,
+        } as any);
+      });
+
+      (withdrawalsData.withdrawals || []).forEach((w: any) => {
+        list.push({
+          txId: `WDR-${w.id.slice(0, 8).toUpperCase()}`,
+          realId: w.id,
+          user: {
+            id: w.user_id,
+            name: w.user?.name || "Unknown User",
+            email: w.user?.email || "N/A",
+            avatar: "",
+            role: "viewer",
+            status: "active",
+            joinedAt: "",
+            lastActive: "",
+            balance: 0
+          },
+          type: "Withdrawal",
+          amountCad: Number(w.amount),
+          cryptoAmount: `${w.amount} CAD`,
+          cryptoCurrency: "CAD",
+          status: w.status === "completed" ? "Completed" : w.status === "rejected" ? "Failed" : "Pending",
+          riskScore: "Medium Risk",
+          timestamp: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
+          fromAddress: w.interac_email,
+          txHash: w.security_question || "N/A",
+          network: "Interac e-Transfer",
+          feeCad: 2.50,
+        } as any);
+      });
+
+      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setTransactions(list);
+    } catch (e) {
+      console.error("Error loading admin transactions ledger:", e);
+    } finally {
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const counts = useMemo(() => {
     return {
@@ -355,23 +429,47 @@ export default function TransactionsDashboard() {
     });
   };
 
-  const handleConfirmStatusChange = () => {
+  const handleConfirmStatusChange = async () => {
     if (!selectedTx || !showStatusModal.targetStatus) return;
     const currentTxId = selectedTx.txId;
     const targetStatus = showStatusModal.targetStatus;
+    const isDeposit = selectedTx.type === "Deposit";
+    const realId = (selectedTx as any).realId;
 
-    setTransactions((prev) =>
-      prev.map((t) => (t.txId === currentTxId ? { ...t, status: targetStatus } : t))
-    );
+    let backendStatus = "pending";
+    if (isDeposit) {
+      backendStatus = targetStatus === "Completed" ? "approved" : "rejected";
+    } else {
+      backendStatus = targetStatus === "Completed" ? "completed" : "rejected";
+    }
 
-    // Update selected transaction object in modal state
-    setSelectedTx((prev) => (prev ? { ...prev, status: targetStatus } : null));
+    try {
+      const endpoint = isDeposit ? "/api/deposits" : "/api/withdrawals";
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: realId,
+          status: backendStatus,
+          adminNote: statusComment,
+          rejectionReason: statusComment
+        })
+      });
 
-    setShowStatusModal({ show: false, targetStatus: null });
-    setStatusComment("");
+      if (!res.ok) {
+        throw new Error("Failed to update status on server");
+      }
 
-    setToast(`Transaction ${currentTxId} status updated to ${targetStatus} successfully ✓`);
-    window.setTimeout(() => setToast(null), 2500);
+      setToast(`Transaction ${currentTxId} status updated successfully ✓`);
+      window.setTimeout(() => setToast(null), 2500);
+      loadData();
+      setSelectedTx(null);
+      setShowStatusModal({ show: false, targetStatus: null });
+      setStatusComment("");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to update transaction status");
+    }
   };
 
   return (

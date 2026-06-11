@@ -22,6 +22,7 @@ type TargetAudience = "All" | "Verified" | "Unverified" | "High Value";
 
 type PlatformNotification = {
   id: string;
+  realId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -78,7 +79,7 @@ function TypeBadge({ type }: { type: NotificationType }) {
 }
 
 export default function NotificationCenterPage() {
-  const [notifications, setNotifications] = useState<PlatformNotification[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<PlatformNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -88,31 +89,76 @@ export default function NotificationCenterPage() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
 
-  /* Simulated Loading */
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const existing = localStorage.getItem("platform_notifications");
-      if (!existing) {
-        localStorage.setItem("platform_notifications", JSON.stringify(INITIAL_NOTIFICATIONS));
-        setNotifications(INITIAL_NOTIFICATIONS);
-      } else {
-        try {
-          setNotifications(JSON.parse(existing));
-        } catch (e) {
-          setNotifications(INITIAL_NOTIFICATIONS);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [verifiedUsers, setVerifiedUsers] = useState(0);
+  const [unverifiedUsers, setUnverifiedUsers] = useState(0);
+  const [highValueUsers, setHighValueUsers] = useState(0);
+
+  const audienceCounts: Record<TargetAudience, number> = useMemo(() => ({
+    All: totalUsers,
+    Verified: verifiedUsers,
+    Unverified: unverifiedUsers,
+    "High Value": highValueUsers,
+  }), [totalUsers, verifiedUsers, unverifiedUsers, highValueUsers]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        
+        if (data.stats) {
+          setTotalUsers(data.stats.totalUsers);
+          setVerifiedUsers(data.stats.verifiedUsers);
+          setUnverifiedUsers(data.stats.unverifiedUsers);
+          setHighValueUsers(data.stats.highValueUsers);
         }
+
+        const list: PlatformNotification[] = (data.notifications || []).map((n: any) => {
+          const audienceType = n.audience as TargetAudience;
+          let count = data.stats?.totalUsers || 0;
+          if (audienceType === "Verified") count = data.stats?.verifiedUsers || 0;
+          else if (audienceType === "Unverified") count = data.stats?.unverifiedUsers || 0;
+          else if (audienceType === "High Value") count = data.stats?.highValueUsers || 0;
+
+          return {
+            id: `NOT-${n.id.slice(0, 5).toUpperCase()}`,
+            realId: n.id,
+            type: n.type as NotificationType,
+            title: n.title,
+            message: n.message,
+            timestamp: new Date(n.created_at).toLocaleString("en-US", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true,
+            }).replace(",", ""),
+            audienceCount: count,
+            audienceLabel: `Sent to ${audienceType || "All"} Users (${count.toLocaleString()})`,
+          };
+        });
+        
+        setNotifications(list);
       }
-    }
-    const timer = setTimeout(() => {
+    } catch (e) {
+      console.error("Error loading announcements:", e);
+    } finally {
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const stats = [
     {
       label: "Total Users",
-      value: "12,458",
+      value: totalUsers.toLocaleString(),
       icon: (
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[#0A3D91]">
           <Users className="h-5.5 w-5.5" />
@@ -121,7 +167,7 @@ export default function NotificationCenterPage() {
     },
     {
       label: "Verified",
-      value: "10,234",
+      value: verifiedUsers.toLocaleString(),
       icon: (
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-50 text-green-600">
           <CheckCircle2 className="h-5.5 w-5.5" />
@@ -130,7 +176,7 @@ export default function NotificationCenterPage() {
     },
     {
       label: "Unverified",
-      value: "2,224",
+      value: unverifiedUsers.toLocaleString(),
       icon: (
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
           <AlertTriangle className="h-5.5 w-5.5" />
@@ -139,7 +185,7 @@ export default function NotificationCenterPage() {
     },
     {
       label: "High Value",
-      value: "543",
+      value: highValueUsers.toLocaleString(),
       icon: (
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
           <Bell className="h-5.5 w-5.5" />
@@ -148,7 +194,7 @@ export default function NotificationCenterPage() {
     },
   ];
 
-  const handleSendNotification = (e: React.FormEvent) => {
+  const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) {
       setToast("Error: Title and Message cannot be empty");
@@ -156,41 +202,36 @@ export default function NotificationCenterPage() {
       return;
     }
 
-    const now = new Date();
-    const formattedDate = now.toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    }).replace(",", "");
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          title,
+          message,
+          audience,
+        })
+      });
 
-    const newNotification = {
-      id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
-      type,
-      title,
-      message,
-      timestamp: formattedDate,
-      audienceCount: AUDIENCE_COUNTS[audience],
-      audienceLabel: `Sent to ${AUDIENCE_COUNTS[audience].toLocaleString()} users`,
-      audience,
-    };
+      if (!res.ok) {
+        throw new Error("Failed to send notification");
+      }
 
-    const updated = [newNotification, ...notifications];
-    setNotifications(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("platform_notifications", JSON.stringify(updated));
+      setToast(`Notification successfully dispatched to ${audience} Users ✓`);
+      window.setTimeout(() => setToast(null), 2500);
+      
+      setTitle("");
+      setMessage("");
+      setType("Info");
+      setAudience("All");
+      
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      setToast(`Error: ${err.message || "Failed to send notification"}`);
+      window.setTimeout(() => setToast(null), 2500);
     }
-
-    setTitle("");
-    setMessage("");
-    setType("Info");
-    setAudience("All");
-
-    setToast(`Notification successfully dispatched to ${AUDIENCE_COUNTS[audience].toLocaleString()} users ✓`);
-    window.setTimeout(() => setToast(null), 2500);
   };
 
   return (
@@ -291,10 +332,10 @@ export default function NotificationCenterPage() {
                     onChange={(e) => setAudience(e.target.value as TargetAudience)}
                     className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 text-gray-800 transition-all cursor-pointer"
                   >
-                    <option value="All">All Users ({AUDIENCE_COUNTS.All.toLocaleString()})</option>
-                    <option value="Verified">Verified Users ({AUDIENCE_COUNTS.Verified.toLocaleString()})</option>
-                    <option value="Unverified">Unverified Users ({AUDIENCE_COUNTS.Unverified.toLocaleString()})</option>
-                    <option value="High Value">High Value Users ({AUDIENCE_COUNTS["High Value"].toLocaleString()})</option>
+                    <option value="All">All Users ({audienceCounts.All.toLocaleString()})</option>
+                    <option value="Verified">Verified Users ({audienceCounts.Verified.toLocaleString()})</option>
+                    <option value="Unverified">Unverified Users ({audienceCounts.Unverified.toLocaleString()})</option>
+                    <option value="High Value">High Value Users ({audienceCounts["High Value"].toLocaleString()})</option>
                   </select>
                 </div>
 
@@ -328,7 +369,7 @@ export default function NotificationCenterPage() {
                   style={{ background: BRAND_GRADIENT }}
                 >
                   <SendHorizontal className="h-4.5 w-4.5" />
-                  Send to {AUDIENCE_COUNTS[audience].toLocaleString()} Users
+                  Send to {audienceCounts[audience].toLocaleString()} Users
                 </button>
               </form>
             </div>

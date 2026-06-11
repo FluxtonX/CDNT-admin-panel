@@ -27,6 +27,7 @@ type TabValue = "all" | PayoutStatus;
 
 type InteracPayout = {
   payoutId: string;
+  realId?: string;
   user: AdminUser;
   amount: number;
   status: PayoutStatus;
@@ -97,7 +98,7 @@ function StatusBadge({ status }: { status: PayoutStatus }) {
 }
 
 export default function InteracPayoutsPage() {
-  const [payouts, setPayouts] = useState<InteracPayout[]>(INITIAL_PAYOUTS);
+  const [payouts, setPayouts] = useState<InteracPayout[]>([]);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [loading, setLoading] = useState(true);
@@ -110,13 +111,60 @@ export default function InteracPayoutsPage() {
     targetStatus: null,
   });
 
-  /* Simulated loading logic */
-  useEffect(() => {
+  const loadData = async () => {
     setLoading(true);
-    const timer = setTimeout(() => {
+    try {
+      const res = await fetch("/api/withdrawals");
+      const data = res.ok ? await res.json() : { withdrawals: [] };
+      
+      const list: InteracPayout[] = (data.withdrawals || []).map((w: any) => {
+        let localStatus: PayoutStatus = "Pending";
+        if (w.status === "completed") localStatus = "Completed";
+        else if (w.status === "processing") localStatus = "Processing";
+        else if (w.status === "failed" || w.status === "rejected") localStatus = "Failed";
+
+        return {
+          payoutId: `PAY-${w.id.slice(0, 8).toUpperCase()}`,
+          realId: w.id,
+          user: {
+            id: w.user_id,
+            name: w.user?.name || "Unknown User",
+            email: w.user?.email || "N/A",
+            avatar: "",
+            role: "viewer",
+            status: "active",
+            joinedAt: "",
+            lastActive: "",
+            balance: 0
+          },
+          amount: Number(w.amount),
+          status: localStatus,
+          requestDate: new Date(w.created_at).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          }),
+          referenceCode: `WDR-${w.id.slice(0, 5).toUpperCase()}`,
+          securityQuestion: w.security_question,
+          securityAnswer: w.security_answer
+        };
+      });
+
+      list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+      
+      setPayouts(list);
+    } catch (e) {
+      console.error("Error loading Interac payouts:", e);
+      setPayouts([]);
+    } finally {
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [activeTab]);
 
   const counts = useMemo(() => {
@@ -196,20 +244,50 @@ export default function InteracPayoutsPage() {
     setShowConfirmModal({ show: true, targetStatus: status });
   };
 
-  const handleConfirmStatusChange = () => {
+  const handleConfirmStatusChange = async () => {
     if (!selectedPayout || !showConfirmModal.targetStatus) return;
     const payoutId = selectedPayout.payoutId;
+    const realId = selectedPayout.realId;
     const status = showConfirmModal.targetStatus;
 
-    setPayouts((prev) =>
-      prev.map((p) => (p.payoutId === payoutId ? { ...p, status } : p))
-    );
+    let backendStatus = "pending";
+    if (status === "Completed") backendStatus = "completed";
+    else if (status === "Processing") backendStatus = "processing";
+    else if (status === "Failed") backendStatus = "failed";
 
-    setSelectedPayout((prev) => (prev ? { ...prev, status } : null));
-    setShowConfirmModal({ show: false, targetStatus: null });
+    try {
+      if (realId) {
+        const res = await fetch("/api/withdrawals", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId: realId,
+            status: backendStatus,
+            adminNote: "Updated from Interac Payouts console"
+          })
+        });
 
-    setToast(`Payout ${payoutId} status set to ${status} successfully`);
-    window.setTimeout(() => setToast(null), 2500);
+        if (!res.ok) {
+          throw new Error("Failed to update payout status on server");
+        }
+
+        setToast(`Payout ${payoutId} status set to ${status} successfully`);
+      } else {
+        // Fallback for mock updates
+        setPayouts((prev) =>
+          prev.map((p) => (p.payoutId === payoutId ? { ...p, status } : p))
+        );
+        setToast(`Payout ${payoutId} status set to ${status} successfully`);
+      }
+
+      setSelectedPayout((prev) => (prev ? { ...prev, status } : null));
+      setShowConfirmModal({ show: false, targetStatus: null });
+      window.setTimeout(() => setToast(null), 2500);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to update payout status");
+    }
   };
 
   return (

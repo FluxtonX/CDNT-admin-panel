@@ -11,6 +11,7 @@ import {
   XCircle,
   MoreVertical,
   ChevronRight,
+  ChevronLeft,
   Smile,
   Paperclip,
   Check,
@@ -284,7 +285,7 @@ export default function LiveChatSupportPage() {
         {/* Chat Interface Container */}
         <div className="flex-1 flex overflow-hidden border border-gray-200 rounded-2xl bg-white shadow-sm min-h-[400px]">
           {/* Sidebar - Threads list */}
-          <div className="w-[320px] shrink-0 border-r border-gray-200 flex flex-col bg-gray-50/20">
+          <div className={cn("w-full md:w-[320px] shrink-0 border-r border-gray-200 flex flex-col bg-gray-50/20", activeThreadId ? "hidden md:flex" : "flex")}>
             {/* Search */}
             <div className="p-4 border-b border-gray-200 bg-white">
               <div className="relative">
@@ -365,12 +366,19 @@ export default function LiveChatSupportPage() {
           </div>
 
           {/* Right Pane - Chat window */}
-          <div className="flex-1 flex flex-col bg-gray-50/30">
+          <div className={cn("flex-1 flex flex-col bg-gray-50/30", activeThreadId ? "flex" : "hidden md:flex")}>
             {activeThread ? (
               <>
                 {/* Chat Pane Header */}
-                <div className="px-6 py-4.5 border-b border-gray-200 bg-white flex items-center justify-between shadow-sm">
-                  <div className="flex items-center gap-3">
+                <div className="px-4 py-3 sm:px-6 sm:py-4.5 border-b border-gray-200 bg-white flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => setActiveThreadId("")}
+                      className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500 mr-1 shrink-0 cursor-pointer"
+                      aria-label="Back to threads"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
                     <div className="h-10 w-10 rounded-xl bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-base">
                       {activeThread.user.name[0]}
                     </div>

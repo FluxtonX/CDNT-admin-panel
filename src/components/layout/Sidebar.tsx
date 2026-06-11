@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, Users, ShieldCheck, ArrowDownToLine,
   ArrowLeftRight, Wallet, PieChart, Banknote, Bell,
   MessageCircle, BarChart3, UserCog, ShieldAlert, Settings,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,13 +29,25 @@ const NAV_ITEMS = [
   { id: "settings",      label: "Settings",             href: "/dashboard/settings",      icon: Settings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
-  return (
-    <aside className="flex flex-col w-[220px] shrink-0 h-screen sticky top-0 bg-white border-r border-gray-200 overflow-hidden z-30">
+  // Automatically close mobile drawer when route changes
+  useEffect(() => {
+    if (isOpen && onClose) {
+      onClose();
+    }
+  }, [pathname]);
+
+  const renderNavContent = () => (
+    <>
       {/* Brand */}
-      <div className="flex flex-col px-4 py-5 border-b border-gray-100 gap-1.5 justify-center">
+      <div className="flex flex-col px-4 py-5 border-b border-gray-100 gap-1.5 justify-center shrink-0">
         <img
           src="/CDNTlogo.png"
           alt="CDNT Logo"
@@ -74,6 +89,52 @@ export function Sidebar() {
           );
         })}
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (Permanent) */}
+      <aside className="hidden md:flex flex-col w-[220px] shrink-0 h-screen sticky top-0 bg-white border-r border-gray-200 overflow-hidden z-30">
+        {renderNavContent()}
+      </aside>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            />
+            {/* Drawer */}
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
+              className="fixed inset-y-0 left-0 w-[240px] bg-white border-r border-gray-200 z-50 md:hidden flex flex-col overflow-hidden shadow-xl"
+            >
+              {/* Top close bar */}
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                  aria-label="Close Menu"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {renderNavContent()}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

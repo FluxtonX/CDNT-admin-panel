@@ -33,6 +33,7 @@ type TabValue = "all" | WithdrawalStatus;
 
 type WithdrawalRequest = {
   requestId: string;
+  realId?: string;
   user: AdminUser;
   amount: number;
   cryptoAmount: string;
@@ -238,7 +239,7 @@ function KycStatusBadge({ status }: { status: WithdrawalRequest["kycStatus"] }) 
 
 export default function WithdrawalRequestsPage() {
   const router = useRouter();
-  const [requests, setRequests] = useState<WithdrawalRequest[]>(INITIAL_REQUESTS);
+  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("Pending"); // default tab is Pending as per Screenshot 1
   const [toast, setToast] = useState<string | null>(null);
@@ -252,14 +253,59 @@ export default function WithdrawalRequestsPage() {
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [currentNote, setCurrentNote] = useState("");
 
-  /* ─── Loader effect simulator ───────────────────────────────────── */
-  useEffect(() => {
+  const loadData = async () => {
     setLoading(true);
-    const timer = setTimeout(() => {
+    try {
+      const res = await fetch("/api/withdrawals");
+      const data = res.ok ? await res.json() : { withdrawals: [] };
+      
+      const list: WithdrawalRequest[] = (data.withdrawals || []).map((w: any) => {
+        return {
+          requestId: `WD-${w.id.slice(0, 8).toUpperCase()}`,
+          realId: w.id,
+          user: {
+            id: w.user_id,
+            name: w.user?.name || "Unknown User",
+            email: w.user?.email || "N/A",
+            avatar: "",
+            role: "viewer",
+            status: "active",
+            joinedAt: "",
+            lastActive: "",
+            balance: 0
+          },
+          amount: Number(w.amount),
+          cryptoAmount: `${w.amount} CAD`,
+          cryptoCurrency: "CAD",
+          riskScore: "medium risk",
+          kycStatus: "verified",
+          requestDate: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
+          status: w.status === "completed" ? "Completed" : w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : w.status === "failed" ? "Failed" : "Pending",
+          interacRecipient: w.interac_email,
+          previousWithdrawals: 0,
+          currentBalance: Number(w.amount),
+        };
+      });
+
+      list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+      
+      // Fallback to INITIAL_REQUESTS if DB is empty to keep UX rich during setup
+      if (list.length > 0) {
+        setRequests(list);
+      } else {
+        setRequests(INITIAL_REQUESTS);
+      }
+    } catch (e) {
+      console.error("Error loading admin withdrawals:", e);
+      setRequests(INITIAL_REQUESTS);
+    } finally {
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const counts = useMemo(() => {
     return {
@@ -346,34 +392,91 @@ export default function WithdrawalRequestsPage() {
     setSelectedRequest(null);
   };
 
-  const handleConfirmApprove = () => {
+  const handleConfirmApprove = async () => {
     if (!selectedRequest) return;
     const reqId = selectedRequest.requestId;
-    setRequests((current) =>
-      current.map((r) => (r.requestId === reqId ? { ...r, status: "Approved" } : r))
-    );
-    if (currentNote.trim()) {
-      setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
+    const realId = selectedRequest.realId;
+
+    try {
+      if (realId) {
+        const res = await fetch("/api/withdrawals", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId: realId,
+            status: "completed",
+            adminNote: currentNote
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to approve withdrawal request");
+        }
+
+        setToast(`Withdrawal request ${reqId} completed ✓`);
+      } else {
+        // Fallback for mock data updates
+        setRequests((current) =>
+          current.map((r) => (r.requestId === reqId ? { ...r, status: "Completed" } : r))
+        );
+        setToast(`Withdrawal request ${reqId} for $${selectedRequest.amount.toLocaleString()} approved ✓`);
+      }
+
+      if (currentNote.trim()) {
+        setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
+      }
+      setSelectedRequest(null);
+      setShowApproveModal(false);
+      window.setTimeout(() => setToast(null), 2500);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to approve withdrawal");
     }
-    setSelectedRequest(null);
-    setShowApproveModal(false);
-    setToast(`Withdrawal request ${reqId} for $${selectedRequest.amount.toLocaleString()} approved ✓`);
-    window.setTimeout(() => setToast(null), 2500);
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!selectedRequest || !rejectionReason.trim()) return;
     const reqId = selectedRequest.requestId;
-    setRequests((current) =>
-      current.map((r) => (r.requestId === reqId ? { ...r, status: "Rejected" } : r))
-    );
-    if (currentNote.trim()) {
-      setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
+    const realId = selectedRequest.realId;
+
+    try {
+      if (realId) {
+        const res = await fetch("/api/withdrawals", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId: realId,
+            status: "rejected",
+            rejectionReason: rejectionReason,
+            adminNote: currentNote
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to reject withdrawal request");
+        }
+
+        setToast(`Withdrawal request ${reqId} rejected`);
+      } else {
+        // Fallback for mock data updates
+        setRequests((current) =>
+          current.map((r) => (r.requestId === reqId ? { ...r, status: "Rejected" } : r))
+        );
+        setToast(`Withdrawal request ${reqId} rejected. Reason: ${rejectionReason}`);
+      }
+
+      if (currentNote.trim()) {
+        setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
+      }
+      setSelectedRequest(null);
+      setShowRejectModal(false);
+      window.setTimeout(() => setToast(null), 2500);
+      loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to reject withdrawal");
     }
-    setSelectedRequest(null);
-    setShowRejectModal(false);
-    setToast(`Withdrawal request ${reqId} rejected. Reason: ${rejectionReason}`);
-    window.setTimeout(() => setToast(null), 2500);
   };
 
   return (

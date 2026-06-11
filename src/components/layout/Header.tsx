@@ -1,10 +1,19 @@
 "use client";
 
-import { Search, Bell, ChevronDown } from "lucide-react";
+import { Search, Bell, ChevronDown, Menu } from "lucide-react";
 
-export function Header() {
+export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   return (
     <header className="sticky top-0 z-20 flex items-center gap-4 px-5 py-3 bg-white border-b border-gray-200 shrink-0">
+      {/* Menu toggle for mobile screens */}
+      <button
+        onClick={onMenuToggle}
+        className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        aria-label="Toggle Menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       {/* Search */}
       <div className="flex-1 max-w-lg">
         <div className="relative">
