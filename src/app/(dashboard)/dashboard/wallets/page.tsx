@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -20,6 +22,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 type WalletType = "Hot" | "Cold";
 type WalletStatus = "Active" | "Paused" | "Suspended";
@@ -154,7 +157,7 @@ function StatusBadge({ status }: { status: WalletStatus }) {
 }
 
 export default function WalletManagementPage() {
-  const [wallets, setWallets] = useState<Wallet[]>(INITIAL_WALLETS);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -164,25 +167,52 @@ export default function WalletManagementPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [targetStatus, setTargetStatus] = useState<WalletStatus | null>(null);
 
-  /* Simulated load delay */
+  /* Load wallets from API */
   useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [search]);
+    async function loadWallets() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/platform-wallets", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch platform wallets");
+        const data = await res.json();
+        
+        const mappedWallets: Wallet[] = data.map((w: any) => ({
+          walletId: w.wallet_id,
+          type: w.type as WalletType,
+          crypto: w.crypto,
+          address: w.address,
+          balanceCrypto: w.balance_crypto,
+          balanceCad: Number(w.balance_cad),
+          status: w.status as WalletStatus,
+          lastActivity: w.last_activity,
+          network: w.network,
+          transactions: w.transactions || [],
+        }));
+        setWallets(mappedWallets);
+      } catch (err) {
+        console.error("Failed to fetch platform wallets:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadWallets();
+  }, []);
+
+  /* Removed Supabase Realtime subscription since we aggregate from API */
 
   const stats = useMemo(() => {
-    const hotSum = wallets.filter((w) => w.type === "Hot").reduce((acc, w) => acc + w.balanceCad, 0);
-    const coldSum = wallets.filter((w) => w.type === "Cold").reduce((acc, w) => acc + w.balanceCad, 0);
+    const hotWallets = wallets.filter((w) => w.type === "Hot");
+    const coldWallets = wallets.filter((w) => w.type === "Cold");
+    const hotSum = hotWallets.reduce((acc, w) => acc + w.balanceCad, 0);
+    const coldSum = coldWallets.reduce((acc, w) => acc + w.balanceCad, 0);
     const totalSum = hotSum + coldSum;
 
     return [
       {
         label: "Hot Wallets",
         value: `$${hotSum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        note: "3 wallets",
+        note: `${hotWallets.length} ${hotWallets.length === 1 ? "wallet" : "wallets"}`,
         icon: (
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
             <Unlock className="h-5.5 w-5.5" />
@@ -192,7 +222,7 @@ export default function WalletManagementPage() {
       {
         label: "Cold Wallets",
         value: `$${coldSum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        note: "2 wallets",
+        note: `${coldWallets.length} ${coldWallets.length === 1 ? "wallet" : "wallets"}`,
         icon: (
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[#0A3D91]">
             <Lock className="h-5.5 w-5.5" />
@@ -238,18 +268,25 @@ export default function WalletManagementPage() {
     setShowStatusModal(true);
   };
 
-  const handleConfirmStatusChange = () => {
+  const handleConfirmStatusChange = async () => {
     if (!selectedWallet || !targetStatus) return;
     const walletId = selectedWallet.walletId;
 
-    setWallets((prev) =>
-      prev.map((w) => (w.walletId === walletId ? { ...w, status: targetStatus } : w))
-    );
-
-    setSelectedWallet((prev) => (prev ? { ...prev, status: targetStatus } : null));
-    setShowStatusModal(false);
-    setToast(`Wallet ${walletId} status successfully set to ${targetStatus}`);
-    window.setTimeout(() => setToast(null), 2500);
+    try {
+      // For now, since it's an aggregated view, status changes are local optimistic updates.
+      // Optimistic local state updates
+      setWallets((prev) =>
+        prev.map((w) => (w.walletId === walletId ? { ...w, status: targetStatus } : w))
+      );
+      setSelectedWallet((prev) => (prev ? { ...prev, status: targetStatus } : null));
+      setToast(`Wallet ${walletId} status successfully set to ${targetStatus}`);
+    } catch (err) {
+      console.error("Failed to update wallet status:", err);
+      setToast(`Error: Failed to set status for wallet ${walletId}`);
+    } finally {
+      setShowStatusModal(false);
+      window.setTimeout(() => setToast(null), 2500);
+    }
   };
 
   return (

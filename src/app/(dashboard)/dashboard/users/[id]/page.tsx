@@ -485,19 +485,64 @@ function SupportTab() {
 
 /* ─── Portfolio Tab ──────────────────────────────────────────────── */
 function PortfolioTab({ user }: { user: any }) {
-  const assets = [
-    { coin: "BTC",  name: "Bitcoin",  balance: "0.1234 BTC",  usd: "$7,850.00",  alloc: "17.1%", color: "#F7931A" },
-    { coin: "ETH",  name: "Ethereum", balance: "2.5 ETH",     usd: "$8,750.00",  alloc: "19.1%", color: "#627EEA" },
-    { coin: "USDT", name: "Tether",   balance: "15,000 USDT", usd: "$15,000.00", alloc: "32.7%", color: "#26A17B" },
-    { coin: "CAD",  name: "Canadian Dollar", balance: "$14,232.50 CAD", usd: "$14,232.50", alloc: "31.1%", color: "#0A3D91" },
-  ];
+  const rates: Record<string, number> = {
+    BTC: 90000,
+    ETH: 4500,
+    USDT: 1.36,
+    USDC: 1.36
+  };
+
+  const coinColors: Record<string, string> = {
+    BTC: "#F7931A",
+    ETH: "#627EEA",
+    USDT: "#26A17B",
+    USDC: "#30A17B"
+  };
+
+  const coinNames: Record<string, string> = {
+    BTC: "Bitcoin",
+    ETH: "Ethereum",
+    USDT: "Tether",
+    USDC: "USD Coin"
+  };
+
+  const userWallets = user.wallets || [];
+  
+  const activeCurrencies = userWallets.length > 0
+    ? userWallets.map((w: any) => w.currency)
+    : ["BTC", "ETH", "USDT"];
+
+  const rawAssets = activeCurrencies.map((currency: string) => {
+    const w = userWallets.find((x: any) => x.currency === currency) || { balance: 0 };
+    const rate = rates[currency?.toUpperCase()] || 1.36;
+    const cadValue = Number(w.balance) * rate;
+    
+    return {
+      coin: currency,
+      name: coinNames[currency?.toUpperCase()] || currency,
+      balance: `${Number(w.balance).toLocaleString(undefined, { maximumFractionDigits: 8 })} ${currency}`,
+      usd: `$${cadValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      rawCad: cadValue,
+      color: coinColors[currency?.toUpperCase()] || "#0A3D91",
+    };
+  });
+
+  const totalCad = rawAssets.reduce((acc: number, a: any) => acc + a.rawCad, 0);
+
+  const assets = rawAssets.map((a: any) => ({
+    ...a,
+    alloc: totalCad > 0 
+      ? `${((a.rawCad / totalCad) * 100).toFixed(1)}%` 
+      : `${(100 / rawAssets.length).toFixed(1)}%`,
+  }));
+
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-bold text-gray-900 mb-4">Asset Allocation</h3>
         <div className="h-4 w-full rounded-full bg-gray-100 flex overflow-hidden mb-5">
-          {assets.map((asset) => (
+          {assets.map((asset: any) => (
             <div
               key={asset.coin}
               style={{ width: asset.alloc, backgroundColor: asset.color }}
@@ -507,7 +552,7 @@ function PortfolioTab({ user }: { user: any }) {
           ))}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {assets.map((asset) => (
+          {assets.map((asset: any) => (
             <div key={asset.coin} className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: asset.color }} />
               <span className="text-xs text-gray-500 font-medium">{asset.name} ({asset.alloc})</span>
@@ -521,8 +566,9 @@ function PortfolioTab({ user }: { user: any }) {
       <div>
         <h3 className="text-base font-bold text-gray-900 mb-4">Balances</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {assets.map((asset) => (
+          {assets.map((asset: any) => (
             <div key={asset.coin} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
+
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: asset.color }}>
                   {asset.coin.slice(0, 3)}

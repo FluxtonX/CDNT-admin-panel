@@ -154,28 +154,75 @@ const formatMillions = (v: number) =>
 
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function DashboardPage() {
-  const [stats, setStats] = useState({ total: 0, verified: 0, pending: 0, loading: true });
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    verifiedUsers: 0,
+    pendingKyc: 0,
+    platformAssets: 0,
+    loading: true,
+    hotWallets: [] as any[],
+    coldWallets: [] as any[],
+  });
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch("/api/users", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
+        const [usersRes, portRes, walletsRes] = await Promise.all([
+          fetch("/api/users", { cache: "no-store" }),
+          fetch("/api/portfolio", { cache: "no-store" }),
+          fetch("/api/platform-wallets", { cache: "no-store" })
+        ]);
+        
+        let totalUsers = 0;
+        let verifiedUsers = 0;
+        let pendingKyc = 0;
+        let platformAssets = 0;
+        let hotWallets: any[] = [];
+        let coldWallets: any[] = [];
+
+        if (usersRes.ok) {
+          const data = await usersRes.json();
           const users = data.users || [];
-          setStats({
-            total: users.length,
-            verified: users.filter((u: any) => u.kyc === "Verified").length,
-            pending: users.filter((u: any) => u.kyc === "Pending").length,
-            loading: false,
-          });
+          totalUsers = users.length;
+          verifiedUsers = users.filter((u: any) => u.kyc === "Verified").length;
+          pendingKyc = users.filter((u: any) => u.kyc === "Pending").length;
         }
+
+        if (portRes.ok) {
+          const data = await portRes.json();
+          platformAssets = data.totalAum || 0;
+        }
+
+        if (walletsRes.ok) {
+          const data = await walletsRes.json();
+          const walletsArray = Array.isArray(data) ? data : [];
+          hotWallets = walletsArray.filter(w => w.type === "Hot").map(w => ({
+            coin: w.crypto,
+            amount: w.balance_crypto,
+            usd: `$${Number(w.balance_cad).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+          }));
+          coldWallets = walletsArray.filter(w => w.type === "Cold").map(w => ({
+            coin: w.crypto,
+            amount: w.balance_crypto,
+            usd: `$${Number(w.balance_cad).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+          }));
+        }
+
+        setStats({
+          totalUsers,
+          verifiedUsers,
+          pendingKyc,
+          platformAssets,
+          hotWallets,
+          coldWallets,
+          loading: false
+        });
       } catch (err) {
         console.error("Error fetching stats:", err);
         setStats(prev => ({ ...prev, loading: false }));
       }
     };
-    fetchUsers();
+    fetchData();
   }, []);
 
   return (
@@ -188,11 +235,12 @@ export default function DashboardPage() {
 
       {/* ── Stats Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard1 label="Total Users"     value={stats.loading ? "..." : stats.total.toString()}    change="Live" icon={Users}          iconBg="#06B6D4" />
-        <StatCard1 label="Verified Users"  value={stats.loading ? "..." : stats.verified.toString()} change="Live"  icon={CheckCircle2}   iconBg="#22C55E" />
-        <StatCard1 label="Pending KYC"     value={stats.loading ? "..." : stats.pending.toString()}  change="Live"   icon={Clock}          iconBg="#F97316" />
-        <StatCard1 label="Platform Assets" value="$42.5M"  change="+15.3%" icon={DollarSign}     iconBg="#F59E0B" />
+        <StatCard1 label="Total Users"     value={stats.loading ? "..." : stats.totalUsers.toString()}    change="Live" icon={Users}          iconBg="#06B6D4" />
+        <StatCard1 label="Verified Users"  value={stats.loading ? "..." : stats.verifiedUsers.toString()} change="Live"  icon={CheckCircle2}   iconBg="#22C55E" />
+        <StatCard1 label="Pending KYC"     value={stats.loading ? "..." : stats.pendingKyc.toString()}  change="Live"   icon={Clock}          iconBg="#F97316" />
+        <StatCard1 label="Platform Assets" value={stats.loading ? "..." : `$${stats.platformAssets.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}  change="Live" icon={DollarSign}     iconBg="#F59E0B" />
       </div>
+
 
       {/* ── Stats Row 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -376,12 +424,16 @@ export default function DashboardPage() {
             <h3 className="text-sm font-semibold text-gray-800">Hot Wallet Balance</h3>
           </div>
           <div className="space-y-3">
-            {hotWallet.map((w) => (
+            {stats.loading ? (
+               <div className="text-xs text-gray-400">Loading...</div>
+            ) : stats.hotWallets.length === 0 ? (
+               <div className="text-xs text-gray-400">No hot wallets found.</div>
+            ) : stats.hotWallets.map((w) => (
               <div key={w.coin} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <div className="flex items-center gap-2.5">
                   <div
                     className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                    style={{ background: coinColors[w.coin] }}
+                    style={{ background: coinColors[w.coin] || "#ccc" }}
                   >
                     {w.coin}
                   </div>
@@ -403,12 +455,16 @@ export default function DashboardPage() {
             <h3 className="text-sm font-semibold text-gray-800">Cold Wallet Balance</h3>
           </div>
           <div className="space-y-3">
-            {coldWallet.map((w) => (
+            {stats.loading ? (
+               <div className="text-xs text-gray-400">Loading...</div>
+            ) : stats.coldWallets.length === 0 ? (
+               <div className="text-xs text-gray-400">No cold wallets found.</div>
+            ) : stats.coldWallets.map((w) => (
               <div key={w.coin} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <div className="flex items-center gap-2.5">
                   <div
                     className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                    style={{ background: coinColors[w.coin] }}
+                    style={{ background: coinColors[w.coin] || "#ccc" }}
                   >
                     {w.coin}
                   </div>

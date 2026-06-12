@@ -19,6 +19,24 @@ export async function GET() {
     const { data: kycData, error: kycErr } = await supabaseAdmin.from("kyc_submissions").select("*");
     if (kycErr) throw kycErr;
 
+    // Fetch all user wallets
+    const { data: userWallets, error: walletsErr } = await supabaseAdmin.from("user_wallets").select("*");
+    if (walletsErr) throw walletsErr;
+
+    const rates: Record<string, number> = {
+      BTC: 90000,
+      ETH: 4500,
+      USDT: 1.36,
+      USDC: 1.36
+    };
+
+    const userBalanceMap = (userWallets || []).reduce((acc: Record<string, number>, w: any) => {
+      const rate = rates[w.currency?.toUpperCase()] || 1.36;
+      const val = Number(w.balance) * rate;
+      acc[w.user_id] = (acc[w.user_id] || 0) + val;
+      return acc;
+    }, {});
+
     // Map and merge data together
     const mappedUsers = users.map((user) => {
       // Find matching profile and KYC
@@ -33,9 +51,14 @@ export async function GET() {
         else if (kyc.status === "rejected") kycStatus = "Rejected";
       }
 
-      // Default static values for Balance, Risk, and Account
-      // You can replace these with real database fields when ready
-      const defaultBalance = 0;
+      const walletsForUser = (userWallets || [])
+        .filter((w: any) => w.user_id === user.id)
+        .map((w: any) => ({
+          currency: w.currency,
+          balance: Number(w.balance),
+        }));
+
+      // Default static values for Risk and Account
       const accountStatus = "Active";
       const riskLevel = "Low Risk";
 
@@ -51,7 +74,8 @@ export async function GET() {
         joinedDate: new Date(user.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         kyc: kycStatus,
         account: accountStatus,
-        balance: defaultBalance,
+        balance: userBalanceMap[user.id] || 0,
+        wallets: walletsForUser,
         risk: riskLevel,
       };
     });
@@ -62,3 +86,4 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

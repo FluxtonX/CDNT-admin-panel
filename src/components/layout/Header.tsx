@@ -1,8 +1,19 @@
 "use client";
 
-import { Search, Bell, ChevronDown, Menu } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Search, Bell, ChevronDown, Menu, LogOut } from "lucide-react";
 
 export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Delete cookie
+    document.cookie = "admin_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+    router.push("/login");
+  };
+
   return (
     <header className="sticky top-0 z-20 flex items-center gap-4 px-5 py-3 bg-white border-b border-gray-200 shrink-0">
       {/* Menu toggle for mobile screens */}
@@ -37,16 +48,40 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-1 ring-white" />
         </button>
 
-        {/* User info */}
-        <div className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded-lg transition-colors">
-          <div className="h-8 w-8 rounded-full bg-orange-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
-            AD
+        {/* User info & Dropdown */}
+        <div className="relative">
+          <div
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded-lg transition-colors select-none"
+          >
+            <div className="h-8 w-8 rounded-full bg-orange-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              AD
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold text-gray-900 leading-none">Admin User</p>
+              <p className="text-[11px] text-gray-400 mt-0.5 leading-none">Super Admin</p>
+            </div>
+            <ChevronDown className="h-3.5 w-3.5 text-gray-400 hidden sm:block transition-transform duration-205" style={{ transform: dropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-gray-900 leading-none">Admin User</p>
-            <p className="text-[11px] text-gray-400 mt-0.5 leading-none">Super Admin</p>
-          </div>
-          <ChevronDown className="h-3.5 w-3.5 text-gray-400 hidden sm:block" />
+
+          {dropdownOpen && (
+            <>
+              {/* Backdrop to close dropdown */}
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setDropdownOpen(false)}
+              />
+              <div className="absolute right-0 mt-2.5 w-44 bg-white border border-gray-200 rounded-xl shadow-lg py-1.5 z-40">
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50/50 hover:text-red-750 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4 text-red-500" />
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

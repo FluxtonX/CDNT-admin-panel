@@ -14,25 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Static Data matching mockup screenshots
-const REVENUE_TX_DATA = [
-  { month: "Jan", revenue: 156000, transactions: 100000 },
-  { month: "Feb", revenue: 170000, transactions: 110000 },
-  { month: "Mar", revenue: 180000, transactions: 130000 },
-  { month: "Apr", revenue: 195000, transactions: 140000 },
-  { month: "May", revenue: 205000, transactions: 185000 },
-  { month: "Jun", revenue: 240000, transactions: 195000 },
-];
-
-const USER_GROWTH_DATA = [
-  { month: "Jan", totalUsers: 8700, verifiedUsers: 8000 },
-  { month: "Feb", totalUsers: 8000, verifiedUsers: 2400 },
-  { month: "Mar", totalUsers: 5200, verifiedUsers: 8600 },
-  { month: "Apr", totalUsers: 10200, verifiedUsers: 11800 },
-  { month: "May", totalUsers: 8600, verifiedUsers: 7250 },
-  { month: "Jun", totalUsers: 12500, verifiedUsers: 9800 },
-];
-
+// Removed static REVENUE_TX_DATA and USER_GROWTH_DATA
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
 export default function ReportsAnalyticsPage() {
@@ -41,19 +23,39 @@ export default function ReportsAnalyticsPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // Hover states for interactive tooltips
-  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
-  const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalTransactions: 0,
+    activeUsers: 0,
+    avgTransaction: 0,
+    resolutionRate: "100.0",
+    revenueTxData: [] as any[],
+    userGrowthData: [] as any[]
+  });
 
   // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Simulated Loading (700ms)
+  // Hover states for interactive tooltips
+  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
+  const [hoveredLineIndex, setHoveredLineIndex] = useState<number | null>(null);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    async function loadReports() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/reports", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error("Failed to load report stats", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadReports();
   }, []);
 
   const triggerToast = (msg: string) => {
@@ -185,7 +187,7 @@ export default function ReportsAnalyticsPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-950 leading-none">$1,093</p>
+                <p className="text-2xl font-black text-gray-950 leading-none">${stats.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-extrabold text-green-600">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+24.5%</span>
@@ -203,7 +205,7 @@ export default function ReportsAnalyticsPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">8,120</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">{stats.totalTransactions.toLocaleString()}</p>
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-extrabold text-green-600">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+18.3%</span>
@@ -221,7 +223,7 @@ export default function ReportsAnalyticsPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">12,458</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">{stats.activeUsers.toLocaleString()}</p>
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-extrabold text-green-600">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+51.2%</span>
@@ -239,7 +241,7 @@ export default function ReportsAnalyticsPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">$134.61</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">${stats.avgTransaction.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-gray-400 font-mono">
                   <span>Per transaction</span>
                 </div>
@@ -252,176 +254,176 @@ export default function ReportsAnalyticsPage() {
       {/* SVG Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 1: Revenue & Transactions double-bar */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col relative overflow-hidden">
-          <h3 className="text-sm font-extrabold text-gray-900 mb-6">Revenue & Transactions</h3>
-
-          {loading ? (
-            <div className="h-[260px] flex items-center justify-center bg-gray-50/50 rounded-xl border border-gray-100 border-dashed animate-pulse">
-              <span className="text-xs font-semibold text-gray-400">Loading chart data...</span>
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full relative">
+          <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-black text-gray-900 tracking-tight">Revenue & Transactions</h3>
+              <p className="text-[11px] text-gray-500 font-medium">Monthly volume breakdown</p>
             </div>
-          ) : (
-            <div className="w-full flex flex-col">
-              <div className="relative flex justify-center w-full">
-                {/* Responsive SVG using viewBox */}
-                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto overflow-visible select-none">
-                  {/* Y Axis Gridlines */}
-                  {[0, 65000, 130000, 195000, 260000].map((val, idx) => {
-                    const y = paddingTop + drawableHeight - (val / 260000) * drawableHeight;
-                    return (
-                      <g key={idx}>
-                        <line
-                          x1={paddingLeft}
-                          y1={y}
-                          x2={chartWidth - paddingRight}
-                          y2={y}
-                          stroke="#F1F5F9"
-                          strokeWidth={1}
-                          strokeDasharray={val === 0 ? "none" : "3 3"}
-                        />
-                        <text
-                          x={paddingLeft - 10}
-                          y={y + 4}
-                          textAnchor="end"
-                          className="text-[9px] font-bold text-gray-400 font-mono"
-                        >
-                          {val.toLocaleString()}
-                        </text>
-                      </g>
-                    );
-                  })}
-
-                  {/* X Axis & Labels */}
-                  {REVENUE_TX_DATA.map((item, idx) => {
-                    const xCenter = paddingLeft + (idx + 0.5) * (drawableWidth / REVENUE_TX_DATA.length);
-                    return (
+            <div className="flex items-center gap-4 text-[11px] font-bold">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: BRAND_GRADIENT }} />
+                <span className="text-gray-600">Revenue (CAD)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm bg-blue-100 border border-blue-200" />
+                <span className="text-gray-600">Transactions</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 p-5 relative min-h-[250px]">
+            {stats.revenueTxData.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">Loading Chart Data...</div>
+            ) : (
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto overflow-visible select-none">
+                {/* Y Axis Gridlines */}
+                {[0, 65000, 130000, 195000, 260000].map((val, idx) => {
+                  const y = paddingTop + drawableHeight - (val / 260000) * drawableHeight;
+                  return (
+                    <g key={idx}>
+                      <line
+                        x1={paddingLeft}
+                        y1={y}
+                        x2={chartWidth - paddingRight}
+                        y2={y}
+                        stroke="#F1F5F9"
+                        strokeWidth={1}
+                        strokeDasharray={val === 0 ? "none" : "3 3"}
+                      />
                       <text
-                        key={idx}
-                        x={xCenter}
-                        y={chartHeight - paddingBottom + 16}
-                        textAnchor="middle"
-                        className="text-[10px] font-bold text-gray-500 font-mono"
+                        x={paddingLeft - 10}
+                        y={y + 4}
+                        textAnchor="end"
+                        className="text-[9px] font-bold text-gray-400 font-mono"
                       >
-                        {item.month}
+                        {val.toLocaleString()}
                       </text>
-                    );
-                  })}
+                    </g>
+                  );
+                })}
 
-                  {/* Double Bars */}
-                  {REVENUE_TX_DATA.map((item, idx) => {
-                    const colWidth = drawableWidth / REVENUE_TX_DATA.length;
-                    const xCenter = paddingLeft + idx * colWidth + colWidth / 2;
+                {/* X Axis & Labels */}
+                {stats.revenueTxData.map((item, idx) => {
+                  const xCenter = paddingLeft + (idx + 0.5) * (drawableWidth / stats.revenueTxData.length);
+                  return (
+                    <text
+                      key={idx}
+                      x={xCenter}
+                      y={chartHeight - paddingBottom + 16}
+                      textAnchor="middle"
+                      className="text-[10px] font-bold text-gray-500 font-mono"
+                    >
+                      {item.month}
+                    </text>
+                  );
+                })}
 
-                    const barWidth = 14;
-                    const revX = xCenter - barWidth - 1.5;
-                    const txX = xCenter + 1.5;
+                {/* Double Bars */}
+                {stats.revenueTxData.map((item, idx) => {
+                  const maxRev = Math.max(...stats.revenueTxData.map(d => d.revenue));
+                  const maxTx = Math.max(...stats.revenueTxData.map(d => d.transactions));
+                  const colWidth = drawableWidth / stats.revenueTxData.length;
+                  const xCenter = paddingLeft + idx * colWidth + colWidth / 2;
 
-                    const revHeight = (item.revenue / 260000) * drawableHeight;
-                    const txHeight = (item.transactions / 260000) * drawableHeight;
+                  const barWidth = 14;
+                  const revX = xCenter - barWidth - 1.5;
+                  const txX = xCenter + 1.5;
 
-                    const revY = paddingTop + drawableHeight - revHeight;
-                    const txY = paddingTop + drawableHeight - txHeight;
+                  const revHeight = (item.revenue / 260000) * drawableHeight;
+                  const txHeight = (item.transactions / 260000) * drawableHeight;
 
-                    const isHovered = hoveredBarIndex === idx;
+                  const revY = paddingTop + drawableHeight - revHeight;
+                  const txY = paddingTop + drawableHeight - txHeight;
 
-                    return (
-                      <g
-                        key={idx}
-                        className="cursor-pointer"
-                        onMouseEnter={() => setHoveredBarIndex(idx)}
-                        onMouseLeave={() => setHoveredBarIndex(null)}
-                      >
-                        {/* Hover column background highlight */}
-                        <rect
-                          x={paddingLeft + idx * colWidth + 4}
-                          y={paddingTop}
-                          width={colWidth - 8}
-                          height={drawableHeight}
-                          fill={isHovered ? "rgba(10, 61, 145, 0.03)" : "transparent"}
-                          rx="4"
-                        />
+                  const isHovered = hoveredBarIndex === idx;
 
-                        {/* Revenue Bar (Navy) */}
-                        <motion.rect
-                          initial={{ height: 0, y: paddingTop + drawableHeight }}
-                          animate={{ height: revHeight, y: revY }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
-                          x={revX}
-                          width={barWidth}
-                          fill={isHovered ? "#1650AB" : "#0A3D91"}
-                          rx="1.5"
-                        />
+                  return (
+                    <g
+                      key={idx}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredBarIndex(idx)}
+                      onMouseLeave={() => setHoveredBarIndex(null)}
+                    >
+                      {/* Hover column background highlight */}
+                      <rect
+                        x={paddingLeft + idx * colWidth + 4}
+                        y={paddingTop}
+                        width={colWidth - 8}
+                        height={drawableHeight}
+                        fill={isHovered ? "rgba(10, 61, 145, 0.03)" : "transparent"}
+                        rx="4"
+                      />
 
-                        {/* Transactions Bar (Yellow) */}
-                        <motion.rect
-                          initial={{ height: 0, y: paddingTop + drawableHeight }}
-                          animate={{ height: txHeight, y: txY }}
-                          transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-                          x={txX}
-                          width={barWidth}
-                          fill={isHovered ? "#EAB308" : "#F59E0B"}
-                          rx="1.5"
-                        />
-                      </g>
-                    );
-                  })}
-                </svg>
+                      {/* Revenue Bar (Navy) */}
+                      <motion.rect
+                        initial={{ height: 0, y: paddingTop + drawableHeight }}
+                        animate={{ height: revHeight, y: revY }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        x={revX}
+                        width={barWidth}
+                        fill={isHovered ? "#1650AB" : "#0A3D91"}
+                        rx="1.5"
+                      />
 
-                {/* Floating responsive interactive tooltip */}
-                <AnimatePresence>
-                  {hoveredBarIndex !== null && (() => {
-                    const percentX = ((paddingLeft + hoveredBarIndex * (drawableWidth / REVENUE_TX_DATA.length) + (drawableWidth / REVENUE_TX_DATA.length) / 2) / chartWidth) * 100;
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute bg-slate-900/95 border border-slate-800 rounded-xl p-3.5 shadow-2xl pointer-events-none z-20 w-40 space-y-1.5 backdrop-blur-sm"
-                        style={{
-                          left: `${percentX}%`,
-                          top: 15,
-                          transform: hoveredBarIndex === 0 
-                            ? "none" 
-                            : hoveredBarIndex === REVENUE_TX_DATA.length - 1 
-                              ? "translateX(-100%)" 
-                              : "translateX(-50%)"
-                        }}
-                      >
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                          {REVENUE_TX_DATA[hoveredBarIndex].month} Statistics
-                        </p>
-                        <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t border-slate-800">
-                          <span className="text-slate-300 flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#0A3D91]" />
-                            Rev
-                          </span>
-                          <span className="text-white font-mono font-bold">${REVENUE_TX_DATA[hoveredBarIndex].revenue.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="text-slate-300 flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
-                            Tx
-                          </span>
-                          <span className="text-white font-mono font-bold">{REVENUE_TX_DATA[hoveredBarIndex].transactions.toLocaleString()}</span>
-                        </div>
-                      </motion.div>
-                    );
-                  })()}
-                </AnimatePresence>
-              </div>
+                      {/* Transactions Bar (Yellow) */}
+                      <motion.rect
+                        initial={{ height: 0, y: paddingTop + drawableHeight }}
+                        animate={{ height: txHeight, y: txY }}
+                        transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+                        x={txX}
+                        width={barWidth}
+                        fill={isHovered ? "#EAB308" : "#F59E0B"}
+                        rx="1.5"
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
 
-              {/* HTML Legends */}
-              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-4 text-xs font-bold text-gray-500 font-mono">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-[#0A3D91] block" />
-                  <span>Revenue</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-[#F59E0B] block" />
-                  <span>Transaction</span>
-                </div>
-              </div>
-            </div>
-          )}
+            {/* Floating responsive interactive tooltip */}
+            <AnimatePresence>
+              {hoveredBarIndex !== null && stats.revenueTxData[hoveredBarIndex] && (() => {
+                const data = stats.revenueTxData[hoveredBarIndex];
+                const percentX = ((paddingLeft + hoveredBarIndex * (drawableWidth / stats.revenueTxData.length) + (drawableWidth / stats.revenueTxData.length) / 2) / chartWidth) * 100;
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="absolute bg-slate-900/95 border border-slate-800 rounded-xl p-3.5 shadow-2xl pointer-events-none z-20 w-40 space-y-1.5 backdrop-blur-sm"
+                    style={{
+                      left: `${percentX}%`,
+                      top: 15,
+                      transform: hoveredBarIndex === 0 
+                        ? "none" 
+                        : hoveredBarIndex === stats.revenueTxData.length - 1 
+                          ? "translateX(-100%)" 
+                          : "translateX(-50%)"
+                    }}
+                  >
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                      {data.month} Statistics
+                    </p>
+                    <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t border-slate-800">
+                      <span className="text-slate-300 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#0A3D91]" />
+                        Rev
+                      </span>
+                      <span className="text-white font-mono font-bold">${data.revenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-300 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                        Tx
+                      </span>
+                      <span className="text-white font-mono font-bold">{data.transactions.toLocaleString()}</span>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Chart 2: User Growth double-line */}
@@ -464,8 +466,9 @@ export default function ReportsAnalyticsPage() {
                   })}
 
                   {/* X Axis & Labels */}
-                  {USER_GROWTH_DATA.map((item, idx) => {
-                    const x = paddingLeft + (idx / (USER_GROWTH_DATA.length - 1)) * drawableWidth;
+                  {stats.userGrowthData.map((item, idx) => {
+                    const spacing = drawableWidth / (stats.userGrowthData.length - 1 || 1);
+                    const x = paddingLeft + (idx * spacing);
                     return (
                       <text
                         key={idx}
@@ -482,9 +485,9 @@ export default function ReportsAnalyticsPage() {
                   {/* Hover vertical crosshair line */}
                   {hoveredLineIndex !== null && (
                     <line
-                      x1={paddingLeft + (hoveredLineIndex / (USER_GROWTH_DATA.length - 1)) * drawableWidth}
+                      x1={paddingLeft + (hoveredLineIndex / (stats.userGrowthData.length - 1 || 1)) * drawableWidth}
                       y1={paddingTop}
-                      x2={paddingLeft + (hoveredLineIndex / (USER_GROWTH_DATA.length - 1)) * drawableWidth}
+                      x2={paddingLeft + (hoveredLineIndex / (stats.userGrowthData.length - 1 || 1)) * drawableWidth}
                       y2={paddingTop + drawableHeight}
                       stroke="#CBD5E1"
                       strokeWidth={1.5}
@@ -495,13 +498,13 @@ export default function ReportsAnalyticsPage() {
                   {/* Custom Splines Paths generator */}
                   {(() => {
                     // Coordinate points mapping
-                    const totalUsersPoints = USER_GROWTH_DATA.map((item, idx) => ({
-                      x: paddingLeft + (idx / (USER_GROWTH_DATA.length - 1)) * drawableWidth,
+                    const totalUsersPoints = stats.userGrowthData.map((item, idx) => ({
+                      x: paddingLeft + (idx / (stats.userGrowthData.length - 1 || 1)) * drawableWidth,
                       y: paddingTop + drawableHeight - (item.totalUsers / 14000) * drawableHeight,
                     }));
 
-                    const verifiedUsersPoints = USER_GROWTH_DATA.map((item, idx) => ({
-                      x: paddingLeft + (idx / (USER_GROWTH_DATA.length - 1)) * drawableWidth,
+                    const verifiedUsersPoints = stats.userGrowthData.map((item, idx) => ({
+                      x: paddingLeft + (idx / (stats.userGrowthData.length - 1 || 1)) * drawableWidth,
                       y: paddingTop + drawableHeight - (item.verifiedUsers / 14000) * drawableHeight,
                     }));
 
@@ -511,7 +514,6 @@ export default function ReportsAnalyticsPage() {
                         if (i === 0) return `M ${point.x} ${point.y}`;
                         const prev = points[i - 1];
                         const dx = point.x - prev.x;
-                        // Control coordinates for soft wave spline curve
                         const cpX1 = prev.x + dx / 3;
                         const cpY1 = prev.y;
                         const cpX2 = prev.x + (2 * dx) / 3;
@@ -522,7 +524,6 @@ export default function ReportsAnalyticsPage() {
 
                     return (
                       <>
-                        {/* Total Users Path (Navy) */}
                         <motion.path
                           initial={{ pathLength: 0 }}
                           animate={{ pathLength: 1 }}
@@ -533,7 +534,6 @@ export default function ReportsAnalyticsPage() {
                           strokeWidth={2.5}
                         />
 
-                        {/* Verified Users Path (Yellow) */}
                         <motion.path
                           initial={{ pathLength: 0 }}
                           animate={{ pathLength: 1 }}
@@ -544,16 +544,13 @@ export default function ReportsAnalyticsPage() {
                           strokeWidth={2.5}
                         />
 
-                        {/* Coordinate interactive nodes dots */}
-                        {USER_GROWTH_DATA.map((item, idx) => {
+                        {stats.userGrowthData.map((item, idx) => {
                           const pt1 = totalUsersPoints[idx];
                           const pt2 = verifiedUsersPoints[idx];
-
                           const isHovered = hoveredLineIndex === idx;
 
                           return (
                             <g key={idx}>
-                              {/* Invisible interactive column trigger */}
                               <rect
                                 x={pt1.x - 20}
                                 y={paddingTop}
@@ -564,28 +561,8 @@ export default function ReportsAnalyticsPage() {
                                 onMouseEnter={() => setHoveredLineIndex(idx)}
                                 onMouseLeave={() => setHoveredLineIndex(null)}
                               />
-
-                              {/* Dot Total Users */}
-                              <circle
-                                cx={pt1.x}
-                                cy={pt1.y}
-                                r={isHovered ? 6 : 4}
-                                fill="#0A3D91"
-                                stroke="#FFF"
-                                strokeWidth={1.5}
-                                className="transition-all pointer-events-none"
-                              />
-
-                              {/* Dot Verified Users */}
-                              <circle
-                                cx={pt2.x}
-                                cy={pt2.y}
-                                r={isHovered ? 6 : 4}
-                                fill="#F59E0B"
-                                stroke="#FFF"
-                                strokeWidth={1.5}
-                                className="transition-all pointer-events-none"
-                              />
+                              <circle cx={pt1.x} cy={pt1.y} r={isHovered ? 6 : 4} fill="#0A3D91" stroke="#FFF" strokeWidth={1.5} className="transition-all pointer-events-none" />
+                              <circle cx={pt2.x} cy={pt2.y} r={isHovered ? 6 : 4} fill="#F59E0B" stroke="#FFF" strokeWidth={1.5} className="transition-all pointer-events-none" />
                             </g>
                           );
                         })}
@@ -596,8 +573,9 @@ export default function ReportsAnalyticsPage() {
 
                 {/* Floating responsive interactive tooltip */}
                 <AnimatePresence>
-                  {hoveredLineIndex !== null && (() => {
-                    const percentX = ((paddingLeft + (hoveredLineIndex / (USER_GROWTH_DATA.length - 1)) * drawableWidth) / chartWidth) * 100;
+                  {hoveredLineIndex !== null && stats.userGrowthData[hoveredLineIndex] && (() => {
+                    const data = stats.userGrowthData[hoveredLineIndex];
+                    const percentX = ((paddingLeft + (hoveredLineIndex / (stats.userGrowthData.length - 1 || 1)) * drawableWidth) / chartWidth) * 100;
                     return (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -609,27 +587,27 @@ export default function ReportsAnalyticsPage() {
                           top: 15,
                           transform: hoveredLineIndex === 0 
                             ? "none" 
-                            : hoveredLineIndex === USER_GROWTH_DATA.length - 1 
+                            : hoveredLineIndex === stats.userGrowthData.length - 1 
                               ? "translateX(-100%)" 
                               : "translateX(-50%)"
                         }}
                       >
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                          {USER_GROWTH_DATA[hoveredLineIndex].month} Growth
+                          {data.month} Growth
                         </p>
                         <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t border-slate-800">
                           <span className="text-slate-300 flex items-center gap-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-[#0A3D91]" />
                             Total
                           </span>
-                          <span className="text-white font-mono font-bold">{USER_GROWTH_DATA[hoveredLineIndex].totalUsers.toLocaleString()}</span>
+                          <span className="text-white font-mono font-bold">{data.totalUsers.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-semibold">
                           <span className="text-slate-300 flex items-center gap-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
                             Verified
                           </span>
-                          <span className="text-white font-mono font-bold">{USER_GROWTH_DATA[hoveredLineIndex].verifiedUsers.toLocaleString()}</span>
+                          <span className="text-white font-mono font-bold">{data.verifiedUsers.toLocaleString()}</span>
                         </div>
                       </motion.div>
                     );
@@ -699,7 +677,7 @@ export default function ReportsAnalyticsPage() {
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wide font-mono">Support Ticket Resolution</span>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 flex-wrap">
-                <span className="text-2xl font-black text-gray-900 leading-none">94.3%</span>
+                <span className="text-2xl font-black text-gray-900 leading-none">{stats.resolutionRate}%</span>
                 <div className="flex items-center gap-1 text-[10px] font-extrabold text-green-700 flex-wrap">
                   <span className="flex items-center gap-0.5 bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-200 font-bold">
                     <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />

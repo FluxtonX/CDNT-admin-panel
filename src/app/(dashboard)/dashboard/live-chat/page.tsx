@@ -15,10 +15,13 @@ import {
   Smile,
   Paperclip,
   Check,
+  CheckCheck,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { USERS_DATA, type AdminUser } from "@/lib/data/users";
+import { type AdminUser } from "@/lib/data/users";
+import { supabase } from "@/lib/supabase";
 
 type ChatStatus = "Active" | "Waiting" | "Resolved";
 
@@ -34,95 +37,13 @@ type ChatThread = {
   user: AdminUser;
   status: ChatStatus;
   unreadCount: number;
+  unreadCountUser: number;
   lastMessageTime: string;
   messages: Message[];
+  lastMessageAtISO: string;
 };
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
-
-const INITIAL_THREADS: ChatThread[] = [
-  {
-    threadId: "CHT-101",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12458") || USERS_DATA[0],
-    status: "Active",
-    unreadCount: 2,
-    lastMessageTime: "11:30 a.m.",
-    messages: [
-      { id: "m1", sender: "Client", text: "Hello, I made a withdrawal request 2 hours ago.", timestamp: "11:28 a.m." },
-      { id: "m2", sender: "Client", text: "I need help with my withdrawal, it's still pending.", timestamp: "11:30 a.m." },
-    ],
-  },
-  {
-    threadId: "CHT-102",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12457") || USERS_DATA[1],
-    status: "Waiting",
-    unreadCount: 1,
-    lastMessageTime: "11:15 a.m.",
-    messages: [
-      { id: "m3", sender: "Client", text: "When will my KYC be approved?", timestamp: "11:15 a.m." },
-    ],
-  },
-  {
-    threadId: "CHT-103",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12456") || USERS_DATA[2],
-    status: "Resolved",
-    unreadCount: 0,
-    lastMessageTime: "10:00 a.m.",
-    messages: [
-      { id: "m4", sender: "Client", text: "Can you clarify the fees?", timestamp: "09:50 a.m." },
-      { id: "m5", sender: "Admin", text: "Withdrawal fees are 0.5% for CAD Interac and network fees apply for crypto.", timestamp: "09:55 a.m." },
-      { id: "m6", sender: "Client", text: "Thank you for your help!", timestamp: "10:00 a.m." },
-    ],
-  },
-];
-
-const getContextualReply = (messageText: string, thread: ChatThread): string => {
-  const text = messageText.toLowerCase();
-  const threadId = thread.threadId;
-
-  const isKyc = threadId === "CHT-102" || text.includes("kyc") || text.includes("document") || text.includes("id ") || text.includes("passport") || text.includes("photo") || text.includes("utility") || text.includes("verification");
-  const isFinance = threadId === "CHT-101" || text.includes("withdrawal") || text.includes("payout") || text.includes("interac") || text.includes("transaction") || text.includes("wallet") || text.includes("money") || text.includes("transfer") || text.includes("sent") || text.includes("btc") || text.includes("crypto") || text.includes("fee") || text.includes("charge");
-
-  if (text.includes("hello") || text.includes("hi ") || text.startsWith("hi") || text.includes("hey") || text.includes("greetings")) {
-    if (isKyc) return "Hi! Yes, I wanted to ask when my KYC verification will be approved. It has been pending since yesterday.";
-    if (isFinance) return "Hello! Thanks for replying. I'm checking on my pending withdrawal request. Can you help me check if it's processed?";
-    return "Hello! Thanks for reaching out. I have a question regarding my account.";
-  }
-
-  if (text.includes("approve") || text.includes("approved") || text.includes("verified") || text.includes("success") || text.includes("done") || text.includes("processed") || text.includes("complete") || text.includes("sent")) {
-    if (isKyc) return "Awesome! Thank you so much for verifying my account. I will log in now and check the dashboard.";
-    if (isFinance) return "Perfect! I see the transaction is marked as completed on the dashboard. I'll check my wallet/bank account. Thank you for the quick transfer.";
-    return "Thank you! I see that it has been updated now. I appreciate the fast support.";
-  }
-
-  if (text.includes("reject") || text.includes("decline") || text.includes("fail") || text.includes("error") || text.includes("invalid") || text.includes("denied")) {
-    if (isKyc) return "Oh, I see. What was the exact reason for rejection? Should I re-upload a higher quality scan of my ID?";
-    if (isFinance) return "Oh no, why did the payout fail? Should I check my banking details or Interac email again?";
-    return "That's unfortunate. Could you explain what went wrong and how I can fix it?";
-  }
-
-  if (text.includes("upload") || text.includes("re-upload") || text.includes("send ") || text.includes("attach") || text.includes("clearer") || text.includes("quality") || text.includes("bill") || text.includes("passport")) {
-    return "Understood. I will take a new, high-quality picture of my document and upload it right away through the portal.";
-  }
-
-  if (text.includes("fee") || text.includes("charge") || text.includes("cost") || text.includes("percentage") || text.includes("percent")) {
-    return "Understood, that makes sense. Thank you for explaining the transaction fees.";
-  }
-
-  if (text.includes("wait") || text.includes("delay") || text.includes("pending") || text.includes("process") || text.includes("hour") || text.includes("minute") || text.includes("day") || text.includes("time")) {
-    return "Okay, I will wait for updates. Please keep me posted once it is processed.";
-  }
-
-  if (text.includes("anything else") || text.includes("help you with") || text.includes("further questions") || text.includes("resolved") || text.includes("have a great day") || text.includes("bye")) {
-    return "No, that's all. You've answered everything. Thanks again for your great help!";
-  }
-
-  if (isKyc) return "Thank you for checking that. I hope my KYC verification gets cleared soon so I can start trading.";
-  if (isFinance) return "I appreciate you looking into this transaction. It's important for me to get this payout settled.";
-
-  return "Thanks for the details. I will follow your instructions and let you know if I run into any issues.";
-};
-
 
 function StatusIndicator({ status }: { status: ChatStatus }) {
   const map: Record<ChatStatus, string> = {
@@ -134,8 +55,8 @@ function StatusIndicator({ status }: { status: ChatStatus }) {
 }
 
 export default function LiveChatSupportPage() {
-  const [threads, setThreads] = useState<ChatThread[]>(INITIAL_THREADS);
-  const [activeThreadId, setActiveThreadId] = useState<string>("CHT-101");
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -143,29 +64,280 @@ export default function LiveChatSupportPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  /* Simulated Loading */
+  // Fetch threads from Supabase
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    async function fetchThreads() {
+      setLoading(true);
+      try {
+        // Fetch threads
+        const { data, error } = await supabase
+          .from("support_threads")
+          .select(`
+            id,
+            status,
+            unread_count_admin,
+            unread_count_user,
+            last_message_at,
+            user_id,
+            profiles:user_id (
+              id,
+              full_name
+            )
+          `)
+          .order("last_message_at", { ascending: false });
+
+        // Fetch auth users to get emails (profiles may not store email)
+        let authUsersMap: Record<string, string> = {};
+        try {
+          const res = await fetch("/api/support/users");
+          if (res.ok) {
+            const usersData = await res.json();
+            authUsersMap = usersData.reduce((acc: Record<string, string>, u: { id: string; email: string }) => {
+              acc[u.id] = u.email;
+              return acc;
+            }, {});
+          }
+        } catch { /* silently fallback */ }
+
+        if (error) throw error;
+
+        if (data) {
+          const mappedThreads: ChatThread[] = data.map((t: any) => {
+            const profile = t.profiles;
+            const adminUser: AdminUser = {
+              id: profile?.id || t.user_id,
+              name: profile?.full_name || authUsersMap[t.user_id]?.split("@")[0] || "User",
+              email: authUsersMap[t.user_id] || "N/A",
+              phone: "N/A",
+              kyc: "Not Started",
+              account: "Active",
+              balance: 0,
+              joinedDate: "",
+              risk: "Low Risk",
+              dateOfBirth: "",
+              street: "",
+              city: "",
+              postalCode: "",
+              country: "",
+              lastLogin: "",
+              twoFactor: false,
+              lastIp: "",
+            };
+
+            return {
+              threadId: t.id,
+              user: adminUser,
+              status: t.status as ChatStatus,
+              unreadCount: t.unread_count_admin,
+              unreadCountUser: t.unread_count_user,
+              lastMessageTime: new Date(t.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              messages: [],
+              lastMessageAtISO: t.last_message_at,
+            };
+          });
+
+          setThreads(mappedThreads);
+
+          if (mappedThreads.length > 0) {
+            setActiveThreadId(mappedThreads[0].threadId);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading chat threads:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchThreads();
   }, []);
+
+  // Fetch messages dynamically when selected thread changes
+  useEffect(() => {
+    if (!activeThreadId) return;
+
+    async function fetchMessages() {
+      try {
+        const { data, error } = await supabase
+          .from("support_messages")
+          .select("*")
+          .eq("thread_id", activeThreadId)
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        if (data) {
+          const mappedMsgs: Message[] = data.map((m: any) => ({
+            id: m.id,
+            sender: m.sender as "Client" | "Admin",
+            text: m.text,
+            timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          }));
+
+          setThreads((current) =>
+            current.map((t) => (t.threadId === activeThreadId ? { ...t, messages: mappedMsgs } : t))
+          );
+        }
+
+        // Reset admin unread count
+        const thread = threads.find((t) => t.threadId === activeThreadId);
+        if (thread && thread.unreadCount > 0) {
+          await supabase
+            .from("support_threads")
+            .update({ unread_count_admin: 0 })
+            .eq("id", activeThreadId);
+
+          setThreads((current) =>
+            current.map((t) => (t.threadId === activeThreadId ? { ...t, unreadCount: 0 } : t))
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching messages for thread:", activeThreadId, err);
+      }
+    }
+
+    fetchMessages();
+  }, [activeThreadId]);
+
+  // Real-Time Subscriptions
+  useEffect(() => {
+    // 1. Listen for new messages
+    const messagesChannel = supabase
+      .channel("support_messages_admin")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          const msgThreadId = newMsg.thread_id;
+
+          const formattedMsg: Message = {
+            id: newMsg.id,
+            sender: newMsg.sender as "Client" | "Admin",
+            text: newMsg.text,
+            timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          };
+
+          setThreads((current) =>
+            current.map((t) => {
+              if (t.threadId === msgThreadId) {
+                const alreadyHas = t.messages.some((m) => m.id === newMsg.id);
+                if (alreadyHas) return t;
+                return {
+                  ...t,
+                  messages: [...t.messages, formattedMsg],
+                };
+              }
+              return t;
+            })
+          );
+
+          // If the message is in the active thread and from Client, clear unread count
+          if (newMsg.sender === "Client" && msgThreadId === activeThreadId) {
+            supabase
+              .from("support_threads")
+              .update({ unread_count_admin: 0 })
+              .eq("id", activeThreadId)
+              .then();
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. Listen for support_threads changes (e.g. status changes, new threads, last message time updates)
+    const threadsChannel = supabase
+      .channel("support_threads_admin")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "support_threads",
+        },
+        async (payload) => {
+          const updatedRow = payload.new as any;
+          const eventType = payload.eventType;
+
+          if (eventType === "DELETE") {
+            setThreads((current) => current.filter((t) => t.threadId !== payload.old.id));
+            if (activeThreadId === payload.old.id) {
+              setActiveThreadId("");
+            }
+            return;
+          }
+
+          // Fetch profiles detail for join
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .eq("id", updatedRow.user_id)
+            .single();
+
+          const adminUser: AdminUser = {
+            id: profile?.id || updatedRow.user_id,
+            name: profile?.full_name || "User",
+            email: "N/A",
+            phone: "N/A",
+            kyc: "Not Started",
+            account: "Active",
+            balance: 0,
+            joinedDate: "",
+            risk: "Low Risk",
+            dateOfBirth: "",
+            street: "",
+            city: "",
+            postalCode: "",
+            country: "",
+            lastLogin: "",
+            twoFactor: false,
+            lastIp: "",
+          };
+
+          const mappedThread: ChatThread = {
+            threadId: updatedRow.id,
+            user: adminUser,
+            status: updatedRow.status as ChatStatus,
+            unreadCount: updatedRow.id === activeThreadId ? 0 : updatedRow.unread_count_admin,
+            unreadCountUser: updatedRow.unread_count_user,
+            lastMessageTime: new Date(updatedRow.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            messages: [],
+            lastMessageAtISO: updatedRow.last_message_at,
+          };
+
+          setThreads((current) => {
+            const index = current.findIndex((t) => t.threadId === updatedRow.id);
+            if (index !== -1) {
+              const existingMessages = current[index].messages;
+              const updated = {
+                ...mappedThread,
+                messages: existingMessages,
+              };
+
+              const nextList = [...current];
+              nextList[index] = updated;
+
+              return nextList.sort((a, b) => new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime());
+            } else {
+              return [mappedThread, ...current].sort((a, b) => new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime());
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(threadsChannel);
+    };
+  }, [activeThreadId]);
 
   /* Get Active Thread */
   const activeThread = useMemo(() => {
     return threads.find((t) => t.threadId === activeThreadId) || null;
   }, [threads, activeThreadId]);
-
-  /* Clear Unread Badge when selecting a thread */
-  useEffect(() => {
-    if (activeThreadId) {
-      setThreads((current) =>
-        current.map((t) =>
-          t.threadId === activeThreadId ? { ...t, unreadCount: 0 } : t
-        )
-      );
-    }
-  }, [activeThreadId]);
 
   /* Scroll to bottom */
   useEffect(() => {
@@ -186,86 +358,68 @@ export default function LiveChatSupportPage() {
   }, [threads, search]);
 
   /* Send Admin Message */
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || !activeThread) return;
 
     const messageText = inputText.trim();
     setInputText("");
 
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    try {
+      const { data: newMsg, error } = await supabase
+        .from("support_messages")
+        .insert({
+          thread_id: activeThread.threadId,
+          sender: "Admin",
+          text: messageText,
+        })
+        .select()
+        .single();
 
-    const newMsg: Message = {
-      id: `msg-${Date.now()}`,
-      sender: "Admin",
-      text: messageText,
-      timestamp: timeString,
-    };
+      if (error) throw error;
 
-    // Append message to active thread
-    setThreads((current) =>
-      current.map((t) => {
-        if (t.threadId === activeThread.threadId) {
-          return {
-            ...t,
-            lastMessageTime: timeString,
-            messages: [...t.messages, newMsg],
-          };
-        }
-        return t;
-      })
-    );
-
-    // Simulate real-time Client reply
-    const activeId = activeThread.threadId;
-    const clientName = activeThread.user.name;
-
-    // Phase 1: Show "User is typing..." indicator after 1.5s
-    setTimeout(() => {
-      setTypingUser(clientName);
-    }, 1500);
-
-    // Phase 2: Dispatch reply after 3s total
-    setTimeout(() => {
-      const replyText = getContextualReply(messageText, activeThread);
-      const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-      const replyMsg: Message = {
-        id: `msg-${Date.now() + 1}`,
-        sender: "Client",
-        text: replyText,
-        timestamp: replyTime,
+      const formattedMsg: Message = {
+        id: newMsg.id,
+        sender: "Admin",
+        text: newMsg.text,
+        timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
       setThreads((current) =>
         current.map((t) => {
-          if (t.threadId === activeId) {
-            // If user is currently looking at this thread, keep unread count at 0
-            const isViewing = activeThreadId === activeId;
+          if (t.threadId === activeThread.threadId) {
+            const alreadyHas = t.messages.some((m) => m.id === newMsg.id);
+            if (alreadyHas) return t;
             return {
               ...t,
-              lastMessageTime: replyTime,
-              unreadCount: isViewing ? 0 : t.unreadCount + 1,
-              messages: [...t.messages, replyMsg],
+              messages: [...t.messages, formattedMsg],
             };
           }
           return t;
         })
       );
-
-      setTypingUser(null);
-    }, 3200);
+    } catch (err) {
+      console.error("Error sending support response:", err);
+    }
   };
 
   /* Toggle Chat Status override */
-  const handleSetStatus = (status: ChatStatus) => {
+  const handleSetStatus = async (status: ChatStatus) => {
     if (!activeThread) return;
-    setThreads((current) =>
-      current.map((t) =>
-        t.threadId === activeThread.threadId ? { ...t, status } : t
-      )
-    );
+    try {
+      const { error } = await supabase
+        .from("support_threads")
+        .update({ status })
+        .eq("id", activeThread.threadId);
+
+      if (error) throw error;
+
+      setThreads((current) =>
+        current.map((t) => (t.threadId === activeThread.threadId ? { ...t, status } : t))
+      );
+    } catch (err) {
+      console.error("Error setting support thread status:", err);
+    }
   };
 
   return (
@@ -345,7 +499,7 @@ export default function LiveChatSupportPage() {
                           {lastMsg ? lastMsg.text : "No messages yet"}
                         </p>
                         <div className="flex items-center gap-1.5 pt-1">
-                          <span className="text-[9px] text-gray-400 font-mono uppercase tracking-tight">{thread.user.id}</span>
+                          <span className="text-[9px] text-gray-400 font-mono uppercase tracking-tight">{thread.user.id.substring(0, 8)}</span>
                           {thread.status === "Waiting" && (
                             <span className="text-[8px] bg-amber-50 text-amber-700 font-bold uppercase px-1 rounded">waiting</span>
                           )}
@@ -354,7 +508,7 @@ export default function LiveChatSupportPage() {
 
                       {/* Unread badge */}
                       {thread.unreadCount > 0 && (
-                        <span className="h-5 w-5 rounded-full bg-red-650 text-white font-mono font-black text-[9px] flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                        <span className="h-5 w-5 rounded-full bg-red-600 text-white font-mono font-black text-[9px] flex items-center justify-center shrink-0 shadow-sm animate-pulse">
                           {thread.unreadCount}
                         </span>
                       )}
@@ -384,13 +538,13 @@ export default function LiveChatSupportPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-gray-950 text-sm leading-none">{activeThread.user.name}</h4>
+                        <h4 className="font-bold text-gray-900 text-sm leading-none">{activeThread.user.name}</h4>
                         <span className="flex items-center gap-1 bg-gray-100 text-gray-500 font-bold uppercase px-2 py-0.5 rounded-full text-[9px] tracking-wide border border-gray-150 font-mono">
                           <StatusIndicator status={activeThread.status} />
                           {activeThread.status}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-mono mt-1 block">{activeThread.user.id} • {activeThread.user.email}</span>
+                      <span className="text-[10px] text-gray-400 font-mono mt-1 block">{activeThread.user.id.substring(0, 8)} • {activeThread.user.email}</span>
                     </div>
                   </div>
 
@@ -418,6 +572,11 @@ export default function LiveChatSupportPage() {
 
                 {/* Messages log list */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+                  {activeThread.messages.length === 0 && (
+                    <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">
+                      No message history in this thread.
+                    </div>
+                  )}
                   {activeThread.messages.map((msg) => {
                     const isAdmin = msg.sender === "Admin";
                     return (
@@ -440,36 +599,30 @@ export default function LiveChatSupportPage() {
                               "p-3 rounded-2xl text-xs font-semibold leading-relaxed shadow-sm",
                               isAdmin
                                 ? "text-white rounded-br-none"
-                                : "bg-white text-gray-800 rounded-bl-none border border-gray-150"
+                                : "bg-slate-100 text-slate-900 rounded-bl-none border border-slate-200"
                             )}
                             style={isAdmin ? { background: BRAND_GRADIENT } : {}}
                           >
                             {msg.text}
                           </div>
-                          <span className={cn(
-                            "text-[8px] text-gray-400 font-bold font-mono block",
-                            isAdmin ? "text-right" : "text-left"
+                          <div className={cn(
+                            "text-[8px] text-gray-400 font-bold font-mono flex items-center gap-1.5 mt-0.5",
+                            isAdmin ? "justify-end" : "justify-start"
                           )}>
-                            {msg.timestamp}
-                          </span>
+                            <span>{msg.timestamp}</span>
+                            {isAdmin && (
+                              <CheckCheck className={cn(
+                                "h-3.5 w-3.5 shrink-0",
+                                activeThread.unreadCountUser === 0
+                                  ? "text-sky-400 font-bold"
+                                  : "text-white/40"
+                              )} />
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
-
-                  {/* Typing Indicator */}
-                  {typingUser && (
-                    <div className="flex items-center gap-2.5 mr-auto max-w-[80%]">
-                      <div className="h-7 w-7 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-xs shrink-0 select-none animate-pulse">
-                        {activeThread.user.name[0]}
-                      </div>
-                      <div className="bg-white border border-gray-150 p-3 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="h-1.5 w-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="h-1.5 w-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                      </div>
-                    </div>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -513,3 +666,4 @@ export default function LiveChatSupportPage() {
     </>
   );
 }
+

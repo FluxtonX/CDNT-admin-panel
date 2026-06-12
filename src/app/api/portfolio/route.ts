@@ -18,15 +18,13 @@ export async function GET() {
 
     const totalUsers = profilesCount || 0;
 
-    // 2. Fetch approved deposits
-    const { data: deposits, error: depErr } = await supabaseAdmin
-      .from("deposit_requests")
-      .select("asset, expected_amount, status, created_at")
-      .eq("status", "approved");
+    // 2. Fetch all user wallets
+    const { data: userWallets, error: walletsErr } = await supabaseAdmin
+      .from("user_wallets")
+      .select("*");
 
-    // Check if table missing error (PGRST205)
-    if (depErr && depErr.code !== "PGRST205") {
-      throw depErr;
+    if (walletsErr) {
+      throw walletsErr;
     }
 
     // Static exchange rates to CAD
@@ -41,9 +39,9 @@ export async function GET() {
     let ethAmount = 0;
     let usdtAmount = 0;
 
-    (deposits || []).forEach((d: any) => {
-      const asset = d.asset?.toUpperCase();
-      const amount = Number(d.expected_amount) || 0;
+    (userWallets || []).forEach((w: any) => {
+      const asset = w.currency?.toUpperCase();
+      const amount = Number(w.balance) || 0;
       if (asset === "BTC") btcAmount += amount;
       else if (asset === "ETH") ethAmount += amount;
       else if (asset === "USDT" || asset === "USDC") usdtAmount += amount;
@@ -79,14 +77,23 @@ export async function GET() {
       },
     ];
 
-    // 30d growth = sum of deposits in last 30 days
+    // 30d growth = sum of deposits in wallet_ledger in last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentDeposits = (deposits || []).filter((d: any) => new Date(d.created_at) >= thirtyDaysAgo);
-    const performanceGrowth = recentDeposits.reduce((acc: number, d: any) => {
-      const rate = rates[d.asset?.toUpperCase()] || 1.36;
-      return acc + (Number(d.expected_amount) * rate);
-    }, 0);
+    const { data: ledger, error: ledgerErr } = await supabaseAdmin
+      .from("wallet_ledger")
+      .select("amount, currency, created_at")
+      .eq("type", "DEPOSIT")
+      .gte("created_at", thirtyDaysAgo.toISOString());
+
+    let performanceGrowth = 0;
+    if (!ledgerErr && ledger) {
+      performanceGrowth = ledger.reduce((acc: number, item: any) => {
+        const rate = rates[item.currency?.toUpperCase()] || 1.36;
+        return acc + (Number(item.amount) * rate);
+      }, 0);
+    }
+
 
     return NextResponse.json({
       allocations,

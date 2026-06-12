@@ -37,96 +37,7 @@ type SecurityLog = {
   performedByAdmin?: string; // e.g. "ADM-001"
 };
 
-// Initial Mock logs matching the screenshots exactly + additional entries for a rich logs list
-const INITIAL_LOGS: SecurityLog[] = [
-  {
-    id: "LOG-2024-54321",
-    timestamp: "Jun 2, 2026, 11:30:00 a.m.",
-    action: "Failed Login Attempt",
-    category: "Auth",
-    severity: "Warning",
-    user: "James Wilson",
-    userId: "USR-2024-12455",
-    ipAddress: "192.168.1.100",
-    details: "Incorrect password - 3rd failed attempt",
-    userAgent: "Chrome 126.0 (Windows)"
-  },
-  {
-    id: "LOG-2024-54320",
-    timestamp: "Jun 2, 2026, 11:15:00 a.m.",
-    action: "Account Frozen",
-    category: "Admin",
-    severity: "Critical",
-    user: "Olivia Martinez",
-    userId: "USR-2024-12454",
-    ipAddress: "10.0.0.1",
-    details: "Account frozen due to suspicious activity",
-    userAgent: "Admin Portal",
-    performedByAdmin: "ADM-001"
-  },
-  {
-    id: "LOG-2024-54319",
-    timestamp: "Jun 2, 2026, 10:45:00 a.m.",
-    action: "Withdrawal Request",
-    category: "Transaction",
-    severity: "Warning",
-    user: "Olivia Martinez",
-    userId: "USR-2024-12454",
-    ipAddress: "192.168.1.100",
-    details: "Withdrawal of $12,500 CAD requested via Interac",
-    userAgent: "Safari 17.4 (macOS)"
-  },
-  {
-    id: "LOG-2024-54318",
-    timestamp: "Jun 2, 2026, 10:30:00 a.m.",
-    action: "2FA Disabled",
-    category: "Security",
-    severity: "Critical",
-    user: "Emma Thompson",
-    userId: "USR-2024-12456",
-    ipAddress: "192.168.1.100",
-    details: "Two-factor authentication disabled via email confirmation bypass",
-    userAgent: "Firefox 125.0 (Ubuntu Linux)"
-  },
-  {
-    id: "LOG-2024-54317",
-    timestamp: "Jun 2, 2026, 09:15:00 a.m.",
-    action: "KYC Documents Approved",
-    category: "Kyc",
-    severity: "Info",
-    user: "Marcus Chen",
-    userId: "USR-2024-12457",
-    ipAddress: "10.0.0.1",
-    details: "Identity verification documents checked and cleared",
-    userAgent: "Admin Portal",
-    performedByAdmin: "ADM-002"
-  },
-  {
-    id: "LOG-2024-54316",
-    timestamp: "Jun 2, 2026, 08:00:00 a.m.",
-    action: "API Key Created",
-    category: "Security",
-    severity: "Info",
-    user: "James Wilson",
-    userId: "USR-2024-12455",
-    ipAddress: "192.168.1.100",
-    details: "Read-only API access key generated",
-    userAgent: "Chrome 126.0 (Windows)"
-  },
-  {
-    id: "LOG-2024-54315",
-    timestamp: "Jun 1, 2026, 05:40:00 p.m.",
-    action: "Wallet Override Applied",
-    category: "Admin",
-    severity: "Critical",
-    user: "Emma Thompson",
-    userId: "USR-2024-12456",
-    ipAddress: "10.0.0.1",
-    details: "Hot wallet withdrawal limits modified by administrative request",
-    userAgent: "Admin Portal",
-    performedByAdmin: "ADM-001"
-  }
-];
+// Removed static INITIAL_LOGS array
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
@@ -142,13 +53,45 @@ export default function SecurityLogsAuditTrailPage() {
   const [exporting, setExporting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Simulated mount loading (700ms)
+  const [logs, setLogs] = useState<SecurityLog[]>([]);
+  const [stats, setStats] = useState({
+    totalEvents: 0,
+    failedLogins: 0,
+    activeThreats: 0,
+    highRiskEvents: 0
+  });
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 700);
+    async function fetchLogs() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (search) params.append("search", search);
+        if (selectedCategory !== "All") params.append("category", selectedCategory);
+        if (selectedSeverity !== "All") params.append("severity", selectedSeverity);
+        params.append("t", Date.now().toString()); // Force fresh data, bypass any cache
+
+        const res = await fetch(`/api/security-logs?${params.toString()}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLogs(data.logs);
+          setStats(data.stats);
+        }
+      } catch (err) {
+        console.error("Failed to fetch security logs", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    const timer = setTimeout(fetchLogs, 300); // debounce search
     return () => clearTimeout(timer);
-  }, []);
+  }, [search, selectedCategory, selectedSeverity]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -205,35 +148,10 @@ export default function SecurityLogsAuditTrailPage() {
     Critical: "bg-red-50 text-red-700 border-red-200"
   };
 
-  // Filtering Logic
-  const filteredLogs = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return INITIAL_LOGS.filter((log) => {
-      // Search matches
-      const matchesSearch =
-        !q ||
-        log.id.toLowerCase().includes(q) ||
-        log.action.toLowerCase().includes(q) ||
-        log.user.toLowerCase().includes(q) ||
-        log.userId.toLowerCase().includes(q) ||
-        log.ipAddress.toLowerCase().includes(q);
-
-      // Category matches
-      const matchesCategory =
-        selectedCategory === "All" || log.category === selectedCategory;
-
-      // Severity matches
-      const matchesSeverity =
-        selectedSeverity === "All" || log.severity === selectedSeverity;
-
-      return matchesSearch && matchesCategory && matchesSeverity;
-    });
-  }, [search, selectedCategory, selectedSeverity]);
-
   // Selected Log Details Object
   const selectedLog = useMemo(() => {
-    return INITIAL_LOGS.find((l) => l.id === selectedLogId) || null;
-  }, [selectedLogId]);
+    return logs.find((l) => l.id === selectedLogId) || null;
+  }, [logs, selectedLogId]);
 
   return (
     <div className="space-y-6">
@@ -333,7 +251,7 @@ export default function SecurityLogsAuditTrailPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">3</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">{stats.activeThreats}</p>
                 <p className="text-[10px] text-red-600 font-extrabold mt-1.5 uppercase tracking-wide">Requires immediate attention</p>
               </div>
             </div>
@@ -347,7 +265,7 @@ export default function SecurityLogsAuditTrailPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">2</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">{stats.highRiskEvents}</p>
                 <p className="text-[10px] text-amber-600 font-extrabold mt-1.5 uppercase tracking-wide">Monitor closely</p>
               </div>
             </div>
@@ -355,13 +273,15 @@ export default function SecurityLogsAuditTrailPage() {
             {/* Auth Failures */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Auth Failures</span>
+                <div className="text-[10px] font-extrabold text-gray-400 font-mono tracking-wider">
+                  SHOWING {logs.length} LOGS
+                </div>
                 <div className="h-9 w-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100">
                   <Lock className="h-4.5 w-4.5" />
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">2</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">{stats.failedLogins}</p>
                 <p className="text-[10px] text-gray-400 font-bold mt-1.5 font-mono">Last 24 hours</p>
               </div>
             </div>
@@ -375,7 +295,7 @@ export default function SecurityLogsAuditTrailPage() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-2xl font-black text-gray-900 leading-none">1</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">{stats.totalEvents}</p>
                 <p className="text-[10px] text-gray-400 font-bold mt-1.5 font-mono">Last 24 hours</p>
               </div>
             </div>
@@ -406,11 +326,16 @@ export default function SecurityLogsAuditTrailPage() {
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer shadow-xs",
                   selectedCategory === cat
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    ? "text-white border-transparent"
                     : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-900"
                 )}
+                style={
+                  selectedCategory === cat
+                    ? { background: "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)" }
+                    : {}
+                }
               >
                 {cat}
               </button>
@@ -425,11 +350,16 @@ export default function SecurityLogsAuditTrailPage() {
                 key={sev}
                 onClick={() => setSelectedSeverity(sev)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer shadow-xs",
                   selectedSeverity === sev
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    ? "text-white border-transparent"
                     : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-900"
                 )}
+                style={
+                  selectedSeverity === sev
+                    ? { background: "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)" }
+                    : {}
+                }
               >
                 {sev}
               </button>
@@ -472,18 +402,18 @@ export default function SecurityLogsAuditTrailPage() {
                     <td className="py-4 px-6"><div className="h-8 w-8 bg-gray-100 rounded-full mx-auto" /></td>
                   </tr>
                 ))
-              ) : filteredLogs.length === 0 ? (
+              ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center font-bold text-gray-400">
-                    No security audit logs found.
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm font-medium text-gray-500">
+                    No logs found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                logs.map((log) => (
                   <tr
                     key={log.id}
                     onClick={() => setSelectedLogId(log.id)}
-                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors cursor-pointer group"
                   >
                     {/* Timestamp */}
                     <td className="py-4.5 px-6 font-mono text-[11px] text-gray-500 font-bold whitespace-nowrap">

@@ -108,6 +108,23 @@ export default function LoginPage() {
     } else {
       setLoading(false);
       setAuthError("Invalid credentials. Use the demo credentials below.");
+      try {
+        await fetch("/api/security-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Failed Login Attempt",
+            category: "Auth",
+            severity: "Warning",
+            userName: "Unknown",
+            userId: "N/A",
+            details: `Incorrect password entered for admin login attempt with email: ${values.email}`,
+            performedByAdmin: null
+          })
+        });
+      } catch (err) {
+        console.error("Failed to log admin login failure:", err);
+      }
     }
   };
 

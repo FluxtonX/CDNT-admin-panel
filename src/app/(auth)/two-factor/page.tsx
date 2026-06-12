@@ -76,11 +76,45 @@ export default function TwoFactorPage() {
     if (isValid) {
       // Set a client-side cookie to authenticate the admin
       document.cookie = "admin_auth=true; path=/; max-age=86400; SameSite=Lax";
+      try {
+        await fetch("/api/security-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Admin Login",
+            category: "Auth",
+            severity: "Info",
+            userName: "Administrator",
+            userId: "ADM-001",
+            details: "Admin logged in successfully after 2FA verification.",
+            performedByAdmin: "ADM-001"
+          })
+        });
+      } catch (err) {
+        console.error("Failed to log admin login:", err);
+      }
       router.push("/dashboard");
     } else {
       setLoading(false);
       setError("Invalid code. Please check your email.");
       triggerShake();
+      try {
+        await fetch("/api/security-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "Failed Login Attempt",
+            category: "Auth",
+            severity: "Warning",
+            userName: "Administrator",
+            userId: "ADM-001",
+            details: `Failed 2FA code verification attempt: entered code ${code}`,
+            performedByAdmin: null
+          })
+        });
+      } catch (err) {
+        console.error("Failed to log admin login failure:", err);
+      }
     }
   };
 

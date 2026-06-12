@@ -49,6 +49,28 @@ export async function PATCH(request: Request) {
 
     if (error) throw error;
 
+    // Fetch profile to get name
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .single();
+
+    const action = status === "approved" ? "KYC Documents Approved" : "KYC Documents Rejected";
+    const severity = status === "approved" ? "Info" : "Warning";
+
+    await supabaseAdmin.from("security_logs").insert({
+      action,
+      category: "Kyc",
+      severity,
+      user_name: profile?.full_name || "Unknown User",
+      user_id: userId,
+      ip_address: request.headers.get("x-forwarded-for") || "127.0.0.1",
+      details: `KYC submission for user ${userId} has been ${status}.`,
+      user_agent: request.headers.get("user-agent") || "Unknown",
+      performed_by_admin: "ADM-001"
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("PATCH KYC Error:", error);
