@@ -13,60 +13,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─── Static Data ────────────────────────────────────────────────── */
-
-const userGrowthData = [
-  { month: "Jan", users: 70000 },
-  { month: "Feb", users: 90000 },
-  { month: "Mar", users: 82000 },
-  { month: "Apr", users: 110000 },
-  { month: "May", users: 92000 },
-  { month: "Jun", users: 96000 },
-  { month: "Jul", users: 35000 },
-];
-
-const assetData = [
-  { name: "Bitcoin", value: 18.5, color: "#1650AB" },
-  { name: "Ethereum", value: 15.2, color: "#1E3A8A" },
-  { name: "USDT", value: 8.8, color: "#F59E0B" },
-];
-
-const depositsData = [
-  { month: "Jan", deposits: 3000000, withdrawals: 1500000 },
-  { month: "Feb", deposits: 3200000, withdrawals: 1800000 },
-  { month: "Mar", deposits: 3500000, withdrawals: 2000000 },
-  { month: "Apr", deposits: 3800000, withdrawals: 2500000 },
-  { month: "May", deposits: 4500000, withdrawals: 3500000 },
-  { month: "Jun", deposits: 5000000, withdrawals: 4500000 },
-];
-
-const withdrawalQueue = [
-  { id: "WD-10243", name: "Sarah Chen",     time: "5 mins ago",  risk: "low",    amount: "$5,000" },
-  { id: "WD-10242", name: "Michael Smith",  time: "12 mins ago", risk: "medium", amount: "$12,500" },
-  { id: "WD-10241", name: "Emma Thompson",  time: "25 mins ago", risk: "low",    amount: "$3,200" },
-  { id: "WD-10242", name: "James Wilson",   time: "1 hour ago",  risk: "high",   amount: "$12,500" },
-  { id: "WD-10239", name: "Lisa Anderson",  time: "2 hours ago", risk: "low",    amount: "$8,750" },
-];
-
-const recentTransactions = [
-  { name: "John Smith",   type: "Deposit",  txId: "TX-5821", amount: "$27,500", crypto: "+1.5 BTC",      coin: "BTC", positive: true },
-  { name: "Alice Johnson",type: "Withdraw", txId: "TX-5820", amount: "$5,520",  crypto: "2.3 ETH",       coin: "ETH", positive: false },
-  { name: "Bob Martin",   type: "Deposit",  txId: "TX-5819", amount: "$10,000", crypto: "+10,000 USDT",  coin: "USDT",positive: true },
-  { name: "Carol Davis",  type: "Fee",      txId: "TX-5818", amount: "$2.40",   crypto: "-0.001 ETH",    coin: "ETH", positive: false },
-];
-
-const hotWallet = [
-  { coin: "BTC",  amount: "12.5843 BTC",       usd: "$890,134" },
-  { coin: "ETH",  amount: "245.32 ETH",         usd: "$588,768" },
-  { coin: "USDT", amount: "125,000 USDT",       usd: "$125,000" },
-];
-
-const coldWallet = [
-  { coin: "BTC",  amount: "324.2145 BTC",      usd: "$17,831,798" },
-  { coin: "ETH",  amount: "5,234.89 ETH",      usd: "$12,563,736" },
-  { coin: "USDT", amount: "8,675,000 USDT",    usd: "$8,675,000" },
-];
-
 /* ─── Sub-components ─────────────────────────────────────────────── */
 
 function StatCard1({
@@ -102,13 +48,14 @@ function StatCard2({
 }: {
   label: string; value: string; badge: string;
   icon: React.ElementType; iconBg: string;
-  badgeType: "urgent" | "positive" | "danger";
+  badgeType: "urgent" | "positive" | "danger" | "neutral";
   link?: string;
 }) {
   const badgeStyles = {
     urgent:   "bg-orange-100 text-orange-600",
     positive: "bg-green-100 text-green-600",
     danger:   "bg-red-100 text-red-600",
+    neutral:  "bg-gray-100 text-gray-600",
   };
 
   return (
@@ -141,12 +88,14 @@ const riskStyles = {
   low:    "bg-green-100 text-green-700",
   medium: "bg-yellow-100 text-yellow-700",
   high:   "bg-red-100 text-red-700",
+  "N/A":  "bg-gray-100 text-gray-700",
 };
 
 const coinColors: Record<string, string> = {
   BTC:  "#F7931A",
   ETH:  "#627EEA",
   USDT: "#26A17B",
+  CAD:  "#1650AB"
 };
 
 const formatMillions = (v: number) =>
@@ -159,64 +108,33 @@ export default function DashboardPage() {
     verifiedUsers: 0,
     pendingKyc: 0,
     platformAssets: 0,
-    loading: true,
+    pendingWithdrawals: 0,
+    totalDepositsAmt: 0,
+    flaggedTransactions: 0,
+    userGrowthData: [] as any[],
+    assetData: [] as any[],
+    depositsData: [] as any[],
+    withdrawalQueue: [] as any[],
+    recentTransactions: [] as any[],
     hotWallets: [] as any[],
     coldWallets: [] as any[],
+    loading: true,
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, portRes, walletsRes] = await Promise.all([
-          fetch("/api/users", { cache: "no-store" }),
-          fetch("/api/portfolio", { cache: "no-store" }),
-          fetch("/api/platform-wallets", { cache: "no-store" })
-        ]);
-        
-        let totalUsers = 0;
-        let verifiedUsers = 0;
-        let pendingKyc = 0;
-        let platformAssets = 0;
-        let hotWallets: any[] = [];
-        let coldWallets: any[] = [];
-
-        if (usersRes.ok) {
-          const data = await usersRes.json();
-          const users = data.users || [];
-          totalUsers = users.length;
-          verifiedUsers = users.filter((u: any) => u.kyc === "Verified").length;
-          pendingKyc = users.filter((u: any) => u.kyc === "Pending").length;
+        const res = await fetch("/api/dashboard", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setStats({
+            ...data,
+            loading: false
+          });
+        } else {
+          console.error("Failed to fetch dashboard stats", await res.text());
+          setStats(prev => ({ ...prev, loading: false }));
         }
-
-        if (portRes.ok) {
-          const data = await portRes.json();
-          platformAssets = data.totalAum || 0;
-        }
-
-        if (walletsRes.ok) {
-          const data = await walletsRes.json();
-          const walletsArray = Array.isArray(data) ? data : [];
-          hotWallets = walletsArray.filter(w => w.type === "Hot").map(w => ({
-            coin: w.crypto,
-            amount: w.balance_crypto,
-            usd: `$${Number(w.balance_cad).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-          }));
-          coldWallets = walletsArray.filter(w => w.type === "Cold").map(w => ({
-            coin: w.crypto,
-            amount: w.balance_crypto,
-            usd: `$${Number(w.balance_cad).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-          }));
-        }
-
-        setStats({
-          totalUsers,
-          verifiedUsers,
-          pendingKyc,
-          platformAssets,
-          hotWallets,
-          coldWallets,
-          loading: false
-        });
       } catch (err) {
         console.error("Error fetching stats:", err);
         setStats(prev => ({ ...prev, loading: false }));
@@ -245,19 +163,19 @@ export default function DashboardPage() {
       {/* ── Stats Row 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard2
-          label="Pending Withdrawals" value="23"
-          badge="Urgent" badgeType="urgent"
+          label="Pending Withdrawals" value={stats.loading ? "..." : stats.pendingWithdrawals.toString()}
+          badge="Urgent" badgeType={stats.pendingWithdrawals > 0 ? "urgent" : "neutral"}
           icon={Clock} iconBg="#F97316"
           link="Review Requests"
         />
         <StatCard2
-          label="Total Deposits (300)" value="$5.8M"
-          badge="+16.5%" badgeType="positive"
+          label="Total Deposits" value={stats.loading ? "..." : `$${(stats.totalDepositsAmt / 1000000).toFixed(1)}M`}
+          badge="+0.0%" badgeType="positive"
           icon={DollarSign} iconBg="#22C55E"
         />
         <StatCard2
-          label="Flagged Transactions" value="12"
-          badge="5 Alerts" badgeType="danger"
+          label="Flagged Transactions" value={stats.loading ? "..." : stats.flaggedTransactions.toString()}
+          badge="N/A" badgeType="neutral"
           icon={AlertTriangle} iconBg="#EF4444"
         />
       </div>
@@ -273,11 +191,11 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-gray-400" />
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={userGrowthData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={stats.loading ? [] : stats.userGrowthData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                tickFormatter={(v) => `${(v).toFixed(0)}`} />
               <Tooltip
                 contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 12 }}
                 formatter={(v: any) => [Number(v).toLocaleString(), "Users"]}
@@ -298,11 +216,11 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie
-                data={assetData} cx="50%" cy="50%"
+                data={stats.loading ? [] : stats.assetData} cx="50%" cy="50%"
                 innerRadius={50} outerRadius={75}
                 paddingAngle={3} dataKey="value"
               >
-                {assetData.map((entry, i) => (
+                {stats.assetData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
@@ -313,7 +231,7 @@ export default function DashboardPage() {
             </PieChart>
           </ResponsiveContainer>
           <div className="space-y-2 mt-2">
-            {assetData.map((item) => (
+            {stats.assetData.map((item) => (
               <div key={item.name} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: item.color }} />
@@ -330,7 +248,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-sm font-semibold text-gray-800 mb-4">Deposits vs Withdrawals</h3>
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={depositsData} margin={{ top: 0, right: 10, left: -10, bottom: 0 }} barGap={4}>
+          <BarChart data={stats.loading ? [] : stats.depositsData} margin={{ top: 0, right: 10, left: -10, bottom: 0 }} barGap={4}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
@@ -358,11 +276,15 @@ export default function DashboardPage() {
             <button className="text-xs text-blue-600 font-medium hover:underline">View All</button>
           </div>
           <div className="space-y-3">
-            {withdrawalQueue.map((item, i) => (
+            {stats.loading ? (
+              <div className="text-xs text-gray-400">Loading...</div>
+            ) : stats.withdrawalQueue.length === 0 ? (
+              <div className="text-xs text-gray-400">No pending withdrawals.</div>
+            ) : stats.withdrawalQueue.map((item, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                 {/* Avatar */}
                 <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
-                  {item.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  {item.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
@@ -390,12 +312,16 @@ export default function DashboardPage() {
             <button className="text-xs text-blue-600 font-medium hover:underline">View All</button>
           </div>
           <div className="space-y-3">
-            {recentTransactions.map((tx, i) => (
+            {stats.loading ? (
+              <div className="text-xs text-gray-400">Loading...</div>
+            ) : stats.recentTransactions.length === 0 ? (
+              <div className="text-xs text-gray-400">No recent transactions.</div>
+            ) : stats.recentTransactions.map((tx, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                 {/* Coin icon */}
                 <div
                   className="h-9 w-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
-                  style={{ background: coinColors[tx.coin] }}
+                  style={{ background: coinColors[tx.coin] || "#ccc" }}
                 >
                   {tx.coin}
                 </div>

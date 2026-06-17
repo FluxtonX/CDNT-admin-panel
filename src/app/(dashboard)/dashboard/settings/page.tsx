@@ -39,39 +39,34 @@ export default function AdminSettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
 
-  // Simulated mount loading (700ms)
   useEffect(() => {
-    // Attempt to load settings from localStorage if available
-    if (typeof window !== "undefined") {
-      const savedName = localStorage.getItem("setting_platformName");
-      const savedEmail = localStorage.getItem("setting_supportEmail");
-      const savedMaintenance = localStorage.getItem("setting_maintenanceMode");
-      const savedFee = localStorage.getItem("setting_platformFee");
-      const savedMax = localStorage.getItem("setting_maxWithdrawal");
-      const savedMin = localStorage.getItem("setting_minWithdrawal");
-      const savedAutoApprove = localStorage.getItem("setting_autoApprove");
-      const savedKyc = localStorage.getItem("setting_requireKyc");
-      const saved2fa = localStorage.getItem("setting_require2fa");
-      const savedEmailNotif = localStorage.getItem("setting_emailNotifications");
-      const savedSmsNotif = localStorage.getItem("setting_smsNotifications");
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const data = await res.json();
+          const s = data.settings || {};
 
-      if (savedName) setPlatformName(savedName);
-      if (savedEmail) setSupportEmail(savedEmail);
-      if (savedMaintenance) setMaintenanceMode(savedMaintenance === "true");
-      if (savedFee) setPlatformFee(savedFee);
-      if (savedMax) setMaxWithdrawal(savedMax);
-      if (savedMin) setMinWithdrawal(savedMin);
-      if (savedAutoApprove) setAutoApprove(savedAutoApprove === "true");
-      if (savedKyc) setRequireKyc(savedKyc === "true");
-      if (saved2fa) setRequire2fa(saved2fa === "true");
-      if (savedEmailNotif) setEmailNotifications(savedEmailNotif === "true");
-      if (savedSmsNotif) setSmsNotifications(savedSmsNotif === "true");
-    }
+          if (s.platformName) setPlatformName(s.platformName);
+          if (s.supportEmail) setSupportEmail(s.supportEmail);
+          if (s.maintenanceMode) setMaintenanceMode(s.maintenanceMode === "true");
+          if (s.platformFee) setPlatformFee(s.platformFee);
+          if (s.maxWithdrawal) setMaxWithdrawal(s.maxWithdrawal);
+          if (s.minWithdrawal) setMinWithdrawal(s.minWithdrawal);
+          if (s.autoApprove) setAutoApprove(s.autoApprove === "true");
+          if (s.requireKyc) setRequireKyc(s.requireKyc === "true");
+          if (s.require2fa) setRequire2fa(s.require2fa === "true");
+          if (s.emailNotifications) setEmailNotifications(s.emailNotifications === "true");
+          if (s.smsNotifications) setSmsNotifications(s.smsNotifications === "true");
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    fetchSettings();
   }, []);
 
   const triggerToast = (msg: string) => {
@@ -80,28 +75,46 @@ export default function AdminSettingsPage() {
   };
 
   // Save Settings Function
-  const handleSaveSettings = (e?: React.FormEvent) => {
+  const handleSaveSettings = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (saving) return;
 
     setSaving(true);
-    setTimeout(() => {
-      // Persist to localStorage
-      localStorage.setItem("setting_platformName", platformName);
-      localStorage.setItem("setting_supportEmail", supportEmail);
-      localStorage.setItem("setting_maintenanceMode", String(maintenanceMode));
-      localStorage.setItem("setting_platformFee", platformFee);
-      localStorage.setItem("setting_maxWithdrawal", maxWithdrawal);
-      localStorage.setItem("setting_minWithdrawal", minWithdrawal);
-      localStorage.setItem("setting_autoApprove", String(autoApprove));
-      localStorage.setItem("setting_requireKyc", String(requireKyc));
-      localStorage.setItem("setting_require2fa", String(require2fa));
-      localStorage.setItem("setting_emailNotifications", String(emailNotifications));
-      localStorage.setItem("setting_smsNotifications", String(smsNotifications));
+    
+    const payload = {
+      platformName,
+      supportEmail,
+      maintenanceMode: String(maintenanceMode),
+      platformFee,
+      maxWithdrawal,
+      minWithdrawal,
+      autoApprove: String(autoApprove),
+      requireKyc: String(requireKyc),
+      require2fa: String(require2fa),
+      emailNotifications: String(emailNotifications),
+      smsNotifications: String(smsNotifications),
+    };
 
-      setSaving(false);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save settings");
+      }
+
       triggerToast("Settings saved successfully!");
-    }, 1200);
+    } catch (err) {
+      console.error("Error saving settings:", err);
+      triggerToast("Error saving settings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Toggle Switch Component
