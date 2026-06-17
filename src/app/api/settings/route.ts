@@ -77,7 +77,7 @@ export async function PATCH(request: Request) {
             category: "System",
             severity: "Info",
             user_name: adminName,
-            user_id: null,
+            user_id: "SYSTEM",
             ip_address: "127.0.0.1",
             details: `Updated setting '${key}' from '${existingMap[key] || "null"}' to '${valueStr}'`,
             user_agent: "System Admin Panel",
