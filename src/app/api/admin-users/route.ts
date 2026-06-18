@@ -6,6 +6,9 @@ export const dynamic = "force-dynamic";
 // Helper function to send email via Brevo
 async function sendInviteEmail(email: string, fullName: string, inviteLink: string) {
   const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  console.log(`[sendInviteEmail] BREVO_API_KEY loaded: ${!!BREVO_API_KEY}`);
+  console.log(`[sendInviteEmail] Sending to: ${email}, inviteLink: ${inviteLink}`);
+
   if (!BREVO_API_KEY) {
     console.log(`[LOCAL DEV] Invite Link for ${email} is: ${inviteLink}`);
     return { success: true, localMode: true };
@@ -38,10 +41,13 @@ async function sendInviteEmail(email: string, fullName: string, inviteLink: stri
     }),
   });
 
+  const responseBody = await response.text();
+  console.log(`[sendInviteEmail] Brevo response status: ${response.status}`);
+  console.log(`[sendInviteEmail] Brevo response body: ${responseBody}`);
+
   if (!response.ok) {
-    const errText = await response.text();
-    console.error("Brevo API Error:", errText);
-    throw new Error(errText || "Failed to send email via Brevo");
+    console.error("[sendInviteEmail] Brevo API Error:", responseBody);
+    throw new Error(responseBody || "Failed to send email via Brevo");
   }
 
   return { success: true };
