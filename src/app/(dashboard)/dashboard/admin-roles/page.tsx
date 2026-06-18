@@ -14,7 +14,8 @@ import {
   Search,
   CheckSquare,
   Square,
-  AlertTriangle
+  AlertTriangle,
+  Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,61 +62,21 @@ const ALL_PERMISSIONS: Permission[] = [
   { id: "manage-tickets", name: "Manage Tickets", category: "Support" },
 ];
 
-const INITIAL_ROLES: Role[] = [
-  {
-    id: "r1",
-    code: "ROLE-001",
-    name: "Super Admin",
-    description: "Full system access with all permissions",
-    adminCount: 3,
-    isActive: true,
-    permissions: [
-      "view-users", "edit-users", "delete-users",
-      "review-kyc",
-      "approve-withdrawals", "view-transactions", "manage-wallets",
-      "edit-settings", "manage-roles"
-    ],
-  },
-  {
-    id: "r2",
-    code: "ROLE-002",
-    name: "KYC Reviewer",
-    description: "Review and approve KYC verification requests",
-    adminCount: 8,
-    isActive: true,
-    permissions: ["view-users", "review-kyc", "view-docs"],
-  },
-  {
-    id: "r3",
-    code: "ROLE-003",
-    name: "Finance Manager",
-    description: "Manage withdrawals and financial operations",
-    adminCount: 5,
-    isActive: true,
-    permissions: ["approve-withdrawals", "view-transactions", "manage-wallets", "view-wallets"],
-  },
-  {
-    id: "r4",
-    code: "ROLE-004",
-    name: "Support Agent",
-    description: "Handle customer support and inquiries",
-    adminCount: 12,
-    isActive: true,
-    permissions: ["view-users", "respond-chat", "manage-tickets"],
-  },
-];
-
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
 export default function AdminRolesPermissionsPage() {
   const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [admins, setAdmins] = useState<any[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [isDeleteAdminModalOpen, setIsDeleteAdminModalOpen] = useState(false);
+  const [adminToDelete, setAdminToDelete] = useState<any | null>(null);
 
   // Form states
   const [targetRole, setTargetRole] = useState<Role | null>(null);
@@ -124,21 +85,52 @@ export default function AdminRolesPermissionsPage() {
   const [formIsActive, setFormIsActive] = useState(true);
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
 
+  // Add Admin form states
+  const [adminFormName, setAdminFormName] = useState("");
+  const [adminFormEmail, setAdminFormEmail] = useState("");
+  const [adminFormRoleId, setAdminFormRoleId] = useState("");
+
+  // Loading indicator for resending email invites
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  // Guard against double-submission of Add Admin form
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Simulated Loading Effect (700ms)
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  // Fetch data on mount
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [rolesRes, adminsRes] = await Promise.all([
+        fetch("/api/roles"),
+        fetch("/api/admin-users"),
+      ]);
+      if (rolesRes.ok && adminsRes.ok) {
+        const rolesData = await rolesRes.json();
+        const adminsData = await adminsRes.json();
+        setRoles(rolesData.roles || []);
+        setAdmins(adminsData.admins || []);
+      } else {
+        showToast("Failed to fetch data from Supabase", "error");
+      }
+    } catch (err) {
+      console.error("Fetch data error:", err);
+      showToast("Error loading roles/admins", "error");
+    } finally {
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   // Show Toast Helper
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
   };
 
   // Find active selected role object
@@ -146,7 +138,7 @@ export default function AdminRolesPermissionsPage() {
 
   // Stats calculation
   const totalRoles = roles.length;
-  const totalAdmins = roles.reduce((acc, curr) => acc + curr.adminCount, 0);
+  const totalAdmins = admins.length;
   const activeRolesCount = roles.filter((r) => r.isActive).length;
   const totalPermissionsCount = ALL_PERMISSIONS.length;
 
@@ -176,31 +168,40 @@ export default function AdminRolesPermissionsPage() {
   };
 
   // Create Role Submit
-  const handleCreateRoleSubmit = (e: React.FormEvent) => {
+  const handleCreateRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
       showToast("Role name is required", "error");
       return;
     }
 
-    const nextCodeNum = roles.length + 1;
-    const newRole: Role = {
-      id: `r-${Date.now()}`,
-      code: `ROLE-00${nextCodeNum}`,
-      name: formName.trim(),
-      description: formDescription.trim(),
-      adminCount: 0,
-      isActive: formIsActive,
-      permissions: formPermissions,
-    };
+    try {
+      const res = await fetch("/api/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName.trim(),
+          description: formDescription.trim(),
+          isActive: formIsActive,
+          permissions: formPermissions,
+        }),
+      });
 
-    setRoles([...roles, newRole]);
-    setIsCreateModalOpen(false);
-    showToast(`Role "${newRole.name}" created successfully`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create role");
+      }
+
+      setRoles((prev) => [...prev, data.role]);
+      setIsCreateModalOpen(false);
+      showToast(`Role "${data.role.name}" created successfully`);
+    } catch (err: any) {
+      showToast(err.message, "error");
+    }
   };
 
   // Edit Role Submit
-  const handleEditRoleSubmit = (e: React.FormEvent) => {
+  const handleEditRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetRole) return;
     if (!formName.trim()) {
@@ -208,34 +209,58 @@ export default function AdminRolesPermissionsPage() {
       return;
     }
 
-    setRoles((current) =>
-      current.map((r) =>
-        r.id === targetRole.id
-          ? {
-              ...r,
-              name: formName.trim(),
-              description: formDescription.trim(),
-              isActive: formIsActive,
-              permissions: formPermissions,
-            }
-          : r
-      )
-    );
-    setIsEditModalOpen(false);
-    showToast(`Role "${formName}" updated successfully`);
+    try {
+      const res = await fetch("/api/roles", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: targetRole.id,
+          name: formName.trim(),
+          description: formDescription.trim(),
+          isActive: formIsActive,
+          permissions: formPermissions,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update role");
+      }
+
+      setRoles((current) =>
+        current.map((r) => (r.id === targetRole.id ? { ...r, ...data.role } : r))
+      );
+      setIsEditModalOpen(false);
+      showToast(`Role "${formName}" updated successfully`);
+    } catch (err: any) {
+      showToast(err.message, "error");
+    }
   };
 
   // Delete Role Confirm
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!targetRole) return;
 
-    setRoles((current) => current.filter((r) => r.id !== targetRole.id));
-    if (selectedRoleId === targetRole.id) {
-      setSelectedRoleId(null);
+    try {
+      const res = await fetch(`/api/roles?id=${targetRole.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete role");
+      }
+
+      setRoles((current) => current.filter((r) => r.id !== targetRole.id));
+      if (selectedRoleId === targetRole.id) {
+        setSelectedRoleId(null);
+      }
+      setIsDeleteModalOpen(false);
+      showToast(`Role "${targetRole.name}" deleted successfully`);
+      setTargetRole(null);
+    } catch (err: any) {
+      showToast(err.message, "error");
     }
-    setIsDeleteModalOpen(false);
-    showToast(`Role "${targetRole.name}" deleted successfully`);
-    setTargetRole(null);
   };
 
   // Toggle permission in form checklist selection
@@ -243,6 +268,142 @@ export default function AdminRolesPermissionsPage() {
     setFormPermissions((current) =>
       current.includes(id) ? current.filter((p) => p !== id) : [...current, id]
     );
+  };
+
+  // Add Admin Submit
+  const handleAddAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return; // Prevent double-click
+    if (!adminFormName.trim() || !adminFormEmail.trim() || !adminFormRoleId) {
+      showToast("All fields are required", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin-users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: adminFormName.trim(),
+          email: adminFormEmail.trim(),
+          roleId: adminFormRoleId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create admin");
+      }
+
+      setAdmins((prev) => [data.admin, ...prev]);
+
+      // Update the admin count in roles dynamically
+      setRoles((prevRoles) =>
+        prevRoles.map((role) => {
+          if (role.id === adminFormRoleId) {
+            return { ...role, adminCount: role.adminCount + 1 };
+          }
+          return role;
+        })
+      );
+
+      setIsAddAdminModalOpen(false);
+
+      if (data.warning) {
+        showToast(data.warning, "error");
+      } else {
+        showToast(`Admin "${data.admin.fullName}" created successfully. Setup email sent.`);
+      }
+    } catch (err: any) {
+      showToast(err.message, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Toggle Admin Active Status
+  const handleToggleAdminStatus = async (admin: any) => {
+    const nextStatus = !admin.isActive;
+    try {
+      const res = await fetch("/api/admin-users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: admin.id,
+          isActive: nextStatus,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update status");
+      }
+
+      setAdmins((prev) =>
+        prev.map((a) => (a.id === admin.id ? { ...a, isActive: data.admin.isActive } : a))
+      );
+      showToast(`Status updated for "${admin.fullName}"`);
+    } catch (err: any) {
+      showToast(err.message, "error");
+    }
+  };
+
+  // Resend Invite Email Link
+  const handleResendInvite = async (admin: any) => {
+    setResendingId(admin.id);
+    try {
+      const res = await fetch("/api/admin-users/resend-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: admin.email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to resend invite");
+      }
+
+      showToast(`Setup verification email resent to ${admin.email}`);
+    } catch (err: any) {
+      showToast(err.message, "error");
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  // Delete Admin Confirm
+  const handleDeleteAdminConfirm = async () => {
+    if (!adminToDelete) return;
+
+    try {
+      const res = await fetch(`/api/admin-users?id=${adminToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete admin");
+      }
+
+      setAdmins((prev) => prev.filter((a) => a.id !== adminToDelete.id));
+
+      // Update the admin count in roles dynamically
+      setRoles((prevRoles) =>
+        prevRoles.map((role) => {
+          if (role.id === adminToDelete.roleId) {
+            return { ...role, adminCount: Math.max(0, role.adminCount - 1) };
+          }
+          return role;
+        })
+      );
+
+      setIsDeleteAdminModalOpen(false);
+      showToast(`Admin "${adminToDelete.fullName}" deleted successfully`);
+      setAdminToDelete(null);
+    } catch (err: any) {
+      showToast(err.message, "error");
+    }
   };
 
   return (
@@ -268,14 +429,29 @@ export default function AdminRolesPermissionsPage() {
           <h1 className="text-[26px] font-bold text-gray-900 leading-tight">Admin Roles & Permissions</h1>
           <p className="mt-1 text-sm text-gray-500">Manage administrator roles and access permissions</p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-1.5 px-4 h-10 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:opacity-90 cursor-pointer"
-          style={{ background: BRAND_GRADIENT }}
-        >
-          <Plus className="h-4 w-4" />
-          Create Role
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setAdminFormName("");
+              setAdminFormEmail("");
+              const activeRoles = roles.filter((r) => r.isActive);
+              setAdminFormRoleId(activeRoles[0]?.id || "");
+              setIsAddAdminModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <Users className="h-4 w-4 text-gray-500" />
+            Add Admin
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-1.5 px-4 h-10 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:opacity-90 cursor-pointer"
+            style={{ background: BRAND_GRADIENT }}
+          >
+            <Plus className="h-4 w-4" />
+            Create Role
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -342,6 +518,10 @@ export default function AdminRolesPermissionsPage() {
             Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 h-36 animate-pulse" />
             ))
+          ) : roles.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 text-xs font-semibold">
+              No roles configured in database.
+            </div>
           ) : (
             <div className="space-y-3">
               {roles.map((role) => {
@@ -366,7 +546,14 @@ export default function AdminRolesPermissionsPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-extrabold text-gray-900 text-sm leading-none">{role.name}</span>
-                            <span className="text-[9px] bg-green-50 text-green-700 border border-green-200 font-bold uppercase px-1.5 py-0.5 rounded">
+                            <span
+                              className={cn(
+                                "text-[9px] border font-bold uppercase px-1.5 py-0.5 rounded",
+                                role.isActive
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-gray-100 text-gray-550 border-gray-200"
+                              )}
+                            >
                               {role.isActive ? "Active" : "Inactive"}
                             </span>
                           </div>
@@ -425,8 +612,15 @@ export default function AdminRolesPermissionsPage() {
               {activeRole ? `${activeRole.name} Permissions` : "Permissions Details"}
             </h3>
             {activeRole && (
-              <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 font-bold uppercase px-2 py-0.5 rounded-full font-mono">
-                Active
+              <span
+                className={cn(
+                  "text-[10px] border font-bold uppercase px-2 py-0.5 rounded-full font-mono",
+                  activeRole.isActive
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-gray-100 text-gray-550 border-gray-200"
+                )}
+              >
+                {activeRole.isActive ? "Active" : "Inactive"}
               </span>
             )}
           </div>
@@ -494,6 +688,121 @@ export default function AdminRolesPermissionsPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Admin Users list section */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-6">
+        <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+          <div>
+            <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wider">Administrator Users</h3>
+            <p className="text-xs text-gray-500 mt-0.5">List of authorized administrators and their roles</p>
+          </div>
+          <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full font-mono">
+            {admins.length} Admins
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="h-8 bg-gray-50 rounded" />
+            <div className="h-10 bg-gray-50 rounded" />
+            <div className="h-10 bg-gray-50 rounded" />
+          </div>
+        ) : admins.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 text-xs font-semibold">
+            No administrator users found. Click "Add Admin" to create one.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Admin Name</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email Address</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Role</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Joined Date</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right pr-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {admins.map((admin) => (
+                  <tr key={admin.id} className="hover:bg-blue-50/20 transition-colors">
+                    <td className="py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold uppercase shrink-0">
+                          {admin.fullName
+                            ? admin.fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2)
+                            : admin.email.slice(0, 2)}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">{admin.fullName || "Unnamed Admin"}</p>
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{admin.id.slice(0, 8).toUpperCase()}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 text-xs font-semibold text-gray-650">{admin.email}</td>
+                    <td className="py-4">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200">
+                        {admin.roleName}
+                      </span>
+                    </td>
+                    <td className="py-4">
+                      {admin.inviteStatus === "pending" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-200">
+                          Pending
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleAdminStatus(admin)}
+                          className={cn(
+                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-colors border cursor-pointer",
+                            admin.isActive
+                              ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                              : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                          )}
+                        >
+                          {admin.isActive ? "Active" : "Inactive"}
+                        </button>
+                      )}
+                    </td>
+                    <td className="py-4 text-xs text-gray-400 font-medium">
+                      {new Date(admin.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric"
+                      })}
+                    </td>
+                    <td className="py-4 text-right pr-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {admin.inviteStatus === "pending" && (
+                          <button
+                            onClick={() => handleResendInvite(admin)}
+                            disabled={resendingId === admin.id}
+                            className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-amber-50 hover:border-amber-200 text-gray-400 hover:text-amber-600 transition-all cursor-pointer shadow-sm inline-flex items-center justify-center disabled:opacity-40"
+                            title="Resend Setup Email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setAdminToDelete(admin);
+                            setIsDeleteAdminModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-650 transition-all cursor-pointer shadow-sm inline-flex items-center justify-center"
+                          title="Delete Admin"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Creation Modal */}
@@ -652,7 +961,7 @@ export default function AdminRolesPermissionsPage() {
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Description"
-                    className="h-20 w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none"
+                    className="h-20 w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-850 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none"
                   />
                 </div>
 
@@ -720,7 +1029,7 @@ export default function AdminRolesPermissionsPage() {
         )}
       </AnimatePresence>
 
-      {/* Delete Modal */}
+      {/* Delete Role Modal */}
       <AnimatePresence>
         {isDeleteModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs">
@@ -757,6 +1066,157 @@ export default function AdminRolesPermissionsPage() {
                   className="px-4.5 h-10 bg-red-600 rounded-xl text-white text-xs font-bold shadow-md hover:bg-red-700 transition-colors cursor-pointer"
                 >
                   Delete Role
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Admin Modal */}
+      <AnimatePresence>
+        {isAddAdminModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 shadow-xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <h3 className="font-extrabold text-gray-900 text-base">Add New Administrator</h3>
+                <button
+                  onClick={() => setIsAddAdminModalOpen(false)}
+                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleAddAdminSubmit} className="pt-4 space-y-4">
+                {/* Full Name */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={adminFormName}
+                    onChange={(e) => setAdminFormName(e.target.value)}
+                    placeholder="e.g. John Doe"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                  />
+                </div>
+
+                {/* Email Address */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={adminFormEmail}
+                    onChange={(e) => setAdminFormEmail(e.target.value)}
+                    placeholder="e.g. john@cdntb.ca"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                  />
+                </div>
+
+                {/* Role selection */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Role</label>
+                  <select
+                    required
+                    value={adminFormRoleId}
+                    onChange={(e) => setAdminFormRoleId(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 bg-white"
+                  >
+                    <option value="" disabled>Select a role</option>
+                    {roles.filter((r) => r.isActive).map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name} ({role.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddAdminModalOpen(false)}
+                    className="px-4 h-10 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={cn(
+                      "px-4.5 h-10 rounded-xl text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2",
+                      isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:opacity-90 cursor-pointer"
+                    )}
+                    style={{ background: BRAND_GRADIENT }}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Adding...
+                      </>
+                    ) : (
+                      "Add Admin"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Admin Modal */}
+      <AnimatePresence>
+        {isDeleteAdminModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 shadow-xl space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-950 text-sm">Delete Administrator?</h3>
+                  <p className="text-[11px] text-gray-400 font-bold font-mono mt-0.5">{adminToDelete?.id?.slice(0, 8).toUpperCase()}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-550 leading-relaxed font-semibold">
+                Are you sure you want to delete administrator <span className="font-black text-gray-800">"{adminToDelete?.fullName || adminToDelete?.email}"</span>? 
+                This action will permanently delete their authentication account and database records.
+              </p>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  onClick={() => {
+                    setIsDeleteAdminModalOpen(false);
+                    setAdminToDelete(null);
+                  }}
+                  className="px-4 h-10 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAdminConfirm}
+                  className="px-4.5 h-10 bg-red-600 rounded-xl text-white text-xs font-bold shadow-md hover:bg-red-700 transition-colors cursor-pointer"
+                >
+                  Delete Admin
                 </button>
               </div>
             </motion.div>
