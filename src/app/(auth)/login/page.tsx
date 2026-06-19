@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, Loader2 } from "lucide-react";
 import { CdntLogo } from "@/components/ui/CdntLogo";
+import { supabase } from "@/lib/supabase";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 interface FormValues {
@@ -106,24 +107,57 @@ export default function LoginPage() {
         setAuthError("Failed to send verification code. Please try again.");
       }
     } else {
-      setLoading(false);
-      setAuthError("Invalid credentials. Use the demo credentials below.");
+      // Flow 2 — Real invited admin via Supabase auth
       try {
-        await fetch("/api/security-logs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "Failed Login Attempt",
-            category: "Auth",
-            severity: "Warning",
-            userName: "Unknown",
-            userId: "N/A",
-            details: `Incorrect password entered for admin login attempt with email: ${values.email}`,
-            performedByAdmin: null
-          })
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: values.email,
+          password: values.password,
         });
+
+        if (signInError) {
+          setLoading(false);
+          setAuthError("Invalid credentials.");
+          try {
+            await fetch("/api/security-logs", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "Failed Login Attempt",
+                category: "Auth",
+                severity: "Warning",
+                userName: "Unknown",
+                userId: "N/A",
+                details: `Failed Supabase auth for admin login attempt with email: ${values.email}`,
+                performedByAdmin: null
+              })
+            });
+          } catch (logErr) {
+            console.error("Failed to log admin login failure:", logErr);
+          }
+          return;
+        }
+
+        // Auth succeeded — verify they exist in admin_users and are active
+        const { data: adminRow, error: adminCheckErr } = await supabase
+          .from("admin_users")
+          .select("is_active")
+          .eq("email", values.email)
+          .single();
+
+        if (adminCheckErr || !adminRow || !adminRow.is_active) {
+          // Not an authorized admin — sign them out
+          await supabase.auth.signOut();
+          setLoading(false);
+          setAuthError("Access denied — not an authorized admin.");
+          return;
+        }
+
+        // Admin verified — set cookie and redirect (skip OTP)
+        document.cookie = `admin_auth=${encodeURIComponent(values.email)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        router.push("/dashboard");
       } catch (err) {
-        console.error("Failed to log admin login failure:", err);
+        setLoading(false);
+        setAuthError("Something went wrong. Please try again.");
       }
     }
   };
