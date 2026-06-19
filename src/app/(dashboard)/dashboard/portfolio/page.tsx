@@ -14,6 +14,7 @@ import {
   PieChart as ChartIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 
 type AllocationSegment = {
   asset: string;
@@ -26,6 +27,14 @@ type AllocationSegment = {
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
 export default function PortfolioManagementPage() {
+  return (
+    <RequirePermission permission={["manage-wallets", "view-wallets"]}>
+      <PortfolioManagementPageContent />
+    </RequirePermission>
+  );
+}
+
+function PortfolioManagementPageContent() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [hoveredSegment, setHoveredSegment] = useState<AllocationSegment | null>(null);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { NAV_PERMISSION_MAP } from "@/lib/permissions";
 
 const NAV_ITEMS = [
   { id: "dashboard",     label: "Dashboard",           href: "/dashboard",              icon: LayoutDashboard },
@@ -36,6 +38,19 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { hasAnyPermission, loading } = useAdminPermissions();
+
+  // Filter nav items based on admin permissions
+  const visibleNavItems = useMemo(() => {
+    if (loading) return NAV_ITEMS; // Show all while loading to avoid flash
+    return NAV_ITEMS.filter((item) => {
+      const requiredPerms = NAV_PERMISSION_MAP[item.id];
+      // If no permissions required (empty array or not mapped), always show
+      if (!requiredPerms || requiredPerms.length === 0) return true;
+      // Otherwise, show only if admin has any of the required permissions
+      return hasAnyPermission(requiredPerms);
+    });
+  }, [loading, hasAnyPermission]);
 
   // Automatically close mobile drawer when route changes
   useEffect(() => {
@@ -58,7 +73,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 no-scrollbar">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Clock,
@@ -238,6 +239,14 @@ function KycStatusBadge({ status }: { status: WithdrawalRequest["kycStatus"] }) 
 }
 
 export default function WithdrawalRequestsPage() {
+  return (
+    <RequirePermission permission="approve-withdrawals">
+      <WithdrawalRequestsPageContent />
+    </RequirePermission>
+  );
+}
+
+function WithdrawalRequestsPageContent() {
   const router = useRouter();
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
   const [search, setSearch] = useState("");

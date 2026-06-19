@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Clock,
@@ -226,6 +227,14 @@ function TypeBadge({ type }: { type: TransactionType }) {
 }
 
 export default function TransactionsDashboard() {
+  return (
+    <RequirePermission permission="view-transactions">
+      <TransactionsDashboardContent />
+    </RequirePermission>
+  );
+}
+
+function TransactionsDashboardContent() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [search, setSearch] = useState("");

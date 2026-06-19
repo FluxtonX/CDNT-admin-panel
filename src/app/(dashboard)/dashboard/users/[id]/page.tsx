@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, FileEdit, Download, Lock, Unlock,
@@ -771,6 +772,14 @@ function AuditLogsTab({ user }: { user: any }) {
 
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function UserDetailPage() {
+  return (
+    <RequirePermission permission="view-users">
+      <UserDetailPageContent />
+    </RequirePermission>
+  );
+}
+
+function UserDetailPageContent() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;

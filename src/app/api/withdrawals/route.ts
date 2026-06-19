@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "approve-withdrawals");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
 
     // Fetch withdrawal requests
@@ -49,6 +52,8 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "approve-withdrawals");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const { requestId, status, rejectionReason, adminNote } = await request.json();
     if (!requestId || !status) {
       return NextResponse.json({ error: "requestId and status are required" }, { status: 400 });

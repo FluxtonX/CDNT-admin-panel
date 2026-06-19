@@ -12,10 +12,19 @@ import {
   Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
 export default function AdminSettingsPage() {
+  return (
+    <RequirePermission permission="edit-settings">
+      <AdminSettingsPageContent />
+    </RequirePermission>
+  );
+}
+
+function AdminSettingsPageContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);

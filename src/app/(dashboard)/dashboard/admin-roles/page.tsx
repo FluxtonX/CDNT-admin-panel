@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import {
   Shield,
   Users,
@@ -65,6 +66,14 @@ const ALL_PERMISSIONS: Permission[] = [
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
 export default function AdminRolesPermissionsPage() {
+  return (
+    <RequirePermission permission="manage-roles">
+      <AdminRolesPermissionsPageContent />
+    </RequirePermission>
+  );
+}
+
+function AdminRolesPermissionsPageContent() {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);

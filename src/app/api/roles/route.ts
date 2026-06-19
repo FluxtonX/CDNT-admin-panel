@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/roles
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
 
     // Fetch roles
@@ -47,6 +50,8 @@ export async function GET() {
 // POST /api/roles
 export async function POST(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
     const { name, description, isActive, permissions } = await request.json();
 
@@ -105,6 +110,8 @@ export async function POST(request: Request) {
 // PATCH /api/roles
 export async function PATCH(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
     const { id, name, description, isActive, permissions } = await request.json();
 
@@ -146,6 +153,8 @@ export async function PATCH(request: Request) {
 // DELETE /api/roles
 export async function DELETE(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

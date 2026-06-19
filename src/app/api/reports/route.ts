@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "view-reports");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabase = createAdminClient();
 
     // 1. Fetch wallet_ledger to calculate total revenue, total transactions, avg transaction

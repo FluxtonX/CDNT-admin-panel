@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Filter, Download, UserPlus, ChevronLeft, ChevronRight,
@@ -391,6 +392,14 @@ function UserRow({
 
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function UsersPage() {
+  return (
+    <RequirePermission permission={["view-users", "edit-users", "delete-users"]}>
+      <UsersPageContent />
+    </RequirePermission>
+  );
+}
+
+function UsersPageContent() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");

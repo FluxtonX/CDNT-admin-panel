@@ -74,8 +74,9 @@ function SetPasswordForm() {
 
       setSuccess(true);
 
-      // 4. Set auth cookie for middleware and redirect to dashboard after a short delay
-      document.cookie = "admin_auth=true; path=/; max-age=86400; SameSite=Lax";
+      // 4. Set auth cookie with admin email for RBAC identity and redirect
+      const adminEmail = verifyData.user.email || "";
+      document.cookie = `admin_auth=${encodeURIComponent(adminEmail)}; path=/; max-age=86400; SameSite=Lax`;
 
       setTimeout(() => {
         router.push("/dashboard");

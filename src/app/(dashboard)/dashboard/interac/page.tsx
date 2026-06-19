@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import {
   Clock,
   CheckCircle2,
@@ -98,6 +99,14 @@ function StatusBadge({ status }: { status: PayoutStatus }) {
 }
 
 export default function InteracPayoutsPage() {
+  return (
+    <RequirePermission permission="approve-withdrawals">
+      <InteracPayoutsPageContent />
+    </RequirePermission>
+  );
+}
+
+function InteracPayoutsPageContent() {
   const [payouts, setPayouts] = useState<InteracPayout[]>([]);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");

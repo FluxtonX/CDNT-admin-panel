@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-wallets");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabase = createAdminClient();
 
     // Sum user balances

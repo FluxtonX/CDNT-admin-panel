@@ -13,11 +13,20 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 
 // Removed static REVENUE_TX_DATA and USER_GROWTH_DATA
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
 export default function ReportsAnalyticsPage() {
+  return (
+    <RequirePermission permission="view-reports">
+      <ReportsAnalyticsPageContent />
+    </RequirePermission>
+  );
+}
+
+function ReportsAnalyticsPageContent() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("Last 6 Months");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

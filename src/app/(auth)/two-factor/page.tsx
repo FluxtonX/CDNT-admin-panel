@@ -74,8 +74,9 @@ export default function TwoFactorPage() {
     }
 
     if (isValid) {
-      // Set a client-side cookie to authenticate the admin
-      document.cookie = "admin_auth=true; path=/; max-age=86400; SameSite=Lax";
+      // Set a client-side cookie with admin email for RBAC identity
+      const authEmail = sessionStorage.getItem("auth_email") || "admin@cdntb.ca";
+      document.cookie = `admin_auth=${encodeURIComponent(authEmail)}; path=/; max-age=86400; SameSite=Lax`;
       try {
         await fetch("/api/security-logs", {
           method: "POST",

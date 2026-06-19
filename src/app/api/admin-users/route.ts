@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +55,10 @@ async function sendInviteEmail(email: string, fullName: string, inviteLink: stri
 }
 
 // GET /api/admin-users
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
 
     const { data, error } = await supabaseAdmin
@@ -217,6 +220,8 @@ export async function POST(request: Request) {
 // PATCH /api/admin-users
 export async function PATCH(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
     const { id, isActive } = await request.json();
 
@@ -255,6 +260,8 @@ export async function PATCH(request: Request) {
 // DELETE /api/admin-users
 export async function DELETE(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "manage-roles");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

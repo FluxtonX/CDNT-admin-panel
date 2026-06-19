@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "edit-settings");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabase = createAdminClient();
 
     const { data, error } = await supabase
@@ -29,6 +32,8 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "edit-settings");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabase = createAdminClient();
     const payload = await request.json();
 

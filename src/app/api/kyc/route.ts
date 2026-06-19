@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "review-kyc");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
     const { data, error } = await supabaseAdmin
       .from("kyc_submissions")
@@ -39,6 +42,8 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const { allowed } = await checkAdminPermission(request, "review-kyc");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const { userId, status } = await request.json();
     const supabaseAdmin = createAdminClient();
 

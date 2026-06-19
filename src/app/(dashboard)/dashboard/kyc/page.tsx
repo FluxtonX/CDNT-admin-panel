@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -394,6 +395,14 @@ function DocumentScanPreview({
 }
 
 export default function KycVerificationPage() {
+  return (
+    <RequirePermission permission={["review-kyc", "view-docs"]}>
+      <KycVerificationPageContent />
+    </RequirePermission>
+  );
+}
+
+function KycVerificationPageContent() {
   const router = useRouter();
   const [requests, setRequests] = useState<KycRequest[]>(INITIAL_REQUESTS);
   const [search, setSearch] = useState("");

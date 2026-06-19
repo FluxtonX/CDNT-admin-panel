@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 
 type WalletType = "Hot" | "Cold";
 type WalletStatus = "Active" | "Paused" | "Suspended";
@@ -157,6 +158,14 @@ function StatusBadge({ status }: { status: WalletStatus }) {
 }
 
 export default function WalletManagementPage() {
+  return (
+    <RequirePermission permission={["manage-wallets", "view-wallets"]}>
+      <WalletManagementPageContent />
+    </RequirePermission>
+  );
+}
+
+function WalletManagementPageContent() {
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);

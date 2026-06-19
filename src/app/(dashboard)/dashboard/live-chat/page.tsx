@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { type AdminUser } from "@/lib/data/users";
 import { supabase } from "@/lib/supabase";
+import { RequirePermission } from "@/components/layout/RequirePermission";
 
 type ChatStatus = "Active" | "Waiting" | "Resolved";
 
@@ -55,6 +56,14 @@ function StatusIndicator({ status }: { status: ChatStatus }) {
 }
 
 export default function LiveChatSupportPage() {
+  return (
+    <RequirePermission permission={["respond-chat", "manage-tickets"]}>
+      <LiveChatSupportPageContent />
+    </RequirePermission>
+  );
+}
+
+function LiveChatSupportPageContent() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>("");
   const [search, setSearch] = useState("");
