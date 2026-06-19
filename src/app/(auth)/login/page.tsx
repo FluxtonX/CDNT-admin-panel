@@ -137,15 +137,14 @@ export default function LoginPage() {
           return;
         }
 
-        // Auth succeeded — verify they exist in admin_users and are active (server-side to bypass RLS)
-        const verifyRes = await fetch("/api/auth/verify-admin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: values.email }),
-        });
-        const { authorized } = await verifyRes.json();
+        // Auth succeeded — verify they exist in admin_users and are active
+        const { data: adminRow, error: adminCheckErr } = await supabase
+          .from("admin_users")
+          .select("is_active")
+          .eq("email", values.email)
+          .single();
 
-        if (!authorized) {
+        if (adminCheckErr || !adminRow || !adminRow.is_active) {
           // Not an authorized admin — sign them out
           await supabase.auth.signOut();
           setLoading(false);
