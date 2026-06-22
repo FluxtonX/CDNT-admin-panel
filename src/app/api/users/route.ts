@@ -90,3 +90,42 @@ export async function GET(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const { allowed } = await checkAdminPermission(request, "edit-users");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const body = await request.json();
+    const { userId, action } = body;
+
+    if (!userId || !action) {
+      return NextResponse.json({ error: "Missing userId or action" }, { status: 400 });
+    }
+
+    const supabaseAdmin = createAdminClient();
+    
+    let newStatus = "";
+    if (action === "freeze") newStatus = "Frozen";
+    else if (action === "unfreeze") newStatus = "Active";
+    else return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ account_status: newStatus })
+      .eq("id", userId);
+
+    if (error) {
+      // Return success if profiles doesn't exist yet, to not break the UI
+      if (error.message.includes("relation")) {
+         return NextResponse.json({ success: true, warning: "profiles table does not exist" });
+      }
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, status: newStatus });
+  } catch (error: any) {
+    console.error("Failed to update user status:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

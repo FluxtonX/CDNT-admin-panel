@@ -13,7 +13,14 @@ import {
   Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { USERS_DATA, type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
+import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
+
+export const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'N/A';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+};
 
 /* ─── Badge helpers ──────────────────────────────────────────────── */
 function KycBadge({ status }: { status: KycStatus }) {
@@ -23,7 +30,7 @@ function KycBadge({ status }: { status: KycStatus }) {
     "Rejected":    { cls: "bg-red-50   text-red-700   border-red-200",   icon: <XCircle       className="h-3.5 w-3.5" /> },
     "Not Started": { cls: "bg-gray-100 text-gray-600  border-gray-200",  icon: <AlertTriangle className="h-3.5 w-3.5" /> },
   };
-  const s = map[status];
+  const s = map[status] || map["Not Started"];
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", s.cls)}>
       {s.icon}{status}
@@ -38,7 +45,7 @@ function AccountBadge({ status }: { status: AccountStatus }) {
     "Frozen":    "bg-blue-50  text-blue-700  border-blue-200",
   };
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[status])}>
+    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[status] || map["Active"])}>
       {status === "Frozen" && <Lock className="h-3.5 w-3.5" />}
       {status}
     </span>
@@ -52,7 +59,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
     "High Risk":   "bg-red-50   text-red-700   border-red-200",
   };
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[level])}>
+    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[level] || map["Low Risk"])}>
       {level === "High Risk" && <AlertTriangle className="h-3.5 w-3.5" />}
       {level}
     </span>
@@ -66,7 +73,7 @@ function InfoField({ icon: Icon, label, value }: { icon: React.ElementType; labe
       <Icon className="h-4 w-4 text-gray-600 mt-0.5 shrink-0" />
       <div>
         <p className="text-xs text-gray-600 mb-0.5">{label}</p>
-        <p className="text-sm font-semibold text-gray-900">{value}</p>
+        <p className="text-sm font-semibold text-gray-900">{value || "N/A"}</p>
       </div>
     </div>
   );
@@ -81,37 +88,6 @@ const TABS = [
   { id: "documents",    label: "Documents",    icon: FileText },
   { id: "support",      label: "Support",      icon: MessageCircle },
   { id: "audit-logs",   label: "Audit Logs",   icon: History },
-];
-
-/* ─── Static tab data ────────────────────────────────────────────── */
-const SESSIONS = [
-  { id: 1, device: "Chrome on Windows", icon: Monitor,    location: "Toronto, Canada", ip: "192.168.1.1",  lastActive: "Jun 2, 2026, 10:30 a.m.", current: true  },
-  { id: 2, device: "Safari on iPhone",  icon: Smartphone, location: "Toronto, Canada", ip: "192.168.1.25", lastActive: "Jun 1, 2026, 06:20 p.m.", current: false },
-];
-
-const TRANSACTIONS = [
-  { id: "TXN-987654", type: "Deposit",    status: "completed", date: "Jun 1, 2026, 02:30 p.m.",  meta: "Hash: 0x1234...5678",       amount: "0.1234 BTC",  usd: "$7,850.00"  },
-  { id: "TXN-987653", type: "Withdrawal", status: "completed", date: "May 30, 2026, 09:15 a.m.", meta: "Method: Interac e-Transfer", amount: "2.5 ETH",     usd: "$8,750.00"  },
-  { id: "TXN-987652", type: "Deposit",    status: "completed", date: "May 28, 2026, 04:45 p.m.", meta: "Hash: 0xabcd...efgh",       amount: "15000 USDT",  usd: "$15,000.00" },
-];
-
-const TICKETS = [
-  {
-    id: "TICKET-1234",
-    subject: "Withdrawal delay",
-    status: "open",
-    priority: "high priority",
-    created: "Jun 1, 2026, 12:00 p.m.",
-    updated: "Jun 2, 2026, 09:00 a.m.",
-  },
-  {
-    id: "TICKET-1233",
-    subject: "Account verification question",
-    status: "resolved",
-    priority: "medium priority",
-    created: "May 28, 2026, 10:00 a.m.",
-    updated: "May 29, 2026, 02:30 p.m.",
-  },
 ];
 
 /* ─── Freeze Account Modal ───────────────────────────────────────── */
@@ -235,7 +211,7 @@ function NoteModal({ onConfirm, onClose }: { onConfirm: (n: string) => void; onC
 
 /* ─── Tab Content Components ─────────────────────────────────────── */
 
-function OverviewTab({ user }: { user: NonNullable<ReturnType<typeof USERS_DATA.find>> }) {
+function OverviewTab({ user }: { user: any }) {
   return (
     <div className="space-y-7">
       <div>
@@ -271,8 +247,8 @@ function OverviewTab({ user }: { user: NonNullable<ReturnType<typeof USERS_DATA.
   );
 }
 
-function SecurityTab() {
-  const [sessions, setSessions] = useState(SESSIONS);
+function SecurityTab({ user }: { user: any }) {
+  const [sessions, setSessions] = useState(user.sessions || []);
   const [revoking, setRevoking] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionDone, setActionDone] = useState<string | null>(null);
@@ -280,16 +256,26 @@ function SecurityTab() {
   const handleRevoke = async (id: number) => {
     setRevoking(id);
     await new Promise((r) => setTimeout(r, 900));
-    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setSessions((prev: any) => prev.filter((s: any) => s.id !== id));
     setRevoking(null);
   };
 
   const handleAction = async (key: string) => {
     setActionLoading(key);
-    await new Promise((r) => setTimeout(r, 1000));
-    setActionLoading(null);
-    setActionDone(key);
-    setTimeout(() => setActionDone(null), 3000);
+    try {
+      const actionMap: Record<string, string> = { "2fa": "reset-2fa", "password": "force-password-reset" };
+      await fetch(`/api/users/${user.id}/security`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: actionMap[key] })
+      });
+      setActionDone(key);
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setActionLoading(null);
+      setTimeout(() => setActionDone(null), 3000);
+    }
   };
 
   return (
@@ -297,9 +283,12 @@ function SecurityTab() {
       {/* Active Sessions */}
       <div>
         <h3 className="text-base font-bold text-gray-900 mb-4">Active Sessions</h3>
+        {(!sessions || sessions.length === 0) && (
+          <p className="text-sm text-gray-600 mb-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100">Sessions will appear here once the user_sessions table tracks active logins.</p>
+        )}
         <div className="space-y-3">
-          {sessions.map((session) => {
-            const Icon = session.icon;
+          {sessions.map((session: any) => {
+            const Icon = Monitor; // Default since icons are not saved in db
             return (
               <motion.div
                 key={session.id}
@@ -315,15 +304,15 @@ function SecurityTab() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2.5 mb-0.5">
-                      <span className="text-sm font-semibold text-gray-900">{session.device}</span>
+                      <span className="text-sm font-semibold text-gray-900">{session.device || "Unknown Device"}</span>
                       {session.current && (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">
                           Current
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600">{session.location} • {session.ip}</p>
-                    <p className="text-xs text-gray-600 mt-0.5">Last active: {session.lastActive}</p>
+                    <p className="text-xs text-gray-600">{session.location || "Unknown"} • {session.ip || "Unknown"}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">Last active: {formatDate(session.last_active || session.created_at)}</p>
                   </div>
                 </div>
                 {!session.current && (
@@ -343,9 +332,6 @@ function SecurityTab() {
               </motion.div>
             );
           })}
-          {sessions.length === 0 && (
-            <p className="text-sm text-gray-600 text-center py-6">No active sessions.</p>
-          )}
         </div>
       </div>
 
@@ -393,8 +379,8 @@ function SecurityTab() {
   );
 }
 
-function TransactionsTab() {
-  const statusStyle = {
+function TransactionsTab({ user }: { user: any }) {
+  const statusStyle: Record<string, string> = {
     completed: "bg-green-50 text-green-600 border-green-200",
     pending:   "bg-amber-50 text-amber-600 border-amber-200",
     failed:    "bg-red-50   text-red-600   border-red-200",
@@ -404,9 +390,11 @@ function TransactionsTab() {
     <div>
       <h3 className="text-base font-bold text-gray-900 mb-4">Recent Transactions</h3>
       <div className="space-y-3">
-        {TRANSACTIONS.map((tx, i) => (
+        {(!user.transactions || user.transactions.length === 0) ? (
+          <p className="text-sm text-gray-500 py-4 text-center">No transactions found.</p>
+        ) : user.transactions.map((tx: any, i: number) => (
           <motion.div
-            key={tx.id}
+            key={tx.id || i}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06 }}
@@ -414,17 +402,17 @@ function TransactionsTab() {
           >
             <div>
               <div className="flex items-center gap-2.5 mb-1">
-                <span className="text-sm font-bold text-gray-900">{tx.type}</span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[tx.status as keyof typeof statusStyle])}>
-                  {tx.status}
+                <span className="text-sm font-bold text-gray-900">{tx.type || "Transfer"}</span>
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[tx.status || "completed"] || statusStyle.completed)}>
+                  {tx.status || "completed"}
                 </span>
               </div>
-              <p className="text-xs text-gray-600">{tx.id} • {tx.date}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{tx.meta}</p>
+              <p className="text-xs text-gray-600">{tx.id || tx.transaction_id || "TXN"} • {formatDate(tx.created_at)}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{tx.metadata || ""}</p>
             </div>
             <div className="text-right shrink-0 ml-6">
-              <p className="text-sm font-bold text-gray-900">{tx.amount}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{tx.usd}</p>
+              <p className="text-sm font-bold text-gray-900">{tx.amount} {tx.currency}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{(Number(tx.amount || 0) * 1.36).toLocaleString("en-US", {style:"currency",currency:"CAD"})}</p>
             </div>
           </motion.div>
         ))}
@@ -433,7 +421,7 @@ function TransactionsTab() {
   );
 }
 
-function SupportTab() {
+function SupportTab({ user }: { user: any }) {
   const statusStyle: Record<string, string> = {
     open:     "bg-orange-50 text-orange-600 border-orange-200",
     resolved: "bg-green-50  text-green-600  border-green-200",
@@ -450,9 +438,11 @@ function SupportTab() {
     <div>
       <h3 className="text-base font-bold text-gray-900 mb-4">Support Tickets</h3>
       <div className="space-y-3">
-        {TICKETS.map((ticket, i) => (
+        {(!user.tickets || user.tickets.length === 0) ? (
+          <p className="text-sm text-gray-500 py-4 text-center">No support tickets found.</p>
+        ) : user.tickets.map((ticket: any, i: number) => (
           <motion.div
-            key={ticket.id}
+            key={ticket.id || i}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07 }}
@@ -460,16 +450,16 @@ function SupportTab() {
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2.5 flex-wrap mb-1">
-                <span className="text-sm font-bold text-gray-900">{ticket.subject}</span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status])}>
-                  {ticket.status}
+                <span className="text-sm font-bold text-gray-900">{ticket.subject || "Support Request"}</span>
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status || "open"] || statusStyle.open)}>
+                  {ticket.status || "open"}
                 </span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", priorityStyle[ticket.priority])}>
-                  {ticket.priority}
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", priorityStyle[ticket.priority || "medium priority"] || priorityStyle["medium priority"])}>
+                  {ticket.priority || "medium priority"}
                 </span>
               </div>
-              <p className="text-xs text-gray-600">{ticket.id} • Created {ticket.created}</p>
-              <p className="text-xs text-gray-600 mt-0.5">Last updated {ticket.updated}</p>
+              <p className="text-xs text-gray-600">{ticket.id} • Created {formatDate(ticket.created_at)}</p>
+              <p className="text-xs text-gray-600 mt-0.5">Last updated {formatDate(ticket.updated_at || ticket.created_at)}</p>
             </div>
             <button
               onClick={() => alert(`Opening ticket ${ticket.id}…`)}
@@ -537,7 +527,6 @@ function PortfolioTab({ user }: { user: any }) {
       : `${(100 / rawAssets.length).toFixed(1)}%`,
   }));
 
-
   return (
     <div className="space-y-6">
       <div>
@@ -569,7 +558,6 @@ function PortfolioTab({ user }: { user: any }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {assets.map((asset: any) => (
             <div key={asset.coin} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
-
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: asset.color }}>
                   {asset.coin.slice(0, 3)}
@@ -592,48 +580,54 @@ function PortfolioTab({ user }: { user: any }) {
 }
 
 /* ─── Documents Tab ──────────────────────────────────────────────── */
-function DocumentsTab() {
-  const [docs, setDocs] = useState([
-    { id: "doc-1", type: "Passport / ID Card", name: "passport_scan.pdf", date: "Jun 1, 2026", status: "Approved" },
-    { id: "doc-2", type: "Proof of Address", name: "utility_bill.pdf", date: "Jun 1, 2026", status: "Approved" },
-  ]);
-
+function DocumentsTab({ user }: { user: any }) {
+  const [docs, setDocs] = useState(user.documents || []);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
   const statusStyle: Record<string, string> = {
-    Approved: "bg-green-50 text-green-600 border-green-200",
-    Pending:  "bg-amber-50 text-amber-600 border-amber-200",
-    Rejected: "bg-red-50 text-red-600 border-red-200",
+    approved: "bg-green-50 text-green-600 border-green-200",
+    pending:  "bg-amber-50 text-amber-600 border-amber-200",
+    rejected: "bg-red-50 text-red-600 border-red-200",
   };
 
   return (
     <div className="space-y-6">
       <h3 className="text-base font-bold text-gray-900 mb-4">Uploaded Verification Documents</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {docs.map((doc) => (
-          <div key={doc.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
-                <FileText className="h-5 w-5 text-gray-600" />
+        {(!docs || docs.length === 0) && (
+          <p className="text-sm text-gray-500 py-4">No documents uploaded.</p>
+        )}
+        {docs.map((doc: any, idx: number) => {
+          const type = doc.document_type || "Verification Document";
+          const name = doc.file_url ? doc.file_url.split("/").pop() : "document.pdf";
+          const date = formatDate(doc.created_at);
+          const status = doc.status || "pending";
+          
+          return (
+            <div key={doc.id || idx} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm">
+                  <FileText className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">{type}</h4>
+                  <p className="text-xs text-gray-600">{name} • {date}</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-gray-900">{doc.type}</h4>
-                <p className="text-xs text-gray-600">{doc.name} • {doc.date}</p>
+              <div className="flex items-center gap-3">
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[status] || statusStyle.pending)}>
+                  {status === "approved" ? "Approved" : status === "rejected" ? "Rejected" : "Pending"}
+                </span>
+                <button
+                  onClick={() => setSelectedDoc({ ...doc, _type: type, _name: name, _date: date })}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+                >
+                  <Eye className="h-3.5 w-3.5" /> View
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[doc.status])}>
-                {doc.status}
-              </span>
-              <button
-                onClick={() => setSelectedDoc(doc)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
-              >
-                <Eye className="h-3.5 w-3.5" /> View
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <AnimatePresence>
@@ -650,8 +644,8 @@ function DocumentsTab() {
             >
               <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-gray-900">{selectedDoc.type}</h3>
-                  <p className="text-xs text-gray-600">{selectedDoc.name}</p>
+                  <h3 className="font-bold text-gray-900">{selectedDoc._type}</h3>
+                  <p className="text-xs text-gray-600">{selectedDoc._name}</p>
                 </div>
                 <button onClick={() => setSelectedDoc(null)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">
                   <XCircle className="h-4 w-4" />
@@ -660,12 +654,13 @@ function DocumentsTab() {
               <div className="p-8 bg-gray-50 flex flex-col items-center justify-center min-h-[200px] border-b border-gray-100">
                 <FileText className="h-16 w-16 text-gray-300 mb-3" />
                 <p className="text-sm font-semibold text-gray-600">Verification Document Scan</p>
-                <p className="text-xs text-gray-600 mt-1">Uploaded securely on {selectedDoc.date}</p>
+                <p className="text-xs text-gray-600 mt-1">Uploaded securely on {selectedDoc._date}</p>
               </div>
               <div className="p-4 bg-gray-50/50 flex justify-end gap-3">
                 <button
                   onClick={() => {
-                    setDocs((prev) => prev.map((d) => d.id === selectedDoc.id ? { ...d, status: "Rejected" } : d));
+                    fetch("/api/kyc", { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, status: "rejected", rejectionReason: "Rejected by admin" }) });
+                    setDocs((prev:any) => prev.map((d:any) => d.id === selectedDoc.id ? { ...d, status: "rejected" } : d));
                     setSelectedDoc(null);
                   }}
                   className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-red-600 hover:bg-red-50/50 transition-colors"
@@ -674,7 +669,8 @@ function DocumentsTab() {
                 </button>
                 <button
                   onClick={() => {
-                    setDocs((prev) => prev.map((d) => d.id === selectedDoc.id ? { ...d, status: "Approved" } : d));
+                    fetch("/api/kyc", { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, status: "approved" }) });
+                    setDocs((prev:any) => prev.map((d:any) => d.id === selectedDoc.id ? { ...d, status: "approved" } : d));
                     setSelectedDoc(null);
                   }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
@@ -722,22 +718,14 @@ function AuditLogsTab({ user }: { user: any }) {
     }
   }, [user]);
 
-  const baseEvents = [
-    { date: "Jun 2, 2026, 10:30 a.m.", title: "User logged in", desc: "Chrome on Windows • Toronto, Canada (192.168.1.1)" },
-    { date: "Jun 1, 2026, 06:20 p.m.", title: "User logged in", desc: "Safari on iPhone • Toronto, Canada (192.168.1.25)" },
-    { date: "Jun 1, 2026, 02:30 p.m.", title: "Deposit completed", desc: "0.1234 BTC credited to user balance" },
-    { date: "Jun 1, 2026, 12:00 p.m.", title: "Support ticket created", desc: "Ticket TICKET-1234 (Withdrawal delay) opened by user" },
-    { date: "May 30, 2026, 09:15 a.m.", title: "Withdrawal completed", desc: "2.5 ETH sent to external address" },
-    { date: "May 28, 2026, 10:00 a.m.", title: "KYC Approved", desc: "Automatic systems verified and approved identity information" },
-    { date: "March 15, 2024, 09:00 a.m.", title: "Account Created", desc: "Initial email registration and confirmation" },
-  ];
-
+  const baseEvents = (user.security_logs || []).map((l:any) => ({ date: formatDate(l.timestamp), title: l.action || "Activity", desc: l.details || "System action logged" }));
   const events = [...announcements, ...baseEvents];
 
   return (
     <div>
       <h3 className="text-base font-bold text-gray-900 mb-6">Account Activity Log</h3>
       <div className="relative border-l border-gray-100 ml-3 pl-6 space-y-6">
+        {events.length === 0 && <p className="text-sm text-gray-500">No activity logs found.</p>}
         {events.map((event, i) => (
           <div key={i} className="relative">
             <span className={cn(
@@ -784,30 +772,67 @@ function UserDetailPageContent() {
   const params = useParams();
   const userId = params.id as string;
 
-  const [users, setUsers] = useState<any[]>([]);
+  const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await fetch("/api/users", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users || []);
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        const formattedUser = {
+          id: userId,
+          name: data.profile?.full_name || data.auth?.user_metadata?.full_name || "Unknown User",
+          email: data.auth?.email,
+          phone: data.profile?.phone || data.auth?.phone || "N/A",
+          dateOfBirth: data.kyc?.date_of_birth,
+          street: data.kyc?.street_address,
+          city: data.kyc?.city,
+          postalCode: data.kyc?.postal_code,
+          country: data.kyc?.country,
+          joinedDate: formatDate(data.auth?.created_at || new Date().toISOString()),
+          lastLogin: data.auth?.last_sign_in_at ? formatDate(data.auth.last_sign_in_at) : "N/A",
+          twoFactor: data.profile?.two_factor_enabled || false,
+          lastIp: data.profile?.last_ip || "N/A",
+          wallets: data.wallets || [],
+          transactions: data.transactions || [],
+          sessions: data.sessions || [],
+          documents: data.kycDocuments || [],
+          tickets: data.tickets || [],
+          security_logs: data.securityLogs || [],
+          notes: data.notes || [],
+          account: data.profile?.account_status || "Active",
+          risk: data.profile?.risk_level || "Low Risk",
+          kyc: data.kyc?.status === "approved" ? "Verified" : data.kyc?.status === "rejected" ? "Rejected" : data.kyc?.status === "pending" ? "Pending" : "Not Started",
+          balance: 0
+        };
+        
+        const rates: Record<string, number> = { BTC: 90000, ETH: 4500, USDT: 1.36, USDC: 1.36 };
+        let totalBalance = 0;
+        for (const w of formattedUser.wallets) {
+            const r = rates[w.currency?.toUpperCase()] || 1.36;
+            totalBalance += Number(w.balance || 0) * r;
         }
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      } finally {
-        setLoading(false);
+        formattedUser.balance = totalBalance;
+        
+        setUserData(formattedUser);
       }
-    };
-    fetchUsers();
-  }, []);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const user = users.find((u) => u.id === userId);
+  useEffect(() => {
+    fetchUsers();
+  }, [userId]);
+
+  const user = userData;
 
   const [activeTab, setActiveTab]         = useState("overview");
-  const [isFrozen, setIsFrozen]           = useState(user?.account === "Frozen");
+  const [isFrozen, setIsFrozen]           = useState(false);
+  useEffect(() => { if (user) setIsFrozen(user.account === "Frozen"); }, [user]);
   const [showFreezeModal, setShowFreeze]  = useState(false);
   const [showNoteModal, setShowNote]      = useState(false);
   const [noteSaved, setNoteSaved]         = useState(false);
@@ -870,7 +895,14 @@ function UserDetailPageContent() {
               <Download className="h-4 w-4" /> Export
             </button>
             <motion.button whileTap={{ scale: 0.97 }}
-              onClick={() => isFrozen ? setIsFrozen(false) : setShowFreeze(true)}
+              onClick={async () => {
+                if (isFrozen) {
+                   await fetch(`/api/users`, { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, action: "unfreeze" }) });
+                   setIsFrozen(false);
+                } else {
+                   setShowFreeze(true);
+                }
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all"
               style={{ background: isFrozen ? "#22C55E" : "#F59E0B" }}>
               {isFrozen ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -882,7 +914,7 @@ function UserDetailPageContent() {
         {/* ── 4 Info Cards */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {[
-            { label: "Total Balance",  content: <p className="text-xl font-bold text-gray-900">${user.balance.toLocaleString("en-US",{minimumFractionDigits:2})}</p>, icon: Wallet,        iconBg: "bg-blue-50",  iconColor: "text-blue-600" },
+            { label: "Total Balance",  content: <p className="text-xl font-bold text-gray-900">${(user.balance || 0).toLocaleString("en-US",{minimumFractionDigits:2})}</p>, icon: Wallet,        iconBg: "bg-blue-50",  iconColor: "text-blue-600" },
             { label: "KYC Status",     content: <KycBadge status={user.kyc} />,          icon: CheckCircle2,  iconBg: "bg-green-50", iconColor: "text-green-500" },
             { label: "Account Status", content: <AccountBadge status={currentAccount} />, icon: Shield,        iconBg: "bg-blue-50",  iconColor: "text-blue-500" },
             { label: "Risk Level",     content: <RiskBadge level={user.risk} />,          icon: AlertTriangle, iconBg: "bg-amber-50", iconColor: "text-amber-500" },
@@ -925,12 +957,29 @@ function UserDetailPageContent() {
               <motion.div key={activeTab}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                {activeTab === "overview"      && <OverviewTab user={user} />}
+                {activeTab === "overview"      && (
+                  <>
+                    <OverviewTab user={user} />
+                    {user.notes && user.notes.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-gray-100">
+                        <h3 className="text-base font-bold text-gray-900 mb-4">Admin Notes</h3>
+                        <div className="space-y-3">
+                          {user.notes.map((n:any) => (
+                            <div key={n.id} className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl">
+                              <p className="text-sm text-gray-800">{n.note}</p>
+                              <p className="text-xs text-gray-500 mt-2">Added by {n.created_by} on {formatDate(n.created_at)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
                 {activeTab === "portfolio"     && <PortfolioTab user={user} />}
-                {activeTab === "transactions"  && <TransactionsTab />}
-                {activeTab === "security"      && <SecurityTab />}
-                {activeTab === "documents"     && <DocumentsTab />}
-                {activeTab === "support"       && <SupportTab />}
+                {activeTab === "transactions"  && <TransactionsTab user={user} />}
+                {activeTab === "security"      && <SecurityTab user={user} />}
+                {activeTab === "documents"     && <DocumentsTab user={user} />}
+                {activeTab === "support"       && <SupportTab user={user} />}
                 {activeTab === "audit-logs"    && <AuditLogsTab user={user} />}
               </motion.div>
             </AnimatePresence>
@@ -940,10 +989,17 @@ function UserDetailPageContent() {
 
       {/* Modals */}
       <AnimatePresence>
-        {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={() => { setIsFrozen(true); setShowFreeze(false); }} />}
+        {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={async (reason) => { 
+          await fetch(`/api/users`, { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, action: "freeze", reason }) });
+          setIsFrozen(true); setShowFreeze(false); 
+        }} />}
       </AnimatePresence>
       <AnimatePresence>
-        {showNoteModal && <NoteModal onClose={() => setShowNote(false)} onConfirm={() => { setShowNote(false); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 3000); }} />}
+        {showNoteModal && <NoteModal onClose={() => setShowNote(false)} onConfirm={async (note) => { 
+          await fetch(`/api/users/notes`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, note }) });
+          setShowNote(false); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 3000); 
+          fetchUsers(); // Refresh notes
+        }} />}
       </AnimatePresence>
 
       {/* Toast */}

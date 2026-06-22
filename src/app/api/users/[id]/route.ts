@@ -1,0 +1,84 @@
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase-admin";
+import { checkAdminPermission } from "@/lib/checkAdminPermission";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const { allowed } = await checkAdminPermission(request, "view-users");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const supabaseAdmin = createAdminClient();
+    const { id: userId } = await context.params;
+
+    console.log("Fetching user details for userId:", userId);
+
+    // 1. Fetch Auth User
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (authErr || !user) {
+      console.error("Auth user not found for ID:", userId, authErr);
+      return NextResponse.json({ error: authErr?.message || "User genuinely does not exist in auth.users" }, { status: 404 });
+    }
+
+    console.log("Auth user found:", user.email);
+
+    // Helper to safely fetch from tables that might not exist
+    const safeFetch = async (table: string, query: object = {}) => {
+      try {
+        const { data, error } = await supabaseAdmin.from(table).select("*").match(query);
+        if (error) {
+          // If relation does not exist or column does not exist, fail silently and return empty
+          console.warn(`SafeFetch Warning (${table}):`, error.message);
+          return [];
+        }
+        return data || [];
+      } catch (e: any) {
+        console.warn(`SafeFetch Exception (${table}):`, e.message);
+        return [];
+      }
+    };
+
+    // 2. Fetch related data concurrently
+    const [
+      profiles,
+      kyc,
+      wallets,
+      transactions,
+      sessions,
+      notes,
+      securityLogs,
+      tickets
+    ] = await Promise.all([
+      safeFetch("profiles", { id: userId }),
+      safeFetch("kyc_submissions", { user_id: userId }),
+      safeFetch("user_wallets", { user_id: userId }),
+      safeFetch("transactions", { user_id: userId }),
+      safeFetch("user_sessions", { user_id: userId }),
+      safeFetch("admin_notes", { user_id: userId }),
+      safeFetch("security_logs", { user_id: userId }),
+      safeFetch("support_tickets", { user_id: userId }),
+    ]);
+
+    const profile = profiles[0] || {};
+    const kycSubmission = kyc[0] || {};
+
+    // Combine data into a structured payload
+    return NextResponse.json({
+      auth: user,
+      profile,
+      kyc: kycSubmission,
+      kycDocuments: kyc, // In case there are multiple or history
+      wallets,
+      transactions: transactions.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20),
+      sessions,
+      notes: notes.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+      securityLogs: securityLogs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+      tickets: tickets.sort((a: any, b: any) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()),
+    });
+
+  } catch (error: any) {
+    console.error("Failed to fetch user details:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
