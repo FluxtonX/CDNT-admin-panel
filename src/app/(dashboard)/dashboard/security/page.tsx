@@ -174,7 +174,7 @@ export default function SecurityLogsAuditTrailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-bold text-gray-900 leading-tight">Security Logs & Audit Trail</h1>
-          <p className="mt-1 text-sm text-gray-500">Monitor security events and audit all platform activities</p>
+          <p className="mt-1 text-sm text-gray-600">Monitor security events and audit all platform activities</p>
         </div>
 
         {/* Export & Calendar Filters */}
@@ -185,9 +185,9 @@ export default function SecurityLogsAuditTrailPage() {
               onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
               className="flex items-center gap-2 px-4 h-10 border border-gray-200 rounded-xl bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer select-none"
             >
-              <Calendar className="h-4 w-4 text-gray-400" />
+              <Calendar className="h-4 w-4 text-gray-600" />
               {dateRange}
-              <ChevronDown className="h-4 w-4 text-gray-400 transition-transform" style={{ transform: isDateDropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
+              <ChevronDown className="h-4 w-4 text-gray-600 transition-transform" style={{ transform: isDateDropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
             </button>
             <AnimatePresence>
               {isDateDropdownOpen && (
@@ -205,7 +205,7 @@ export default function SecurityLogsAuditTrailPage() {
                         onClick={() => selectDateRange(r)}
                         className={cn(
                           "w-full text-left px-4 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors",
-                          dateRange === r ? "text-blue-600 bg-blue-50/20" : "text-gray-500"
+                          dateRange === r ? "text-blue-600 bg-blue-50/20" : "text-gray-600"
                         )}
                       >
                         {r}
@@ -245,7 +245,7 @@ export default function SecurityLogsAuditTrailPage() {
             {/* Critical Events */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Critical Events</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Critical Events</span>
                 <div className="h-9 w-9 rounded-xl bg-red-50 flex items-center justify-center text-red-600 border border-red-100">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
@@ -259,7 +259,7 @@ export default function SecurityLogsAuditTrailPage() {
             {/* Warnings */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Warnings</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Warnings</span>
                 <div className="h-9 w-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
@@ -273,7 +273,7 @@ export default function SecurityLogsAuditTrailPage() {
             {/* Auth Failures */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] font-extrabold text-gray-400 font-mono tracking-wider">
+                <div className="text-[10px] font-extrabold text-gray-600 font-mono tracking-wider">
                   SHOWING {logs.length} LOGS
                 </div>
                 <div className="h-9 w-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100">
@@ -282,21 +282,21 @@ export default function SecurityLogsAuditTrailPage() {
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-black text-gray-900 leading-none">{stats.failedLogins}</p>
-                <p className="text-[10px] text-gray-400 font-bold mt-1.5 font-mono">Last 24 hours</p>
+                <p className="text-[10px] text-gray-600 font-bold mt-1.5 font-mono">Last 24 hours</p>
               </div>
             </div>
 
             {/* Admin Actions */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Admin Actions</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Admin Actions</span>
                 <div className="h-9 w-9 rounded-xl bg-blue-50/70 flex items-center justify-center text-blue-600 border border-blue-100">
                   <Shield className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-black text-gray-900 leading-none">{stats.totalEvents}</p>
-                <p className="text-[10px] text-gray-400 font-bold mt-1.5 font-mono">Last 24 hours</p>
+                <p className="text-[10px] text-gray-600 font-bold mt-1.5 font-mono">Last 24 hours</p>
               </div>
             </div>
           </>
@@ -307,12 +307,12 @@ export default function SecurityLogsAuditTrailPage() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by action, user, ID, or IP address..."
-            className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs font-semibold text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50"
+            className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs font-semibold text-gray-800 outline-none transition-all placeholder:text-gray-500 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50"
           />
         </div>
 
@@ -373,7 +373,7 @@ export default function SecurityLogsAuditTrailPage() {
         <div className="overflow-x-auto w-full no-scrollbar">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-[10px] font-black uppercase tracking-wider text-gray-500">
+              <tr className="border-b border-gray-200 bg-gray-50 text-[10px] font-black uppercase tracking-wider text-gray-600">
                 <th className="py-4 px-6">Timestamp</th>
                 <th className="py-4 px-6">Action</th>
                 <th className="py-4 px-6">Category</th>
@@ -404,7 +404,7 @@ export default function SecurityLogsAuditTrailPage() {
                 ))
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-sm font-medium text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm font-medium text-gray-600">
                     No logs found matching your criteria.
                   </td>
                 </tr>
@@ -416,14 +416,14 @@ export default function SecurityLogsAuditTrailPage() {
                     className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors cursor-pointer group"
                   >
                     {/* Timestamp */}
-                    <td className="py-4.5 px-6 font-mono text-[11px] text-gray-500 font-bold whitespace-nowrap">
+                    <td className="py-4.5 px-6 font-mono text-[11px] text-gray-600 font-bold whitespace-nowrap">
                       {log.timestamp}
                     </td>
 
                     {/* Action & ID */}
                     <td className="py-4.5 px-6">
                       <p className="font-extrabold text-gray-900 leading-tight">{log.action}</p>
-                      <span className="text-[10px] text-gray-500 font-mono mt-0.5 block font-bold">{log.id}</span>
+                      <span className="text-[10px] text-gray-600 font-mono mt-0.5 block font-bold">{log.id}</span>
                     </td>
 
                     {/* Category */}
@@ -450,11 +450,11 @@ export default function SecurityLogsAuditTrailPage() {
                     {/* User & UserID */}
                     <td className="py-4.5 px-6">
                       <p className="font-extrabold text-gray-900 leading-tight">{log.user}</p>
-                      <span className="text-[10px] text-gray-500 font-mono mt-0.5 block font-bold">{log.userId}</span>
+                      <span className="text-[10px] text-gray-600 font-mono mt-0.5 block font-bold">{log.userId}</span>
                     </td>
 
                     {/* IP Address */}
-                    <td className="py-4.5 px-6 font-mono font-bold text-gray-500 whitespace-nowrap">
+                    <td className="py-4.5 px-6 font-mono font-bold text-gray-600 whitespace-nowrap">
                       {log.ipAddress}
                     </td>
 
@@ -462,7 +462,7 @@ export default function SecurityLogsAuditTrailPage() {
                     <td className="py-4.5 px-6 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setSelectedLogId(log.id)}
-                        className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors mx-auto cursor-pointer"
+                        className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-gray-600 hover:text-gray-700 transition-colors mx-auto cursor-pointer"
                         title="View Log Details"
                       >
                         <Eye className="h-4 w-4" />
@@ -490,11 +490,11 @@ export default function SecurityLogsAuditTrailPage() {
               <div className="flex items-start justify-between pb-3 border-b border-gray-100">
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-base leading-none">Security Log Details</h3>
-                  <span className="text-[10px] text-gray-500 font-mono mt-1.5 block font-bold">{selectedLog.id}</span>
+                  <span className="text-[10px] text-gray-600 font-mono mt-1.5 block font-bold">{selectedLog.id}</span>
                 </div>
                 <button
                   onClick={() => setSelectedLogId(null)}
-                  className="p-1 text-gray-400 hover:text-gray-750 hover:bg-gray-50 rounded-lg cursor-pointer shrink-0"
+                  className="p-1 text-gray-600 hover:text-gray-750 hover:bg-gray-50 rounded-lg cursor-pointer shrink-0"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -522,13 +522,13 @@ export default function SecurityLogsAuditTrailPage() {
 
               {/* Action Title */}
               <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Action</span>
+                <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Action</span>
                 <h4 className="text-base font-black text-gray-900">{selectedLog.action}</h4>
               </div>
 
               {/* Details Text */}
               <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Details</span>
+                <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Details</span>
                 <p className="text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3.5 leading-relaxed">
                   {selectedLog.details}
                 </p>
@@ -538,26 +538,26 @@ export default function SecurityLogsAuditTrailPage() {
               <div className="grid grid-cols-2 gap-4 text-xs">
                 {/* User */}
                 <div>
-                  <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">User</span>
+                  <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">User</span>
                   <p className="font-extrabold text-gray-900 mt-0.5 leading-tight">{selectedLog.user}</p>
-                  <span className="text-[9px] text-gray-500 font-mono font-bold mt-0.5 block">{selectedLog.userId}</span>
+                  <span className="text-[9px] text-gray-600 font-mono font-bold mt-0.5 block">{selectedLog.userId}</span>
                 </div>
 
                 {/* Timestamp */}
                 <div>
-                  <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Timestamp</span>
+                  <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Timestamp</span>
                   <p className="font-bold font-mono text-gray-800 mt-0.5">{selectedLog.timestamp}</p>
                 </div>
 
                 {/* IP Address */}
                 <div>
-                  <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">IP Address</span>
+                  <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">IP Address</span>
                   <p className="font-bold font-mono text-gray-800 mt-0.5">{selectedLog.ipAddress}</p>
                 </div>
 
                 {/* User Agent */}
                 <div>
-                  <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">User Agent</span>
+                  <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">User Agent</span>
                   <p className="font-bold text-gray-800 mt-0.5">{selectedLog.userAgent}</p>
                 </div>
               </div>

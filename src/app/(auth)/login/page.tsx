@@ -186,7 +186,7 @@ export default function LoginPage() {
       <div className="w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-8">
           <h2 className="text-[22px] font-bold text-gray-900 mb-1">Admin Login</h2>
-          <p className="text-gray-500 text-sm mb-7">Enter your administrator credentials</p>
+          <p className="text-gray-600 text-sm mb-7">Enter your administrator credentials</p>
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
             {/* Auth error banner */}
@@ -210,7 +210,7 @@ export default function LoginPage() {
                 Admin Email
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">
                   <Mail className="h-4.5 w-4.5" />
                 </span>
                 <input
@@ -221,7 +221,7 @@ export default function LoginPage() {
                   value={values.email}
                   onChange={handleChange("email")}
                   onBlur={handleBlur("email")}
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-gray-900 text-sm placeholder:text-gray-400 outline-none transition-all duration-200
+                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-gray-900 text-sm placeholder:text-gray-500 outline-none transition-all duration-200
                     ${errors.email
                       ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-200"
                       : "border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -249,7 +249,7 @@ export default function LoginPage() {
                 Password
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">
                   <Lock className="h-4.5 w-4.5" />
                 </span>
                 <input
@@ -260,7 +260,7 @@ export default function LoginPage() {
                   value={values.password}
                   onChange={handleChange("password")}
                   onBlur={handleBlur("password")}
-                  className={`w-full pl-10 pr-11 py-3 rounded-xl border text-gray-900 text-sm placeholder:text-gray-400 outline-none transition-all duration-200
+                  className={`w-full pl-10 pr-11 py-3 rounded-xl border text-gray-900 text-sm placeholder:text-gray-500 outline-none transition-all duration-200
                     ${errors.password
                       ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-200"
                       : "border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -269,7 +269,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600 transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
@@ -311,7 +311,7 @@ export default function LoginPage() {
           </form>
 
           {/* Demo credentials */}
-          <p className="text-center text-xs text-gray-400 mt-5">
+          <p className="text-center text-xs text-gray-600 mt-5">
             Demo credentials:{" "}
             <button
               type="button"

@@ -68,7 +68,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           alt="CDNT Logo"
           className="h-9 w-auto object-contain self-start"
         />
-        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider pl-0.5">Admin Portal</p>
+        <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider pl-0.5">Admin Portal</p>
       </div>
 
       {/* Navigation */}
@@ -96,7 +96,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               }
             >
               <Icon
-                className={cn("h-[15px] w-[15px] shrink-0", isActive ? "text-white" : "text-gray-400 group-hover:text-gray-600")}
+                className={cn("h-[15px] w-[15px] shrink-0", isActive ? "text-white" : "text-gray-600 group-hover:text-gray-600")}
                 strokeWidth={isActive ? 2.2 : 1.8}
               />
               <span className="truncate">{item.label}</span>
@@ -138,7 +138,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               <div className="absolute top-4 right-4 z-10">
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                   aria-label="Close Menu"
                 >
                   <X className="h-4 w-4" />

@@ -228,7 +228,7 @@ function KycStatusBadge({ status }: { status: WithdrawalRequest["kycStatus"] }) 
     verified: "bg-green-50 text-green-700 border-green-200",
     pending: "bg-amber-50 text-amber-700 border-amber-200",
     rejected: "bg-red-50 text-red-700 border-red-200",
-    "not started": "bg-gray-100 text-gray-650 border-gray-200",
+    "not started": "bg-gray-100 text-gray-700 border-gray-200",
   };
 
   return (
@@ -499,7 +499,7 @@ function WithdrawalRequestsPageContent() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Withdrawal Requests</h1>
-            <p className="mt-1 text-sm text-gray-500 sm:text-base">Review and approve withdrawal requests from users</p>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">Review and approve withdrawal requests from users</p>
           </div>
           <button
             onClick={() => {
@@ -518,7 +518,7 @@ function WithdrawalRequestsPageContent() {
           {stats.map((stat) => (
             <div key={stat.label} className="flex min-h-[134px] items-center justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div>
-                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
                 <p className={cn("mt-2 text-3xl font-bold leading-none", stat.tone)}>{stat.value}</p>
               </div>
               {stat.icon}
@@ -530,18 +530,18 @@ function WithdrawalRequestsPageContent() {
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 p-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-600" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search..."
-                className="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 pl-12 pr-11 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 sm:text-base"
+                className="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 pl-12 pr-11 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-500 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 sm:text-base"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
                   aria-label="Clear search"
-                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -563,7 +563,7 @@ function WithdrawalRequestsPageContent() {
                     "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-155 cursor-pointer shadow-sm",
                     active
                       ? "bg-[#0A3D91] text-white"
-                      : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      : "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-700"
                   )}
                 >
                   {tab.label}
@@ -578,7 +578,7 @@ function WithdrawalRequestsPageContent() {
             {/* Header row */}
             <div className="grid min-w-[1150px] grid-cols-[1.1fr_1.8fr_1.3fr_1.1fr_1.1fr_1.1fr_1.6fr_120px] gap-4 bg-gray-50 px-5 py-3 border-b border-gray-200/80">
               {["Request ID", "User", "Amount", "Crypto", "Risk", "KYC", "Request Date", "Actions"].map((heading) => (
-                <span key={heading} className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 font-mono">{heading}</span>
+                <span key={heading} className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 font-mono">{heading}</span>
               ))}
             </div>
 
@@ -613,7 +613,7 @@ function WithdrawalRequestsPageContent() {
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-400 bg-white"
+                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-600 bg-white"
                 >
                   No withdrawal requests found.
                 </motion.div>
@@ -629,11 +629,11 @@ function WithdrawalRequestsPageContent() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-bold text-gray-900 text-sm">{request.user.name}</p>
-                        <p className="truncate text-xs text-gray-400">{request.user.email}</p>
+                        <p className="truncate text-xs text-gray-600">{request.user.email}</p>
                       </div>
                       <div>
                         <p className="font-extrabold text-gray-900 text-sm">${request.amount.toLocaleString()}</p>
-                        <p className="text-[10px] text-gray-400 font-extrabold uppercase font-mono tracking-wider">CAD</p>
+                        <p className="text-[10px] text-gray-600 font-extrabold uppercase font-mono tracking-wider">CAD</p>
                       </div>
                       <div>
                         <p className="text-xs font-bold text-gray-600">{request.cryptoAmount}</p>
@@ -644,13 +644,13 @@ function WithdrawalRequestsPageContent() {
                       <div>
                         <KycStatusBadge status={request.kycStatus} />
                       </div>
-                      <div className="text-xs font-semibold text-gray-500 font-mono">
+                      <div className="text-xs font-semibold text-gray-600 font-mono">
                         {request.requestDate}
                       </div>
                       <div className="relative flex justify-end">
                         <button
                           onClick={() => handleStartReview(request)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-800 active:scale-[0.98] shadow-sm cursor-pointer"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-all hover:bg-gray-50 hover:text-gray-800 active:scale-[0.98] shadow-sm cursor-pointer"
                           title="Review Request"
                         >
                           <Eye className="h-4 w-4" />
@@ -663,11 +663,11 @@ function WithdrawalRequestsPageContent() {
             </AnimatePresence>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Showing <strong className="text-gray-700">{filteredRequests.length}</strong> of <strong className="text-gray-700">{requests.length}</strong> requests
             </span>
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
               <ShieldCheck className="h-4 w-4 text-[#0A3D91]" />
               CDNT secure withdrawal ledger
             </div>
@@ -700,14 +700,14 @@ function WithdrawalRequestsPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={handleCloseReviewModal}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-600 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
 
                 <div className="px-8 pt-7 pb-4">
                   <h2 className="text-[22px] font-bold text-gray-900 leading-tight">Withdrawal Request Details</h2>
-                  <p className="text-xs text-gray-400 font-semibold mt-1">
+                  <p className="text-xs text-gray-600 font-semibold mt-1">
                     {selectedRequest.requestId}
                   </p>
                 </div>
@@ -720,24 +720,24 @@ function WithdrawalRequestsPageContent() {
                       <h3 className="text-sm font-bold text-gray-900 border-b border-gray-50 pb-2">User Information</h3>
                       <div className="space-y-3">
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Name</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Name</span>
                           <p className="text-base font-bold text-gray-900 mt-1 leading-tight">{selectedRequest.user.name}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Email</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Email</span>
                           <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{selectedRequest.user.email}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider block mb-1">KYC Status</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider block mb-1">KYC Status</span>
                           <KycStatusBadge status={selectedRequest.kycStatus} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Current Balance</span>
+                            <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Current Balance</span>
                             <p className="text-sm font-bold text-gray-900 mt-1">${selectedRequest.currentBalance.toLocaleString()}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Previous Withdrawals</span>
+                            <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Previous Withdrawals</span>
                             <p className="text-sm font-bold text-gray-900 mt-1">{selectedRequest.previousWithdrawals}</p>
                           </div>
                         </div>
@@ -749,23 +749,23 @@ function WithdrawalRequestsPageContent() {
                       <h3 className="text-sm font-bold text-gray-900 border-b border-gray-50 pb-2">Withdrawal Details</h3>
                       <div className="space-y-3">
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Amount (CAD)</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Amount (CAD)</span>
                           <p className="text-2xl font-black text-gray-950 mt-1 leading-none">${selectedRequest.amount.toLocaleString()}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Cryptocurrency</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Cryptocurrency</span>
                           <p className="text-sm font-bold text-gray-900 mt-0.5">{selectedRequest.cryptoAmount}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Interac Recipient</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Interac Recipient</span>
                           <p className="text-sm font-bold text-gray-900 truncate mt-0.5">{selectedRequest.interacRecipient}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Request Date</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Request Date</span>
                           <p className="text-xs font-bold text-gray-800 mt-0.5 font-mono">{selectedRequest.requestDate}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono block mb-1 tracking-wider">Risk Score</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono block mb-1 tracking-wider">Risk Score</span>
                           <RiskBadge level={selectedRequest.riskScore} />
                         </div>
                       </div>
@@ -776,7 +776,7 @@ function WithdrawalRequestsPageContent() {
                   <div className="border border-gray-150 bg-gray-50/40 rounded-2xl p-5 space-y-3">
                     <h3 className="text-sm font-bold text-gray-900">Admin Decision</h3>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">
+                      <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">
                         Internal Admin Note (Optional)
                       </label>
                       <textarea
@@ -784,7 +784,7 @@ function WithdrawalRequestsPageContent() {
                         value={currentNote}
                         onChange={(e) => setCurrentNote(e.target.value)}
                         placeholder="Write admin review note or override memo here..."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm outline-none resize-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-400"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm outline-none resize-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500"
                       />
                     </div>
                   </div>
@@ -823,7 +823,7 @@ function WithdrawalRequestsPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={() => setShowApproveModal(false)}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -836,7 +836,7 @@ function WithdrawalRequestsPageContent() {
                 <h3 className="text-lg font-bold text-gray-900 leading-tight">Approve Withdrawal?</h3>
 
                 {/* Confirmation Body */}
-                <p className="text-xs text-gray-500 leading-relaxed mt-4 font-semibold">
+                <p className="text-xs text-gray-600 leading-relaxed mt-4 font-semibold">
                   Are you sure you want to approve this withdrawal request for{" "}
                   <strong className="text-gray-900 font-extrabold">${selectedRequest.amount.toLocaleString()}</strong>?
                 </p>
@@ -845,7 +845,7 @@ function WithdrawalRequestsPageContent() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowApproveModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-600 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -871,7 +871,7 @@ function WithdrawalRequestsPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={() => setShowRejectModal(false)}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -882,11 +882,11 @@ function WithdrawalRequestsPageContent() {
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900 leading-tight">Reject Withdrawal?</h3>
-                <p className="text-xs text-gray-500 mt-2 font-semibold">Please provide a reason for rejecting this withdrawal request</p>
+                <p className="text-xs text-gray-600 mt-2 font-semibold">Please provide a reason for rejecting this withdrawal request</p>
 
                 {/* Reason Field */}
                 <div className="mt-4 space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">
+                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">
                     Rejection Reason *
                   </label>
                   <textarea
@@ -894,7 +894,7 @@ function WithdrawalRequestsPageContent() {
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Enter reason for rejection (will be sent to user)..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/40 text-sm outline-none resize-none focus:border-red-400 focus:ring-2 focus:ring-red-50 min-h-[100px] text-gray-800 placeholder:text-gray-400 font-medium transition-all"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/40 text-sm outline-none resize-none focus:border-red-400 focus:ring-2 focus:ring-red-50 min-h-[100px] text-gray-800 placeholder:text-gray-500 font-medium transition-all"
                   />
                 </div>
 
@@ -902,7 +902,7 @@ function WithdrawalRequestsPageContent() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowRejectModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-600 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>

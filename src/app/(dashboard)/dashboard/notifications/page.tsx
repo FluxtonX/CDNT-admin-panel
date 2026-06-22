@@ -246,7 +246,7 @@ export default function NotificationCenterPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Notifications Center</h1>
-            <p className="mt-1 text-sm text-gray-500 sm:text-base">Send platform-wide notifications to users</p>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">Send platform-wide notifications to users</p>
           </div>
         </div>
 
@@ -274,7 +274,7 @@ export default function NotificationCenterPage() {
           {stats.map((stat) => (
             <div key={stat.label} className="flex min-h-[110px] items-center justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
                 <p className="text-2xl font-bold leading-none text-gray-900">{stat.value}</p>
               </div>
               {stat.icon}
@@ -289,13 +289,13 @@ export default function NotificationCenterPage() {
             <div className="space-y-5">
               <div>
                 <h3 className="text-base font-bold text-gray-900 leading-tight">Send New Notification</h3>
-                <p className="text-xs text-gray-400 mt-1">Configure and broadcast system announcements</p>
+                <p className="text-xs text-gray-600 mt-1">Configure and broadcast system announcements</p>
               </div>
 
               <form onSubmit={handleSendNotification} className="space-y-4">
                 {/* Notification Type pills */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">Notification Type</label>
+                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">Notification Type</label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {(["Info", "Warning", "Success", "Error"] as NotificationType[]).map((t) => {
                       const active = type === t;
@@ -308,7 +308,7 @@ export default function NotificationCenterPage() {
                             "flex items-center justify-center gap-1.5 py-2 px-3 border rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm",
                             active
                               ? "bg-blue-50 text-[#0A3D91] border-blue-300"
-                              : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                              : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
                           )}
                         >
                           <span className={cn(
@@ -326,7 +326,7 @@ export default function NotificationCenterPage() {
 
                 {/* Target Audience dropdown */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">Target Audience</label>
+                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">Target Audience</label>
                   <select
                     value={audience}
                     onChange={(e) => setAudience(e.target.value as TargetAudience)}
@@ -341,24 +341,24 @@ export default function NotificationCenterPage() {
 
                 {/* Title */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">Notification Title</label>
+                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">Notification Title</label>
                   <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Enter announcement headline..."
-                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 text-gray-800 transition-all placeholder:text-gray-400"
+                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 text-gray-800 transition-all placeholder:text-gray-500"
                   />
                 </div>
 
                 {/* Message */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">Announcement Message</label>
+                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">Announcement Message</label>
                   <textarea
                     rows={4}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Enter broadcast message body..."
-                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium outline-none resize-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 text-gray-800 transition-all placeholder:text-gray-400"
+                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium outline-none resize-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 text-gray-800 transition-all placeholder:text-gray-500"
                   />
                 </div>
 
@@ -380,7 +380,7 @@ export default function NotificationCenterPage() {
             <div className="space-y-5 flex-1 flex flex-col">
               <div>
                 <h3 className="text-base font-bold text-gray-900 leading-tight">Recent Announcements</h3>
-                <p className="text-xs text-gray-400 mt-1">Audit log of announcements sent during this session</p>
+                <p className="text-xs text-gray-600 mt-1">Audit log of announcements sent during this session</p>
               </div>
 
               {loading ? (
@@ -398,7 +398,7 @@ export default function NotificationCenterPage() {
                           <TypeBadge type={notif.type} />
                           <span className="font-extrabold text-gray-950 font-mono text-xs">{notif.id}</span>
                         </div>
-                        <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1 font-mono">
+                        <span className="text-[10px] text-gray-600 font-semibold flex items-center gap-1 font-mono">
                           <Clock className="h-3 w-3" />
                           {notif.timestamp}
                         </span>
@@ -406,10 +406,10 @@ export default function NotificationCenterPage() {
 
                       <div className="space-y-1">
                         <h4 className="text-sm font-extrabold text-gray-900 leading-snug">{notif.title}</h4>
-                        <p className="text-xs font-semibold text-gray-500 leading-relaxed">{notif.message}</p>
+                        <p className="text-xs font-semibold text-gray-600 leading-relaxed">{notif.message}</p>
                       </div>
 
-                      <div className="pt-2 border-t border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                      <div className="pt-2 border-t border-gray-100 text-[10px] font-bold text-gray-600 uppercase tracking-wide">
                         {notif.audienceLabel}
                       </div>
                     </div>

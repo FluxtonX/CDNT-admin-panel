@@ -44,12 +44,17 @@ export async function PATCH(request: Request) {
   try {
     const { allowed } = await checkAdminPermission(request, "review-kyc");
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const { userId, status } = await request.json();
+    const { userId, status, rejectionReason } = await request.json();
     const supabaseAdmin = createAdminClient();
+
+    const updateData: any = { status };
+    if (status === 'rejected' && rejectionReason) {
+      updateData.rejection_reason = rejectionReason;
+    }
 
     const { error } = await supabaseAdmin
       .from("kyc_submissions")
-      .update({ status })
+      .update(updateData)
       .eq("user_id", userId);
 
     if (error) throw error;
@@ -60,6 +65,17 @@ export async function PATCH(request: Request) {
       .select("full_name")
       .eq("id", userId)
       .single();
+
+    if (status === 'rejected') {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: userId,
+        title: "KYC Verification Rejected",
+        message: `Your KYC verification was rejected. Reason: ${rejectionReason || 'Please review your documents'}. Please resubmit with correct documents.`,
+        type: "warning",
+        is_read: false,
+        created_at: new Date().toISOString()
+      });
+    }
 
     const action = status === "approved" ? "KYC Documents Approved" : "KYC Documents Rejected";
     const severity = status === "approved" ? "Info" : "Warning";

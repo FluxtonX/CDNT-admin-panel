@@ -150,7 +150,7 @@ function MetricCard({
   return (
     <div className="flex min-h-[134px] items-center justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div>
-        <p className="text-sm font-medium text-gray-500">{label}</p>
+        <p className="text-sm font-medium text-gray-600">{label}</p>
         <p className="mt-2 text-3xl font-bold leading-none text-gray-900">{value}</p>
         <p className={cn("mt-4 text-sm font-medium", tone)}>{note}</p>
       </div>
@@ -178,11 +178,11 @@ function DocumentScanPreview({
       return (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full h-full p-2 overflow-y-auto">
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs font-bold text-gray-500">FRONT</span>
+            <span className="text-xs font-bold text-gray-600">FRONT</span>
             <img src={request.rawImages.front} alt="Front ID" className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
           </div>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs font-bold text-gray-500">BACK</span>
+            <span className="text-xs font-bold text-gray-600">BACK</span>
             <img src={request.rawImages.back} alt="Back ID" className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
           </div>
         </div>
@@ -200,11 +200,11 @@ function DocumentScanPreview({
       <div className="flex flex-col items-center justify-center p-2 min-h-[220px] w-full">
         <div className="flex items-center gap-8 justify-center">
           <div className="flex flex-col items-center gap-1.5">
-            <div className="h-24 w-20 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-400 overflow-hidden relative">
-              <User className="h-12 w-12 text-gray-400" />
+            <div className="h-24 w-20 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 overflow-hidden relative">
+              <User className="h-12 w-12 text-gray-600" />
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-center text-white py-0.5 font-bold uppercase tracking-wider font-mono">ID Photo</div>
             </div>
-            <span className="text-[9px] font-bold text-gray-500 uppercase font-mono">Document</span>
+            <span className="text-[9px] font-bold text-gray-600 uppercase font-mono">Document</span>
           </div>
 
           <div className="flex flex-col items-center justify-center gap-1 shrink-0">
@@ -217,14 +217,14 @@ function DocumentScanPreview({
           </div>
 
           <div className="flex flex-col items-center gap-1.5">
-            <div className="h-24 w-20 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-400 overflow-hidden relative">
-              <User className="h-12 w-12 text-gray-400" />
+            <div className="h-24 w-20 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 overflow-hidden relative">
+              <User className="h-12 w-12 text-gray-600" />
               <div className="absolute bottom-0 left-0 right-0 bg-[#0A3D91]/80 text-[8px] text-center text-white py-0.5 font-bold uppercase tracking-wider font-mono">Selfie</div>
             </div>
-            <span className="text-[9px] font-bold text-gray-500 uppercase font-mono">Live Selfie</span>
+            <span className="text-[9px] font-bold text-gray-600 uppercase font-mono">Live Selfie</span>
           </div>
         </div>
-        <p className="mt-4 text-xs font-semibold text-gray-500 text-center max-w-sm">
+        <p className="mt-4 text-xs font-semibold text-gray-600 text-center max-w-sm">
           {isMatched
             ? "Biometric facial comparison matches document identity information."
             : "Verification warning: biometric similarity falls significantly below safety thresholds."}
@@ -239,7 +239,7 @@ function DocumentScanPreview({
         <div className="flex flex-col items-center justify-center p-4 min-h-[220px] text-center w-full">
           <FileText className="h-12 w-12 text-gray-300 mb-2" />
           <h4 className="font-semibold text-gray-700 text-sm">Passport Signature Page</h4>
-          <p className="text-xs text-gray-400 max-w-xs mt-1">Canadian passports utilize a single primary biographical page. Use bio page preview and selfie verification metrics.</p>
+          <p className="text-xs text-gray-600 max-w-xs mt-1">Canadian passports utilize a single primary biographical page. Use bio page preview and selfie verification metrics.</p>
         </div>
       );
     }
@@ -320,7 +320,7 @@ function DocumentScanPreview({
               <div key={i} className="h-0.5 bg-white" style={{ opacity: Math.random() > 0.35 ? 1 : 0 }} />
             ))}
           </div>
-          <div className="flex-1 space-y-1 text-gray-500 text-[7px] leading-tight">
+          <div className="flex-1 space-y-1 text-gray-600 text-[7px] leading-tight">
             <p>1. THIS CARD IS THE PROPERTY OF THE PROVINCIAL JURISDICTION ISSUER.</p>
             <p>2. ALTERATION OF THE DETAILS PRINTED HEREIN IS A PENAL OFFENSE.</p>
             <p>3. CLASS 5 PERMIT AUTHORIZES REGULAR MOTOR VEHICLE ROAD OPERATION.</p>
@@ -386,7 +386,7 @@ function DocumentScanPreview({
         </div>
       </div>
 
-      <div className="flex justify-between items-center text-[6px] font-semibold text-gray-400 mt-1 border-t border-sky-50 pt-1">
+      <div className="flex justify-between items-center text-[6px] font-semibold text-gray-600 mt-1 border-t border-sky-50 pt-1">
         <span>CONFIDENTIAL REVIEW ENCRYPTED</span>
         <span className="text-sky-700 font-bold">SECURE TRUST</span>
       </div>
@@ -590,7 +590,7 @@ function KycVerificationPageContent() {
     await fetch("/api/kyc", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: fullUserId, status: "rejected" }),
+      body: JSON.stringify({ userId: fullUserId, status: "rejected", rejectionReason }),
     });
 
     setRequests((current) =>
@@ -613,7 +613,7 @@ function KycVerificationPageContent() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">KYC Verification Center</h1>
-            <p className="mt-1 text-sm text-gray-500 sm:text-base">Review and approve user identity verification documents</p>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">Review and approve user identity verification documents</p>
           </div>
           <button
             onClick={() => {
@@ -636,18 +636,18 @@ function KycVerificationPageContent() {
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 p-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-600" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by name, email, request ID, or document..."
-                className="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 pl-12 pr-11 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 sm:text-base"
+                className="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 pl-12 pr-11 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-500 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 sm:text-base"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
                   aria-label="Clear search"
-                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -664,11 +664,11 @@ function KycVerificationPageContent() {
                   onClick={() => setActiveTab(tab.value)}
                   className={cn(
                     "relative flex h-14 shrink-0 items-center gap-2 px-2 text-sm font-semibold transition-colors sm:px-4 cursor-pointer",
-                    active ? "text-blue-700" : "text-gray-500 hover:text-gray-800"
+                    active ? "text-blue-700" : "text-gray-600 hover:text-gray-800"
                   )}
                 >
                   {tab.label}
-                  <span className={cn("rounded-full px-2 py-0.5 text-xs", active ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-500")}>
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs", active ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600")}>
                     {counts[tab.value]}
                   </span>
                   {active && <motion.span layoutId="kyc-tab" className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full bg-blue-700" />}
@@ -682,7 +682,7 @@ function KycVerificationPageContent() {
             {/* Table headers */}
             <div className="grid min-w-[1150px] grid-cols-[1.1fr_1.7fr_1.3fr_1fr_1.1fr_1fr_1.6fr_120px] gap-4 bg-gray-50 px-5 py-3 border-b border-gray-200/80">
               {["REQUEST", "USER", "DOCUMENT TYPE", "DOCUMENTS", "STATUS", "RISK", "SUBMITTED", "ACTIONS"].map((heading) => (
-                <span key={heading} className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{heading}</span>
+                <span key={heading} className="text-[11px] font-bold uppercase tracking-wider text-gray-600">{heading}</span>
               ))}
             </div>
 
@@ -716,7 +716,7 @@ function KycVerificationPageContent() {
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-400 bg-white"
+                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-600 bg-white"
                 >
                   No KYC requests found.
                 </motion.div>
@@ -729,14 +729,14 @@ function KycVerificationPageContent() {
                     >
                       <div>
                         <p className="font-bold text-gray-900">{request.requestId}</p>
-                        <p className="text-xs text-gray-400">{request.user.id}</p>
+                        <p className="text-xs text-gray-600">{request.user.id}</p>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-gray-900">{request.user.name}</p>
-                        <p className="truncate text-xs text-gray-400">{request.user.email}</p>
+                        <p className="truncate text-xs text-gray-600">{request.user.email}</p>
                       </div>
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <FileText className="h-4 w-4 text-gray-400" />
+                        <FileText className="h-4 w-4 text-gray-600" />
                         {request.documentType}
                       </div>
                       <DocumentDots docs={request.documents} />
@@ -746,7 +746,7 @@ function KycVerificationPageContent() {
                       <div>
                         <RiskBadge level={request.user.risk} />
                       </div>
-                      <div className="text-xs font-semibold text-gray-500">
+                      <div className="text-xs font-semibold text-gray-600">
                         {request.submitted}
                       </div>
                       <div className="relative flex justify-end">
@@ -765,11 +765,11 @@ function KycVerificationPageContent() {
             </AnimatePresence>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Showing <strong className="text-gray-700">{filteredRequests.length}</strong> of <strong className="text-gray-700">{requests.length}</strong> verification requests
             </span>
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
               <ShieldCheck className="h-4 w-4 text-[#0A3D91]" />
               CDNT secure identity queue
             </div>
@@ -802,14 +802,14 @@ function KycVerificationPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={handleCloseReviewModal}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-600 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
 
                 <div className="px-8 pt-7 pb-4">
                   <h2 className="text-[22px] font-bold text-gray-900 leading-tight">KYC Review</h2>
-                  <p className="text-[11px] text-gray-400 font-semibold mt-1">
+                  <p className="text-[11px] text-gray-600 font-semibold mt-1">
                     {selectedRequest.requestId} • Submitted {selectedRequest.submitted}
                   </p>
                   
@@ -842,11 +842,11 @@ function KycVerificationPageContent() {
                         const Icon = field.icon;
                         return (
                           <div key={idx} className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-white border border-gray-150/60 flex items-center justify-center text-gray-400 shrink-0 shadow-sm">
+                            <div className="h-9 w-9 rounded-xl bg-white border border-gray-150/60 flex items-center justify-center text-gray-600 shrink-0 shadow-sm">
                               <Icon className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">
+                              <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider leading-none">
                                 {field.label}
                               </p>
                               <p className="text-sm font-semibold text-gray-900 mt-1 truncate">
@@ -872,14 +872,14 @@ function KycVerificationPageContent() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-gray-700">
-                            <CreditCard className="h-4.5 w-4.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            <CreditCard className="h-4.5 w-4.5 text-gray-600 group-hover:text-blue-500 transition-colors" />
                             <span className="text-sm font-bold">{selectedRequest.documentType}</span>
                           </div>
                           <span className="bg-green-50 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
                             Uploaded
                           </span>
                         </div>
-                        <div className="mt-4 h-32 bg-gray-50 border border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 font-semibold text-xs group-hover:bg-gray-100/60 transition-colors">
+                        <div className="mt-4 h-32 bg-gray-50 border border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-600 font-semibold text-xs group-hover:bg-gray-100/60 transition-colors">
                           <CreditCard className="h-6 w-6 stroke-[1.5]" />
                           <span>Click to view</span>
                         </div>
@@ -892,14 +892,14 @@ function KycVerificationPageContent() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-gray-700">
-                            <UserCheck className="h-4.5 w-4.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            <UserCheck className="h-4.5 w-4.5 text-gray-600 group-hover:text-blue-500 transition-colors" />
                             <span className="text-sm font-bold">Selfie Verification</span>
                           </div>
                           <span className="bg-green-50 text-green-700 border border-green-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
                             Uploaded
                           </span>
                         </div>
-                        <div className="mt-4 h-32 bg-gray-50 border border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 font-semibold text-xs group-hover:bg-gray-100/60 transition-colors">
+                        <div className="mt-4 h-32 bg-gray-50 border border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-600 font-semibold text-xs group-hover:bg-gray-100/60 transition-colors">
                           <User className="h-6 w-6 stroke-[1.5]" />
                           <span>Click to view</span>
                         </div>
@@ -941,7 +941,7 @@ function KycVerificationPageContent() {
                 {/* Close button in top-right */}
                 <button
                   onClick={() => setPreviewDoc(null)}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -952,7 +952,7 @@ function KycVerificationPageContent() {
                       ? `${selectedRequest.documentType} Scan Preview`
                       : "Selfie Verification Biometrics"}
                   </h3>
-                  <p className="text-xs text-gray-400 font-medium">
+                  <p className="text-xs text-gray-600 font-medium">
                     Review and match details against registered user profile.
                   </p>
                 </div>
@@ -964,8 +964,8 @@ function KycVerificationPageContent() {
 
                 {/* Subtext and Actions */}
                 <div className="mt-5 flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
-                    <ZoomIn className="h-4 w-4 text-gray-400 shrink-0" />
+                  <div className="flex items-center gap-2 text-[11px] text-gray-600 font-medium">
+                    <ZoomIn className="h-4 w-4 text-gray-600 shrink-0" />
                     <span>ID Document Preview Mode</span>
                   </div>
                   <button
@@ -990,7 +990,7 @@ function KycVerificationPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={() => setShowRejectModal(false)}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1001,11 +1001,11 @@ function KycVerificationPageContent() {
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900 leading-tight">Reject KYC</h3>
-                <p className="text-xs text-gray-400 mt-1 font-semibold">Deny verification request</p>
+                <p className="text-xs text-gray-600 mt-1 font-semibold">Deny verification request</p>
 
                 {/* Reason Field */}
                 <div className="mt-5 space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest block">
+                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">
                     Rejection Reason *
                   </label>
                   <textarea
@@ -1013,9 +1013,9 @@ function KycVerificationPageContent() {
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Explain why this KYC verification is being rejected..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/40 text-sm outline-none resize-none focus:border-red-400 focus:ring-2 focus:ring-red-50 min-h-[100px] text-gray-800 placeholder:text-gray-400 font-medium transition-all"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/40 text-sm outline-none resize-none focus:border-red-400 focus:ring-2 focus:ring-red-50 min-h-[100px] text-gray-800 placeholder:text-gray-500 font-medium transition-all"
                   />
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-gray-600">
                     This reason will be sent to the user
                   </p>
                 </div>
@@ -1024,7 +1024,7 @@ function KycVerificationPageContent() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowRejectModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-600 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1051,7 +1051,7 @@ function KycVerificationPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={() => setShowApproveModal(false)}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1062,10 +1062,10 @@ function KycVerificationPageContent() {
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900 leading-tight">Approve KYC</h3>
-                <p className="text-xs text-gray-400 mt-1 font-semibold">Verify user identity</p>
+                <p className="text-xs text-gray-600 mt-1 font-semibold">Verify user identity</p>
 
                 {/* Confirmation Body */}
-                <p className="text-xs text-gray-500 leading-relaxed mt-4 font-semibold">
+                <p className="text-xs text-gray-600 leading-relaxed mt-4 font-semibold">
                   Are you sure you want to approve KYC verification for{" "}
                   <strong className="text-gray-900 font-extrabold">{selectedRequest.user.name}</strong>?
                   This will grant them full account access and increase their transaction limits.
@@ -1075,7 +1075,7 @@ function KycVerificationPageContent() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowApproveModal(false)}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-600 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>

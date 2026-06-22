@@ -91,7 +91,7 @@ function SetPasswordForm() {
     <div className="w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
       <div className="p-8">
         <h2 className="text-[22px] font-bold text-gray-900 mb-1">Set Up Your Password</h2>
-        <p className="text-gray-500 text-sm mb-7">Create a password for your administrator account</p>
+        <p className="text-gray-600 text-sm mb-7">Create a password for your administrator account</p>
 
         {success ? (
           <motion.div
@@ -103,7 +103,7 @@ function SetPasswordForm() {
               <Check className="h-6 w-6 stroke-[2.5]" />
             </div>
             <h3 className="font-extrabold text-gray-900 text-base">Account Activated!</h3>
-            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed font-semibold">
+            <p className="text-xs text-gray-600 mt-1.5 leading-relaxed font-semibold">
               Password set successfully. Redirecting you to the dashboard...
             </p>
           </motion.div>
@@ -130,7 +130,7 @@ function SetPasswordForm() {
                 New Password
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">
                   <Lock className="h-4.5 w-4.5" />
                 </span>
                 <input
@@ -139,12 +139,12 @@ function SetPasswordForm() {
                   placeholder="Enter new password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder:text-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600 transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
@@ -158,7 +158,7 @@ function SetPasswordForm() {
                 Confirm Password
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">
                   <Lock className="h-4.5 w-4.5" />
                 </span>
                 <input
@@ -167,7 +167,7 @@ function SetPasswordForm() {
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder:text-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
                 />
               </div>
             </div>

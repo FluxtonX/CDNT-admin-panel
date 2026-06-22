@@ -436,7 +436,7 @@ function AdminRolesPermissionsPageContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[26px] font-bold text-gray-900 leading-tight">Admin Roles & Permissions</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage administrator roles and access permissions</p>
+          <p className="mt-1 text-sm text-gray-600">Manage administrator roles and access permissions</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -449,7 +449,7 @@ function AdminRolesPermissionsPageContent() {
             }}
             className="flex items-center gap-1.5 px-4 h-10 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold shadow-sm transition-all cursor-pointer"
           >
-            <Users className="h-4 w-4 text-gray-500" />
+            <Users className="h-4 w-4 text-gray-600" />
             Add Admin
           </button>
           <button
@@ -474,7 +474,7 @@ function AdminRolesPermissionsPageContent() {
             {/* Total Roles */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Roles</p>
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Total Roles</p>
                 <p className="text-3xl font-black text-gray-900 mt-1.5">{totalRoles}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-blue-50/50 flex items-center justify-center text-blue-600 border border-blue-100">
@@ -485,7 +485,7 @@ function AdminRolesPermissionsPageContent() {
             {/* Total Admins */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Admins</p>
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Total Admins</p>
                 <p className="text-3xl font-black text-gray-900 mt-1.5">{totalAdmins}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-green-50/50 flex items-center justify-center text-green-600 border border-green-100">
@@ -496,7 +496,7 @@ function AdminRolesPermissionsPageContent() {
             {/* Active Roles */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Roles</p>
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Active Roles</p>
                 <p className="text-3xl font-black text-gray-900 mt-1.5">{activeRolesCount}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-purple-50/50 flex items-center justify-center text-purple-600 border border-purple-100">
@@ -507,7 +507,7 @@ function AdminRolesPermissionsPageContent() {
             {/* Permissions */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Permissions</p>
+                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Permissions</p>
                 <p className="text-3xl font-black text-gray-900 mt-1.5">{totalPermissionsCount}</p>
               </div>
               <div className="h-12 w-12 rounded-xl bg-orange-50/50 flex items-center justify-center text-orange-600 border border-orange-100">
@@ -528,7 +528,7 @@ function AdminRolesPermissionsPageContent() {
               <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 h-36 animate-pulse" />
             ))
           ) : roles.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-400 text-xs font-semibold">
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-600 text-xs font-semibold">
               No roles configured in database.
             </div>
           ) : (
@@ -560,31 +560,31 @@ function AdminRolesPermissionsPageContent() {
                                 "text-[9px] border font-bold uppercase px-1.5 py-0.5 rounded",
                                 role.isActive
                                   ? "bg-green-50 text-green-700 border-green-200"
-                                  : "bg-gray-100 text-gray-550 border-gray-200"
+                                  : "bg-gray-100 text-gray-600 border-gray-200"
                               )}
                             >
                               {role.isActive ? "Active" : "Inactive"}
                             </span>
                           </div>
-                          <span className="text-[10px] text-gray-400 font-mono mt-1 block font-bold">{role.code}</span>
+                          <span className="text-[10px] text-gray-600 font-mono mt-1 block font-bold">{role.code}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Description */}
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    <p className="text-xs text-gray-600 font-medium leading-relaxed">
                       {role.description}
                     </p>
 
                     {/* Meta info */}
                     <div className="flex items-center justify-between pt-1 mt-1 border-t border-gray-50">
-                      <div className="flex items-center gap-4 text-xs font-semibold text-gray-500 font-mono">
+                      <div className="flex items-center gap-4 text-xs font-semibold text-gray-600 font-mono">
                         <span className="flex items-center gap-1.5">
-                          <Users className="h-3.5 w-3.5 text-gray-400" />
+                          <Users className="h-3.5 w-3.5 text-gray-600" />
                           {role.adminCount} admins
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <Shield className="h-3.5 w-3.5 text-gray-400" />
+                          <Shield className="h-3.5 w-3.5 text-gray-600" />
                           {role.permissions.length} permissions
                         </span>
                       </div>
@@ -626,7 +626,7 @@ function AdminRolesPermissionsPageContent() {
                   "text-[10px] border font-bold uppercase px-2 py-0.5 rounded-full font-mono",
                   activeRole.isActive
                     ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-gray-100 text-gray-550 border-gray-200"
+                    : "bg-gray-100 text-gray-600 border-gray-200"
                 )}
               >
                 {activeRole.isActive ? "Active" : "Inactive"}
@@ -650,11 +650,11 @@ function AdminRolesPermissionsPageContent() {
             ) : !activeRole ? (
               // Empty selection placeholder matching Screenshot 3
               <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <div className="h-14 w-14 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 mb-4 animate-bounce">
+                <div className="h-14 w-14 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-600 mb-4 animate-bounce">
                   <Shield className="h-7 w-7 stroke-[1.5]" />
                 </div>
                 <h4 className="font-extrabold text-gray-800 text-sm">Select a role to view its permissions</h4>
-                <p className="text-xs text-gray-500 max-w-[280px] mt-1.5 leading-relaxed font-semibold">
+                <p className="text-xs text-gray-600 max-w-[280px] mt-1.5 leading-relaxed font-semibold">
                   Choose a user access role from the left pane list to inspect or adjust its system privileges.
                 </p>
               </div>
@@ -682,7 +682,7 @@ function AdminRolesPermissionsPageContent() {
                                   <Check className="h-3 w-3 stroke-[2.5]" />
                                 </div>
                               ) : (
-                                <div className="h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-300">
+                                <div className="h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 border border-gray-300">
                                   <X className="h-3 w-3 stroke-[2.5]" />
                                 </div>
                               )}
@@ -704,9 +704,9 @@ function AdminRolesPermissionsPageContent() {
         <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
           <div>
             <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wider">Administrator Users</h3>
-            <p className="text-xs text-gray-500 mt-0.5">List of authorized administrators and their roles</p>
+            <p className="text-xs text-gray-600 mt-0.5">List of authorized administrators and their roles</p>
           </div>
-          <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full font-mono">
+          <span className="text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full font-mono">
             {admins.length} Admins
           </span>
         </div>
@@ -718,7 +718,7 @@ function AdminRolesPermissionsPageContent() {
             <div className="h-10 bg-gray-50 rounded" />
           </div>
         ) : admins.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 text-xs font-semibold">
+          <div className="text-center py-10 text-gray-600 text-xs font-semibold">
             No administrator users found. Click "Add Admin" to create one.
           </div>
         ) : (
@@ -726,12 +726,12 @@ function AdminRolesPermissionsPageContent() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Admin Name</th>
-                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email Address</th>
-                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Role</th>
-                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Joined Date</th>
-                  <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right pr-2">Actions</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Admin Name</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Email Address</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Role</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider">Joined Date</th>
+                  <th className="pb-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider text-right pr-2">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -746,11 +746,11 @@ function AdminRolesPermissionsPageContent() {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-gray-900">{admin.fullName || "Unnamed Admin"}</p>
-                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{admin.id.slice(0, 8).toUpperCase()}</p>
+                          <p className="text-[10px] text-gray-600 font-mono mt-0.5">{admin.id.slice(0, 8).toUpperCase()}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 text-xs font-semibold text-gray-650">{admin.email}</td>
+                    <td className="py-4 text-xs font-semibold text-gray-700">{admin.email}</td>
                     <td className="py-4">
                       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200">
                         {admin.roleName}
@@ -775,7 +775,7 @@ function AdminRolesPermissionsPageContent() {
                         </button>
                       )}
                     </td>
-                    <td className="py-4 text-xs text-gray-400 font-medium">
+                    <td className="py-4 text-xs text-gray-600 font-medium">
                       {new Date(admin.createdAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -788,7 +788,7 @@ function AdminRolesPermissionsPageContent() {
                           <button
                             onClick={() => handleResendInvite(admin)}
                             disabled={resendingId === admin.id}
-                            className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-amber-50 hover:border-amber-200 text-gray-400 hover:text-amber-600 transition-all cursor-pointer shadow-sm inline-flex items-center justify-center disabled:opacity-40"
+                            className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-amber-50 hover:border-amber-200 text-gray-600 hover:text-amber-600 transition-all cursor-pointer shadow-sm inline-flex items-center justify-center disabled:opacity-40"
                             title="Resend Setup Email"
                           >
                             <Mail className="h-4 w-4" />
@@ -799,7 +799,7 @@ function AdminRolesPermissionsPageContent() {
                             setAdminToDelete(admin);
                             setIsDeleteAdminModalOpen(true);
                           }}
-                          className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-400 hover:text-red-650 transition-all cursor-pointer shadow-sm inline-flex items-center justify-center"
+                          className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-600 hover:text-red-650 transition-all cursor-pointer shadow-sm inline-flex items-center justify-center"
                           title="Delete Admin"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -829,7 +829,7 @@ function AdminRolesPermissionsPageContent() {
                 <h3 className="font-extrabold text-gray-900 text-base">Create New Admin Role</h3>
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
+                  className="p-1 text-gray-600 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -839,26 +839,26 @@ function AdminRolesPermissionsPageContent() {
               <form onSubmit={handleCreateRoleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
                 {/* Role Name */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Role Name</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Role Name</label>
                   <input
                     type="text"
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. Risk Auditor"
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
                   />
                 </div>
 
                 {/* Description */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Description</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Description</label>
                   <textarea
                     required
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="e.g. Review transactions and auditing security parameters..."
-                    className="h-20 w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none"
+                    className="h-20 w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-800 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none"
                   />
                 </div>
 
@@ -866,7 +866,7 @@ function AdminRolesPermissionsPageContent() {
                 <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                   <div>
                     <p className="text-xs font-extrabold text-gray-800">Role Status Active</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Enable or disable this role group access</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Enable or disable this role group access</p>
                   </div>
                   <input
                     type="checkbox"
@@ -878,7 +878,7 @@ function AdminRolesPermissionsPageContent() {
 
                 {/* Permissions Toggles Checklist */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Assign Permissions</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Assign Permissions</label>
                   <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-gray-50/20">
                     {ALL_PERMISSIONS.map((perm) => {
                       const checked = formPermissions.includes(perm.id);
@@ -890,7 +890,7 @@ function AdminRolesPermissionsPageContent() {
                         >
                           <div className="flex flex-col">
                             <span className="text-gray-700">{perm.name}</span>
-                            <span className="text-[9px] text-gray-500 font-mono mt-0.5 font-bold uppercase">{perm.category}</span>
+                            <span className="text-[9px] text-gray-600 font-mono mt-0.5 font-bold uppercase">{perm.category}</span>
                           </div>
                           {checked ? (
                             <CheckSquare className="h-4.5 w-4.5 text-blue-600 shrink-0" />
@@ -941,7 +941,7 @@ function AdminRolesPermissionsPageContent() {
                 <h3 className="font-extrabold text-gray-900 text-base">Edit Admin Role ({targetRole?.code})</h3>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
+                  className="p-1 text-gray-600 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -951,26 +951,26 @@ function AdminRolesPermissionsPageContent() {
               <form onSubmit={handleEditRoleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
                 {/* Role Name */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Role Name</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Role Name</label>
                   <input
                     type="text"
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="Role Name"
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
                   />
                 </div>
 
                 {/* Description */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Description</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Description</label>
                   <textarea
                     required
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Description"
-                    className="h-20 w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-850 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none"
+                    className="h-20 w-full rounded-xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-850 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 resize-none"
                   />
                 </div>
 
@@ -978,7 +978,7 @@ function AdminRolesPermissionsPageContent() {
                 <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                   <div>
                     <p className="text-xs font-extrabold text-gray-800">Role Status Active</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Enable or disable this role group access</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Enable or disable this role group access</p>
                   </div>
                   <input
                     type="checkbox"
@@ -990,7 +990,7 @@ function AdminRolesPermissionsPageContent() {
 
                 {/* Permissions Checklist */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Assign Permissions</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Assign Permissions</label>
                   <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-gray-50/20">
                     {ALL_PERMISSIONS.map((perm) => {
                       const checked = formPermissions.includes(perm.id);
@@ -1002,7 +1002,7 @@ function AdminRolesPermissionsPageContent() {
                         >
                           <div className="flex flex-col">
                             <span className="text-gray-700">{perm.name}</span>
-                            <span className="text-[9px] text-gray-500 font-mono mt-0.5 font-bold uppercase">{perm.category}</span>
+                            <span className="text-[9px] text-gray-600 font-mono mt-0.5 font-bold uppercase">{perm.category}</span>
                           </div>
                           {checked ? (
                             <CheckSquare className="h-4.5 w-4.5 text-blue-600 shrink-0" />
@@ -1054,11 +1054,11 @@ function AdminRolesPermissionsPageContent() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-sm">Delete Role Group?</h3>
-                  <p className="text-[11px] text-gray-400 font-bold font-mono mt-0.5">{targetRole?.code}</p>
+                  <p className="text-[11px] text-gray-600 font-bold font-mono mt-0.5">{targetRole?.code}</p>
                 </div>
               </div>
 
-              <p className="text-xs text-gray-500 leading-relaxed font-semibold">
+              <p className="text-xs text-gray-600 leading-relaxed font-semibold">
                 Are you sure you want to delete the <span className="font-black text-gray-800">"{targetRole?.name}"</span> role group? 
                 This action is permanent and administrators assigned to this group will lose their dashboard permissions.
               </p>
@@ -1097,7 +1097,7 @@ function AdminRolesPermissionsPageContent() {
                 <h3 className="font-extrabold text-gray-900 text-base">Add New Administrator</h3>
                 <button
                   onClick={() => setIsAddAdminModalOpen(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
+                  className="p-1 text-gray-600 hover:text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1107,33 +1107,33 @@ function AdminRolesPermissionsPageContent() {
               <form onSubmit={handleAddAdminSubmit} className="pt-4 space-y-4">
                 {/* Full Name */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Full Name</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Full Name</label>
                   <input
                     type="text"
                     required
                     value={adminFormName}
                     onChange={(e) => setAdminFormName(e.target.value)}
                     placeholder="e.g. John Doe"
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
                   />
                 </div>
 
                 {/* Email Address */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Email Address</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Email Address</label>
                   <input
                     type="email"
                     required
                     value={adminFormEmail}
                     onChange={(e) => setAdminFormEmail(e.target.value)}
                     placeholder="e.g. john@cdntb.ca"
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-4 text-xs font-semibold text-gray-800 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
                   />
                 </div>
 
                 {/* Role selection */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Role</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Role</label>
                   <select
                     required
                     value={adminFormRoleId}
@@ -1202,11 +1202,11 @@ function AdminRolesPermissionsPageContent() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-950 text-sm">Delete Administrator?</h3>
-                  <p className="text-[11px] text-gray-400 font-bold font-mono mt-0.5">{adminToDelete?.id?.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-[11px] text-gray-600 font-bold font-mono mt-0.5">{adminToDelete?.id?.slice(0, 8).toUpperCase()}</p>
                 </div>
               </div>
 
-              <p className="text-xs text-gray-550 leading-relaxed font-semibold">
+              <p className="text-xs text-gray-600 leading-relaxed font-semibold">
                 Are you sure you want to delete administrator <span className="font-black text-gray-800">"{adminToDelete?.fullName || adminToDelete?.email}"</span>? 
                 This action will permanently delete their authentication account and database records.
               </p>

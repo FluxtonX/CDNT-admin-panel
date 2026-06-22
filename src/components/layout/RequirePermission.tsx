@@ -87,7 +87,7 @@ export function RequirePermission({
           </svg>
         </div>
         <p className="text-sm font-semibold text-gray-700">Access Denied</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-600">
           You don&apos;t have permission to view this page. Redirecting…
         </p>
       </div>

@@ -153,7 +153,7 @@ function PortfolioManagementPageContent() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Portfolio Management</h1>
-            <p className="mt-1 text-sm text-gray-500 sm:text-base">Monitor platform-wide asset allocation and performance</p>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">Monitor platform-wide asset allocation and performance</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -192,7 +192,7 @@ function PortfolioManagementPageContent() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {/* Card 1: Total AUM */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2.5">
-            <p className="text-sm font-medium text-gray-500">Total Assets Under Management</p>
+            <p className="text-sm font-medium text-gray-600">Total Assets Under Management</p>
             <div className="flex items-baseline justify-between">
               <p className="text-3xl font-bold text-gray-900 leading-none">${totalAum.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
             </div>
@@ -207,9 +207,9 @@ function PortfolioManagementPageContent() {
           {/* Allocation stat cards */}
           {cardAllocations.map((alloc) => (
             <div key={alloc.asset} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2.5">
-              <p className="text-sm font-medium text-gray-500">{alloc.asset}</p>
+              <p className="text-sm font-medium text-gray-600">{alloc.asset}</p>
               <p className="text-3xl font-bold text-gray-900 leading-none">${alloc.valueCad.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs text-gray-400 font-semibold mt-1">{alloc.percentage}% of portfolio</p>
+              <p className="text-xs text-gray-600 font-semibold mt-1">{alloc.percentage}% of portfolio</p>
             </div>
           ))}
         </div>
@@ -220,12 +220,12 @@ function PortfolioManagementPageContent() {
           <div className="xl:col-span-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between min-h-[460px]">
             <div>
               <h3 className="text-base font-bold text-gray-900 leading-tight">Asset Allocation</h3>
-              <p className="text-xs text-gray-400 mt-1">Interactive asset distribution by cryptocurrency</p>
+              <p className="text-xs text-gray-600 mt-1">Interactive asset distribution by cryptocurrency</p>
             </div>
 
             {loading ? (
               <div className="flex-1 flex items-center justify-center py-12">
-                <div className="h-48 w-48 rounded-full border-4 border-dashed border-gray-200 animate-spin flex items-center justify-center text-gray-400">
+                <div className="h-48 w-48 rounded-full border-4 border-dashed border-gray-200 animate-spin flex items-center justify-center text-gray-600">
                   <ChartIcon className="h-8 w-8 animate-pulse" />
                 </div>
               </div>
@@ -299,7 +299,7 @@ function PortfolioManagementPageContent() {
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-extrabold text-gray-900 font-mono">{alloc.percentage}%</p>
-                          <p className="text-[10px] text-gray-400 font-semibold">${alloc.valueCad.toLocaleString()}</p>
+                          <p className="text-[10px] text-gray-600 font-semibold">${alloc.valueCad.toLocaleString()}</p>
                         </div>
                       </div>
                     );
@@ -308,7 +308,7 @@ function PortfolioManagementPageContent() {
               </div>
             )}
 
-            <div className="border-t border-gray-100 pt-3 text-xs text-gray-400 font-semibold text-center md:text-left">
+            <div className="border-t border-gray-100 pt-3 text-xs text-gray-600 font-semibold text-center md:text-left">
               Hover over pie segments or legends to inspect detailed asset weight metrics.
             </div>
           </div>
@@ -317,7 +317,7 @@ function PortfolioManagementPageContent() {
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between min-h-[460px]">
             <div>
               <h3 className="text-base font-bold text-gray-900 leading-tight">Allocation Performance</h3>
-              <p className="text-xs text-gray-400 mt-1">Platform performance audit logs</p>
+              <p className="text-xs text-gray-600 mt-1">Platform performance audit logs</p>
             </div>
 
             {loading ? (
@@ -353,14 +353,14 @@ function PortfolioManagementPageContent() {
                 ].map((perf) => (
                   <div key={perf.label} className="p-4 border border-gray-150/60 bg-gray-50/25 rounded-2xl flex items-center justify-between shadow-sm">
                     <div>
-                      <p className="text-xs font-semibold text-gray-500">{perf.label}</p>
+                      <p className="text-xs font-semibold text-gray-600">{perf.label}</p>
                       <p className={cn("text-xl font-black mt-1 leading-none", perf.tone)}>{perf.value}</p>
-                      <p className="text-[10px] text-gray-400 mt-1.5 font-semibold">{perf.desc}</p>
+                      <p className="text-[10px] text-gray-600 mt-1.5 font-semibold">{perf.desc}</p>
                     </div>
                     {perf.trend && (
                       <span className={cn(
                         "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border font-mono",
-                        perf.trend.startsWith("+") ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"
+                        perf.trend.startsWith("+") ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"
                       )}>
                         {perf.trend}
                       </span>
@@ -370,7 +370,7 @@ function PortfolioManagementPageContent() {
               </div>
             )}
 
-            <div className="border-t border-gray-100 pt-3 text-xs text-gray-400 font-semibold flex items-center gap-1.5 justify-center">
+            <div className="border-t border-gray-100 pt-3 text-xs text-gray-600 font-semibold flex items-center gap-1.5 justify-center">
               <Activity className="h-4 w-4 text-[#0A3D91]" />
               Secure audit metrics verified
             </div>

@@ -147,7 +147,7 @@ export default function TwoFactorPage() {
       >
         <div className="p-8">
           <h2 className="text-[22px] font-bold text-gray-900 mb-1">Two-Factor Authentication</h2>
-          <p className="text-gray-500 text-sm mb-7">
+          <p className="text-gray-600 text-sm mb-7">
             Enter the 6-digit code from your authenticator app
           </p>
 
@@ -173,7 +173,7 @@ export default function TwoFactorPage() {
                 Authentication Code
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">
                   <KeyRound className="h-4.5 w-4.5" />
                 </span>
                 <input
@@ -190,7 +190,7 @@ export default function TwoFactorPage() {
                     setTouched(true);
                     setError(validateCode(code));
                   }}
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-gray-900 text-sm tracking-[0.4em] font-mono placeholder:text-gray-300 placeholder:tracking-[0.4em] outline-none transition-all duration-200
+                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-gray-900 text-sm tracking-[0.4em] font-mono placeholder:text-gray-400 placeholder:tracking-[0.4em] outline-none transition-all duration-200
                     ${error && touched
                       ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-200"
                       : "border-gray-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -223,7 +223,7 @@ export default function TwoFactorPage() {
             <button
               type="button"
               onClick={() => router.push("/login")}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors group"
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
             >
               <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
               Back to login
@@ -232,7 +232,7 @@ export default function TwoFactorPage() {
 
           {/* Divider + Demo code */}
           <div className="mt-5 pt-5 border-t border-gray-100">
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-xs text-gray-600">
               Demo 2FA code:{" "}
               <button
                 type="button"

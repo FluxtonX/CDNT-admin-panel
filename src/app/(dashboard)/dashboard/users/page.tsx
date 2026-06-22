@@ -108,7 +108,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-bold text-gray-900">Add New User</h2>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -121,12 +121,12 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
             <div key={field} className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">{label}</label>
               <div className="relative">
-                <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" />
                 <input
                   type={type} required placeholder={placeholder}
                   value={form[field as keyof typeof form]}
                   onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all"
                 />
               </div>
             </div>
@@ -186,7 +186,7 @@ function FreezeModal({ onConfirm, onClose }: { onConfirm: (r: string) => void; o
             </div>
             <div className="pt-0.5">
               <h2 className="text-[17px] font-bold text-gray-900">Freeze Account</h2>
-              <p className="text-sm text-gray-500 mt-0.5">This action will suspend all account activity</p>
+              <p className="text-sm text-gray-600 mt-0.5">This action will suspend all account activity</p>
             </div>
           </div>
           <div className="mb-5">
@@ -197,7 +197,7 @@ function FreezeModal({ onConfirm, onClose }: { onConfirm: (r: string) => void; o
               value={reason}
               onChange={(e) => { setReason(e.target.value); setTouched(true); }}
               onBlur={() => setTouched(true)}
-              className={cn("w-full px-4 py-3 rounded-xl border text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none transition-all",
+              className={cn("w-full px-4 py-3 rounded-xl border text-sm text-gray-800 placeholder:text-gray-500 outline-none resize-none transition-all",
                 hasError ? "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100"
                          : "border-gray-200 bg-gray-50 focus:border-blue-400 focus:ring-2 focus:ring-blue-50")}
             />
@@ -252,14 +252,14 @@ function NoteModal({ onConfirm, onClose }: { onConfirm: (n: string) => void; onC
             </div>
             <div className="pt-0.5">
               <h2 className="text-[17px] font-bold text-gray-900">Add Admin Note</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Internal note visible only to admins</p>
+              <p className="text-sm text-gray-600 mt-0.5">Internal note visible only to admins</p>
             </div>
           </div>
           <div className="mb-5">
             <textarea rows={4} placeholder="Enter your note..."
               value={note}
               onChange={(e) => { setNote(e.target.value); setTouched(true); }}
-              className={cn("w-full px-4 py-3 rounded-xl border text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none transition-all",
+              className={cn("w-full px-4 py-3 rounded-xl border text-sm text-gray-800 placeholder:text-gray-500 outline-none resize-none transition-all",
                 hasError ? "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-100"
                          : "border-gray-200 bg-blue-50/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-50")}
             />
@@ -308,13 +308,13 @@ function UserRow({
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{user.name}</p>
-          <p className="text-xs text-gray-400 truncate">{(user as any).shortId || user.id}</p>
+          <p className="text-xs text-gray-600 truncate">{(user as any).shortId || user.id}</p>
         </div>
       </div>
       {/* CONTACT */}
       <div className="min-w-0">
         <p className="text-sm text-gray-700 truncate">{user.email}</p>
-        <p className="text-xs text-gray-400 truncate">{user.phone}</p>
+        <p className="text-xs text-gray-600 truncate">{user.phone}</p>
       </div>
       {/* KYC STATUS */}
       <div><KycBadge status={user.kyc} /></div>
@@ -323,7 +323,7 @@ function UserRow({
       {/* BALANCE */}
       <div>
         <p className="text-sm font-bold text-gray-900">${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
-        <p className="text-xs text-gray-400">Joined {user.joinedDate}</p>
+        <p className="text-xs text-gray-600">Joined {user.joinedDate}</p>
       </div>
       {/* RISK */}
       <div><RiskBadge level={user.risk} /></div>
@@ -341,7 +341,7 @@ function UserRow({
           onClick={() => setIsMenuOpen(prev => !prev)}
           title="Open actions"
           aria-label={`Open actions for ${user.name}`}
-          className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
@@ -359,13 +359,13 @@ function UserRow({
                 onClick={() => { onView(); setIsMenuOpen(false); }}
                 className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
-                <Eye className="h-3.5 w-3.5 text-gray-400" /> View Profile
+                <Eye className="h-3.5 w-3.5 text-gray-600" /> View Profile
               </button>
               <button
                 onClick={() => { onNote(); setIsMenuOpen(false); }}
                 className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
-                <FileEdit className="h-3.5 w-3.5 text-gray-400" /> Add Admin Note
+                <FileEdit className="h-3.5 w-3.5 text-gray-600" /> Add Admin Note
               </button>
               <button
                 onClick={() => { onFreeze(); setIsMenuOpen(false); }}
@@ -497,7 +497,7 @@ function UsersPageContent() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[22px] font-bold text-gray-900">Users Management</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage user accounts, verification status, and permissions</p>
+            <p className="text-sm text-gray-600 mt-0.5">Manage user accounts, verification status, and permissions</p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
             <button
@@ -520,7 +520,7 @@ function UsersPageContent() {
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {[
             { label: "Total Users",     value: totalUsers.toLocaleString(),    sub: "+234 this month",  subColor: "text-green-600", icon: <Shield   className="h-5 w-5 text-blue-500" />, iconBg: "bg-blue-50"   },
-            { label: "Verified Users",  value: verifiedUsers.toLocaleString(), sub: `${Math.round(verifiedUsers/totalUsers*100)}% verification rate`, subColor: "text-gray-500", icon: <CheckCircle2 className="h-5 w-5 text-green-500" />, iconBg: "bg-green-50" },
+            { label: "Verified Users",  value: verifiedUsers.toLocaleString(), sub: `${Math.round(verifiedUsers/totalUsers*100)}% verification rate`, subColor: "text-gray-600", icon: <CheckCircle2 className="h-5 w-5 text-green-500" />, iconBg: "bg-green-50" },
             { label: "Pending KYC",     value: pendingKyc.toLocaleString(),    sub: "Requires attention", subColor: "text-amber-600",  icon: <Clock    className="h-5 w-5 text-amber-500" />, iconBg: "bg-amber-50"  },
             { label: "High Risk",       value: highRisk.toLocaleString(),      sub: "Monitor closely",   subColor: "text-red-600",    icon: <AlertTriangle className="h-5 w-5 text-red-400" />, iconBg: "bg-red-50"   },
           ].map((card, i) => (
@@ -532,7 +532,7 @@ function UsersPageContent() {
               className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center justify-between"
             >
               <div>
-                <p className="text-xs text-gray-500 font-medium mb-1">{card.label}</p>
+                <p className="text-xs text-gray-600 font-medium mb-1">{card.label}</p>
                 <p className="text-2xl font-bold text-gray-900 leading-none mb-1.5">{card.value}</p>
                 <p className={cn("text-[11px] font-medium", card.subColor)}>{card.sub}</p>
               </div>
@@ -546,16 +546,16 @@ function UsersPageContent() {
         {/* ── Search + Filter */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" />
             <input
               type="text"
               value={search}
               onChange={e => handleSearch(e.target.value)}
               placeholder="Search by name, email, ID, or phone..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 placeholder:text-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 placeholder:text-gray-500 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all shadow-sm"
             />
             {search && (
-              <button onClick={() => handleSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <button onClick={() => handleSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -608,9 +608,9 @@ function UsersPageContent() {
           {/* Table Header */}
           <div className="grid min-w-[1040px] grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50/70">
             {["USER", "CONTACT", "KYC STATUS", "ACCOUNT", "BALANCE", "RISK"].map(col => (
-              <span key={col} className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">{col}</span>
+              <span key={col} className="text-[10px] font-bold text-gray-600 tracking-widest uppercase">{col}</span>
             ))}
-            <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase text-right pr-1">ACTIONS</span>
+            <span className="text-[10px] font-bold text-gray-600 tracking-widest uppercase text-right pr-1">ACTIONS</span>
           </div>
 
           {/* Rows */}
@@ -652,7 +652,7 @@ function UsersPageContent() {
                 key="empty"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="py-16 text-center text-gray-400 text-sm bg-white"
+                className="py-16 text-center text-gray-600 text-sm bg-white"
               >
                 No users found matching your search.
               </motion.div>
@@ -681,7 +681,7 @@ function UsersPageContent() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 bg-gray-50/40">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-600">
               Showing <span className="font-semibold text-gray-700">{pageUsers.length}</span> of{" "}
               <span className="font-semibold text-gray-700">{filtered.length}</span> users
             </p>

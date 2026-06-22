@@ -19,7 +19,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
       {/* Menu toggle for mobile screens */}
       <button
         onClick={onMenuToggle}
-        className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
         aria-label="Toggle Menu"
       >
         <Menu className="h-5 w-5" />
@@ -28,11 +28,11 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
       {/* Search */}
       <div className="flex-1 max-w-lg">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" />
           <input
             type="text"
             placeholder="Search users, transactions, requests..."
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all"
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700 placeholder:text-gray-500 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all"
           />
         </div>
       </div>
@@ -42,7 +42,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
         {/* Notification bell */}
         <button
           aria-label="Notifications"
-          className="relative h-9 w-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+          className="relative h-9 w-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-700 transition-colors"
         >
           <Bell className="h-4 w-4" />
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-1 ring-white" />
@@ -59,9 +59,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
             </div>
             <div className="hidden sm:block">
               <p className="text-sm font-semibold text-gray-900 leading-none">Admin User</p>
-              <p className="text-[11px] text-gray-400 mt-0.5 leading-none">Super Admin</p>
+              <p className="text-[11px] text-gray-600 mt-0.5 leading-none">Super Admin</p>
             </div>
-            <ChevronDown className="h-3.5 w-3.5 text-gray-400 hidden sm:block transition-transform duration-205" style={{ transform: dropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
+            <ChevronDown className="h-3.5 w-3.5 text-gray-600 hidden sm:block transition-transform duration-205" style={{ transform: dropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
           </div>
 
           {dropdownOpen && (

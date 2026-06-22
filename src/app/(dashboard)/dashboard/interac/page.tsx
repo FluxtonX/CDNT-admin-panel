@@ -311,7 +311,7 @@ function InteracPayoutsPageContent() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Interac e-Transfer Payouts</h1>
-            <p className="mt-1 text-sm text-gray-500 sm:text-base">Manage and monitor Interac e-Transfer withdrawal requests</p>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">Manage and monitor Interac e-Transfer withdrawal requests</p>
           </div>
           <button
             onClick={() => {
@@ -345,9 +345,9 @@ function InteracPayoutsPageContent() {
           {stats.map((stat) => (
             <div key={stat.label} className="flex min-h-[120px] items-center justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
                 <p className="text-2xl font-bold leading-none text-gray-900">{stat.value}</p>
-                <p className={cn("text-xs text-gray-400 font-semibold mt-1", stat.noteTone)}>{stat.note}</p>
+                <p className={cn("text-xs text-gray-600 font-semibold mt-1", stat.noteTone)}>{stat.note}</p>
               </div>
               {stat.icon}
             </div>
@@ -359,18 +359,18 @@ function InteracPayoutsPageContent() {
           {/* Search bar */}
           <div className="border-b border-gray-200 p-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-600" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by user, email, or payout ID..."
-                className="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 pl-12 pr-11 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 sm:text-base"
+                className="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 pl-12 pr-11 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-500 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 sm:text-base"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
                   aria-label="Clear search"
-                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+                  className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -392,7 +392,7 @@ function InteracPayoutsPageContent() {
                     "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-150 cursor-pointer shadow-sm shrink-0",
                     active
                       ? "bg-[#0A3D91] text-white"
-                      : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      : "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-700"
                   )}
                 >
                   {tab.label}
@@ -407,7 +407,7 @@ function InteracPayoutsPageContent() {
             {/* Header row */}
             <div className="grid min-w-[1150px] grid-cols-[1.2fr_1.8fr_1.2fr_1.2fr_1.6fr_1.4fr_80px] gap-4 bg-gray-50 px-5 py-3 border-b border-gray-200/80">
               {["Payout ID", "User", "Amount", "Status", "Request Date", "Reference", "Actions"].map((heading) => (
-                <span key={heading} className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 font-mono">{heading}</span>
+                <span key={heading} className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 font-mono">{heading}</span>
               ))}
             </div>
 
@@ -441,7 +441,7 @@ function InteracPayoutsPageContent() {
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-400 bg-white"
+                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-600 bg-white"
                 >
                   No Interac payouts found.
                 </motion.div>
@@ -455,18 +455,18 @@ function InteracPayoutsPageContent() {
                       <div className="font-extrabold text-gray-950 font-mono text-xs">{payout.payoutId}</div>
                       <div className="min-w-0">
                         <p className="truncate font-bold text-gray-900 text-sm">{payout.user.name}</p>
-                        <p className="truncate text-xs text-gray-400">{payout.user.email}</p>
+                        <p className="truncate text-xs text-gray-600">{payout.user.email}</p>
                       </div>
                       <div className="font-extrabold text-gray-900 text-sm">${payout.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
                       <div>
                         <StatusBadge status={payout.status} />
                       </div>
-                      <div className="text-xs font-semibold text-gray-500 font-mono">{payout.requestDate}</div>
+                      <div className="text-xs font-semibold text-gray-600 font-mono">{payout.requestDate}</div>
                       <div className="text-xs font-bold text-gray-700 font-mono">{payout.referenceCode}</div>
                       <div className="flex justify-end">
                         <button
                           onClick={() => handleOpenDetails(payout)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-800 active:scale-[0.98] shadow-sm cursor-pointer"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-all hover:bg-gray-50 hover:text-gray-800 active:scale-[0.98] shadow-sm cursor-pointer"
                           title="View Details"
                         >
                           <Eye className="h-4 w-4" />
@@ -480,11 +480,11 @@ function InteracPayoutsPageContent() {
           </div>
 
           {/* Footer stats */}
-          <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-5 py-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Showing <strong className="text-gray-700">{filteredPayouts.length}</strong> of <strong className="text-gray-700">{payouts.length}</strong> payout requests
             </span>
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
               <ShieldCheck className="h-4 w-4 text-[#0A3D91]" />
               CDNT secure payout authorization queue
             </div>
@@ -517,7 +517,7 @@ function InteracPayoutsPageContent() {
                 {/* Close Button */}
                 <button
                   onClick={handleCloseDetails}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -528,7 +528,7 @@ function InteracPayoutsPageContent() {
                     <h2 className="text-[22px] font-bold text-gray-900 leading-tight">Payout Request Details</h2>
                     <StatusBadge status={selectedPayout.status} />
                   </div>
-                  <p className="text-xs text-gray-400 font-semibold mt-1">
+                  <p className="text-xs text-gray-600 font-semibold mt-1">
                     ID: {selectedPayout.payoutId} • Requested: {selectedPayout.requestDate}
                   </p>
                 </div>
@@ -544,15 +544,15 @@ function InteracPayoutsPageContent() {
                       </h3>
                       <div className="space-y-3">
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">User ID</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">User ID</span>
                           <p className="text-xs font-mono font-bold text-gray-900 mt-1">{selectedPayout.user.id}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Name</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Name</span>
                           <p className="text-sm font-bold text-gray-900 mt-1 leading-tight">{selectedPayout.user.name}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Email (Interac Recipient)</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Email (Interac Recipient)</span>
                           <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{selectedPayout.user.email}</p>
                         </div>
                       </div>
@@ -566,15 +566,15 @@ function InteracPayoutsPageContent() {
                       </h3>
                       <div className="space-y-3">
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Payout Amount (CAD)</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Payout Amount (CAD)</span>
                           <p className="text-2xl font-black text-gray-950 mt-1 leading-none">${selectedPayout.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Reference Code</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Reference Code</span>
                           <p className="text-sm font-bold text-gray-900 mt-0.5 font-mono">{selectedPayout.referenceCode}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Transfer Channel</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Transfer Channel</span>
                           <p className="text-xs font-semibold text-gray-700 mt-0.5">Interac e-Transfer Auto-Deposit</p>
                         </div>
                       </div>
@@ -590,11 +590,11 @@ function InteracPayoutsPageContent() {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Security Question</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Security Question</span>
                           <p className="text-xs font-semibold text-gray-800 mt-1">{selectedPayout.securityQuestion}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase font-mono leading-none tracking-wider">Security Answer</span>
+                          <span className="text-[10px] text-gray-600 font-bold uppercase font-mono leading-none tracking-wider">Security Answer</span>
                           <p className="text-xs font-mono font-bold text-gray-950 mt-1 bg-white border border-gray-150 p-2 rounded-lg select-all">
                             {selectedPayout.securityAnswer}
                           </p>
@@ -606,7 +606,7 @@ function InteracPayoutsPageContent() {
 
                 {/* Footer action tools */}
                 <div className="px-8 py-5 border-t border-gray-100 flex justify-between items-center gap-3">
-                  <div className="text-xs text-gray-400 font-semibold">
+                  <div className="text-xs text-gray-600 font-semibold">
                     Admin signature overrides
                   </div>
                   <div className="flex gap-2">
@@ -651,7 +651,7 @@ function InteracPayoutsPageContent() {
               >
                 <button
                   onClick={() => setShowConfirmModal({ show: false, targetStatus: null })}
-                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-650 transition-colors cursor-pointer"
+                  className="absolute right-6 top-6 h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-700 transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -661,7 +661,7 @@ function InteracPayoutsPageContent() {
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900 leading-tight">Confirm Payout Status Change?</h3>
-                <p className="text-xs text-gray-500 mt-3 font-semibold">
+                <p className="text-xs text-gray-600 mt-3 font-semibold">
                   Are you sure you want to change the status of payout request{" "}
                   <strong className="text-gray-950 font-extrabold">{selectedPayout?.payoutId}</strong> to{" "}
                   <span className={cn(
@@ -677,7 +677,7 @@ function InteracPayoutsPageContent() {
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setShowConfirmModal({ show: false, targetStatus: null })}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-500 transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-sm font-bold text-gray-600 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>

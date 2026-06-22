@@ -442,7 +442,7 @@ function LiveChatSupportPageContent() {
         {/* Header */}
         <div>
           <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Live Chat Support</h1>
-          <p className="mt-1 text-sm text-gray-500 sm:text-base">Manage customer support conversations in real-time</p>
+          <p className="mt-1 text-sm text-gray-600 sm:text-base">Manage customer support conversations in real-time</p>
         </div>
 
         {/* Chat Interface Container */}
@@ -452,12 +452,12 @@ function LiveChatSupportPageContent() {
             {/* Search */}
             <div className="p-4 border-b border-gray-200 bg-white">
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search conversations..."
-                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs text-gray-800 outline-none transition-all placeholder:text-gray-500 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50"
                 />
               </div>
             </div>
@@ -469,7 +469,7 @@ function LiveChatSupportPageContent() {
                   <div key={idx} className="h-16 bg-white rounded-xl animate-pulse border border-gray-100" />
                 ))
               ) : filteredThreads.length === 0 ? (
-                <div className="p-4 text-center text-xs font-semibold text-gray-400">
+                <div className="p-4 text-center text-xs font-semibold text-gray-600">
                   No conversations found.
                 </div>
               ) : (
@@ -502,13 +502,13 @@ function LiveChatSupportPageContent() {
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-extrabold text-gray-900 text-xs truncate max-w-[120px]">{thread.user.name}</span>
-                          <span className="text-[9px] text-gray-400 font-bold font-mono shrink-0">{thread.lastMessageTime}</span>
+                          <span className="text-[9px] text-gray-600 font-bold font-mono shrink-0">{thread.lastMessageTime}</span>
                         </div>
-                        <p className="text-[11px] text-gray-500 font-medium truncate pr-1">
+                        <p className="text-[11px] text-gray-600 font-medium truncate pr-1">
                           {lastMsg ? lastMsg.text : "No messages yet"}
                         </p>
                         <div className="flex items-center gap-1.5 pt-1">
-                          <span className="text-[9px] text-gray-400 font-mono uppercase tracking-tight">{thread.user.id.substring(0, 8)}</span>
+                          <span className="text-[9px] text-gray-600 font-mono uppercase tracking-tight">{thread.user.id.substring(0, 8)}</span>
                           {thread.status === "Waiting" && (
                             <span className="text-[8px] bg-amber-50 text-amber-700 font-bold uppercase px-1 rounded">waiting</span>
                           )}
@@ -537,7 +537,7 @@ function LiveChatSupportPageContent() {
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       onClick={() => setActiveThreadId("")}
-                      className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500 mr-1 shrink-0 cursor-pointer"
+                      className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-600 mr-1 shrink-0 cursor-pointer"
                       aria-label="Back to threads"
                     >
                       <ChevronLeft className="h-5 w-5" />
@@ -548,12 +548,12 @@ function LiveChatSupportPageContent() {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <h4 className="font-bold text-gray-900 text-sm leading-none">{activeThread.user.name}</h4>
-                        <span className="flex items-center gap-1 bg-gray-100 text-gray-500 font-bold uppercase px-2 py-0.5 rounded-full text-[9px] tracking-wide border border-gray-150 font-mono">
+                        <span className="flex items-center gap-1 bg-gray-100 text-gray-600 font-bold uppercase px-2 py-0.5 rounded-full text-[9px] tracking-wide border border-gray-150 font-mono">
                           <StatusIndicator status={activeThread.status} />
                           {activeThread.status}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-mono mt-1 block">{activeThread.user.id.substring(0, 8)} • {activeThread.user.email}</span>
+                      <span className="text-[10px] text-gray-600 font-mono mt-1 block">{activeThread.user.id.substring(0, 8)} • {activeThread.user.email}</span>
                     </div>
                   </div>
 
@@ -569,7 +569,7 @@ function LiveChatSupportPageContent() {
                             "px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                             active
                               ? "bg-white text-gray-800 shadow-sm"
-                              : "text-gray-400 hover:text-gray-650"
+                              : "text-gray-600 hover:text-gray-700"
                           )}
                         >
                           {st}
@@ -582,7 +582,7 @@ function LiveChatSupportPageContent() {
                 {/* Messages log list */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
                   {activeThread.messages.length === 0 && (
-                    <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">
+                    <div className="flex items-center justify-center h-full text-xs text-gray-600 font-semibold">
                       No message history in this thread.
                     </div>
                   )}
@@ -615,7 +615,7 @@ function LiveChatSupportPageContent() {
                             {msg.text}
                           </div>
                           <div className={cn(
-                            "text-[8px] text-gray-400 font-bold font-mono flex items-center gap-1.5 mt-0.5",
+                            "text-[8px] text-gray-600 font-bold font-mono flex items-center gap-1.5 mt-0.5",
                             isAdmin ? "justify-end" : "justify-start"
                           )}>
                             <span>{msg.timestamp}</span>
@@ -640,7 +640,7 @@ function LiveChatSupportPageContent() {
                 <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-200 flex items-center gap-3">
                   <button
                     type="button"
-                    className="h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer shrink-0"
+                    className="h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-600 hover:text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer shrink-0"
                     title="Attach Files"
                   >
                     <Paperclip className="h-4.5 w-4.5 stroke-[1.8]" />
@@ -650,7 +650,7 @@ function LiveChatSupportPageContent() {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="Type your message..."
-                    className="h-10 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-400 bg-gray-50/20"
+                    className="h-10 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20"
                   />
 
                   <button
@@ -665,7 +665,7 @@ function LiveChatSupportPageContent() {
                 </form>
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 font-semibold text-xs">
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-600 font-semibold text-xs">
                 Select a conversation thread to start chatting.
               </div>
             )}

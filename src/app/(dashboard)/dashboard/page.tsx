@@ -37,7 +37,7 @@ function StatCard1({
       </div>
       <div>
         <p className="text-2xl font-bold text-gray-900 leading-none">{value}</p>
-        <p className="text-xs text-gray-500 mt-1.5">{label}</p>
+        <p className="text-xs text-gray-600 mt-1.5">{label}</p>
       </div>
     </div>
   );
@@ -148,7 +148,7 @@ export default function DashboardPage() {
       {/* ── Page Header */}
       <div>
         <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Admin Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Overview of platform operations and key metrics</p>
+        <p className="text-sm text-gray-600 mt-0.5">Overview of platform operations and key metrics</p>
       </div>
 
       {/* ── Stats Row 1 */}
@@ -188,7 +188,7 @@ export default function DashboardPage() {
             <div>
               <h3 className="text-sm font-semibold text-gray-800">User Growth</h3>
             </div>
-            <TrendingUp className="h-4 w-4 text-gray-400" />
+            <TrendingUp className="h-4 w-4 text-gray-600" />
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={stats.loading ? [] : stats.userGrowthData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -277,9 +277,9 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-3">
             {stats.loading ? (
-              <div className="text-xs text-gray-400">Loading...</div>
+              <div className="text-xs text-gray-600">Loading...</div>
             ) : stats.withdrawalQueue.length === 0 ? (
-              <div className="text-xs text-gray-400">No pending withdrawals.</div>
+              <div className="text-xs text-gray-600">No pending withdrawals.</div>
             ) : stats.withdrawalQueue.map((item, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                 {/* Avatar */}
@@ -288,7 +288,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                  <p className="text-xs text-gray-400">{item.id} • {item.time}</p>
+                  <p className="text-xs text-gray-600">{item.id} • {item.time}</p>
                 </div>
                 <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize shrink-0", riskStyles[item.risk as keyof typeof riskStyles])}>
                   {item.risk} risk
@@ -313,9 +313,9 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-3">
             {stats.loading ? (
-              <div className="text-xs text-gray-400">Loading...</div>
+              <div className="text-xs text-gray-600">Loading...</div>
             ) : stats.recentTransactions.length === 0 ? (
-              <div className="text-xs text-gray-400">No recent transactions.</div>
+              <div className="text-xs text-gray-600">No recent transactions.</div>
             ) : stats.recentTransactions.map((tx, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
                 {/* Coin icon */}
@@ -327,7 +327,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{tx.name}</p>
-                  <p className="text-xs text-gray-400">{tx.type} • {tx.txId}</p>
+                  <p className="text-xs text-gray-600">{tx.type} • {tx.txId}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900">{tx.amount}</p>
@@ -351,9 +351,9 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-3">
             {stats.loading ? (
-               <div className="text-xs text-gray-400">Loading...</div>
+               <div className="text-xs text-gray-600">Loading...</div>
             ) : stats.hotWallets.length === 0 ? (
-               <div className="text-xs text-gray-400">No hot wallets found.</div>
+               <div className="text-xs text-gray-600">No hot wallets found.</div>
             ) : stats.hotWallets.map((w) => (
               <div key={w.coin} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <div className="flex items-center gap-2.5">
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-900">{w.amount}</p>
-                  <p className="text-xs text-gray-400">{w.usd}</p>
+                  <p className="text-xs text-gray-600">{w.usd}</p>
                 </div>
               </div>
             ))}
@@ -382,9 +382,9 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-3">
             {stats.loading ? (
-               <div className="text-xs text-gray-400">Loading...</div>
+               <div className="text-xs text-gray-600">Loading...</div>
             ) : stats.coldWallets.length === 0 ? (
-               <div className="text-xs text-gray-400">No cold wallets found.</div>
+               <div className="text-xs text-gray-600">No cold wallets found.</div>
             ) : stats.coldWallets.map((w) => (
               <div key={w.coin} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <div className="flex items-center gap-2.5">
@@ -398,7 +398,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-900">{w.amount}</p>
-                  <p className="text-xs text-gray-400">{w.usd}</p>
+                  <p className="text-xs text-gray-600">{w.usd}</p>
                 </div>
               </div>
             ))}

@@ -177,7 +177,7 @@ function AdminSettingsPageContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[26px] font-bold text-gray-900 leading-tight">Admin Settings</h1>
-          <p className="mt-1 text-sm text-gray-500">Configure platform settings and preferences</p>
+          <p className="mt-1 text-sm text-gray-600">Configure platform settings and preferences</p>
         </div>
 
         <button
@@ -204,7 +204,7 @@ function AdminSettingsPageContent() {
             </div>
             <div>
               <h3 className="font-extrabold text-gray-900 text-sm">General Settings</h3>
-              <p className="text-[10px] text-gray-400 font-mono mt-0.5 font-bold uppercase">Platform configuration</p>
+              <p className="text-[10px] text-gray-600 font-mono mt-0.5 font-bold uppercase">Platform configuration</p>
             </div>
           </div>
 
@@ -218,7 +218,7 @@ function AdminSettingsPageContent() {
             <div className="space-y-5">
               {/* Platform Name */}
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Platform Name</label>
+                <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Platform Name</label>
                 <input
                   type="text"
                   required
@@ -230,7 +230,7 @@ function AdminSettingsPageContent() {
 
               {/* Support Email */}
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Support Email</label>
+                <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Support Email</label>
                 <input
                   type="email"
                   required
@@ -244,7 +244,7 @@ function AdminSettingsPageContent() {
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
                   <p className="text-xs font-extrabold text-gray-800">Maintenance Mode</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Temporarily disable platform access</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Temporarily disable platform access</p>
                 </div>
                 <ToggleSwitch
                   id="toggle-maintenance"
@@ -264,7 +264,7 @@ function AdminSettingsPageContent() {
             </div>
             <div>
               <h3 className="font-extrabold text-gray-900 text-sm">Financial Settings</h3>
-              <p className="text-[10px] text-gray-400 font-mono mt-0.5 font-bold uppercase">Withdrawal limits and fees</p>
+              <p className="text-[10px] text-gray-600 font-mono mt-0.5 font-bold uppercase">Withdrawal limits and fees</p>
             </div>
           </div>
 
@@ -281,7 +281,7 @@ function AdminSettingsPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Platform Fee */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Platform Fee (%)</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Platform Fee (%)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -295,7 +295,7 @@ function AdminSettingsPageContent() {
 
                 {/* Max Withdrawal */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Max Withdrawal (CAD)</label>
+                  <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Max Withdrawal (CAD)</label>
                   <input
                     type="number"
                     required
@@ -308,7 +308,7 @@ function AdminSettingsPageContent() {
 
               {/* Min Withdrawal */}
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Min Withdrawal (CAD)</label>
+                <label className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Min Withdrawal (CAD)</label>
                 <input
                   type="number"
                   required
@@ -322,7 +322,7 @@ function AdminSettingsPageContent() {
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
                   <p className="text-xs font-extrabold text-gray-800">Auto-Approve Withdrawals</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Under $1,000 CAD</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Under $1,000 CAD</p>
                 </div>
                 <ToggleSwitch
                   id="toggle-autoapprove"
@@ -342,7 +342,7 @@ function AdminSettingsPageContent() {
             </div>
             <div>
               <h3 className="font-extrabold text-gray-900 text-sm">Security Settings</h3>
-              <p className="text-[10px] text-gray-400 font-mono mt-0.5 font-bold uppercase">Authentication and verification</p>
+              <p className="text-[10px] text-gray-600 font-mono mt-0.5 font-bold uppercase">Authentication and verification</p>
             </div>
           </div>
 
@@ -357,7 +357,7 @@ function AdminSettingsPageContent() {
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
                   <p className="text-xs font-extrabold text-gray-800">Require KYC Verification</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Users must complete KYC before trading</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Users must complete KYC before trading</p>
                 </div>
                 <ToggleSwitch
                   id="toggle-requirekyc"
@@ -370,7 +370,7 @@ function AdminSettingsPageContent() {
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
                   <p className="text-xs font-extrabold text-gray-800">Require Two-Factor Authentication</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Mandatory 2FA for all withdrawals</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Mandatory 2FA for all withdrawals</p>
                 </div>
                 <ToggleSwitch
                   id="toggle-require2fa"
@@ -390,7 +390,7 @@ function AdminSettingsPageContent() {
             </div>
             <div>
               <h3 className="font-extrabold text-gray-900 text-sm">Notification Settings</h3>
-              <p className="text-[10px] text-gray-400 font-mono mt-0.5 font-bold uppercase">Alert preferences</p>
+              <p className="text-[10px] text-gray-600 font-mono mt-0.5 font-bold uppercase">Alert preferences</p>
             </div>
           </div>
 
@@ -405,7 +405,7 @@ function AdminSettingsPageContent() {
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
                   <p className="text-xs font-extrabold text-gray-800">Email Notifications</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Send notifications via email</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Send notifications via email</p>
                 </div>
                 <ToggleSwitch
                   id="toggle-emailnotifications"
@@ -418,7 +418,7 @@ function AdminSettingsPageContent() {
               <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
                   <p className="text-xs font-extrabold text-gray-800">SMS Notifications</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Send notifications via SMS</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5 font-semibold">Send notifications via SMS</p>
                 </div>
                 <ToggleSwitch
                   id="toggle-smsnotifications"

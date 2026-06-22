@@ -119,7 +119,7 @@ function ReportsAnalyticsPageContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-bold text-gray-900 leading-tight">Reports & Analytics</h1>
-          <p className="mt-1 text-sm text-gray-500">View platform performance metrics and generate reports</p>
+          <p className="mt-1 text-sm text-gray-600">View platform performance metrics and generate reports</p>
         </div>
 
         {/* Actions Dropdown & Export */}
@@ -130,9 +130,9 @@ function ReportsAnalyticsPageContent() {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-2 px-4 h-10 border border-gray-200 rounded-xl bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer select-none"
             >
-              <Calendar className="h-4 w-4 text-gray-400" />
+              <Calendar className="h-4 w-4 text-gray-600" />
               {dateRange}
-              <ChevronDown className="h-4 w-4 text-gray-400 transition-transform" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
+              <ChevronDown className="h-4 w-4 text-gray-600 transition-transform" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
             </button>
             <AnimatePresence>
               {isDropdownOpen && (
@@ -150,7 +150,7 @@ function ReportsAnalyticsPageContent() {
                         onClick={() => selectDateRange(r)}
                         className={cn(
                           "w-full text-left px-4 py-2 text-xs font-semibold hover:bg-gray-50 transition-colors",
-                          dateRange === r ? "text-blue-600 bg-blue-50/20" : "text-gray-500"
+                          dateRange === r ? "text-blue-600 bg-blue-50/20" : "text-gray-600"
                         )}
                       >
                         {r}
@@ -190,7 +190,7 @@ function ReportsAnalyticsPageContent() {
             {/* Total Revenue */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Total Revenue</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Total Revenue</span>
                 <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600 border border-green-100">
                   <DollarSign className="h-4.5 w-4.5" />
                 </div>
@@ -200,7 +200,7 @@ function ReportsAnalyticsPageContent() {
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-extrabold text-green-600">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+24.5%</span>
-                  <span className="text-gray-400 font-medium ml-1">vs last month</span>
+                  <span className="text-gray-600 font-medium ml-1">vs last month</span>
                 </div>
               </div>
             </div>
@@ -208,7 +208,7 @@ function ReportsAnalyticsPageContent() {
             {/* Total Transactions */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Total Transactions</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Total Transactions</span>
                 <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
                   <Activity className="h-4.5 w-4.5" />
                 </div>
@@ -218,7 +218,7 @@ function ReportsAnalyticsPageContent() {
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-extrabold text-green-600">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+18.3%</span>
-                  <span className="text-gray-400 font-medium ml-1">vs last month</span>
+                  <span className="text-gray-600 font-medium ml-1">vs last month</span>
                 </div>
               </div>
             </div>
@@ -226,7 +226,7 @@ function ReportsAnalyticsPageContent() {
             {/* Active Users */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Active Users</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Active Users</span>
                 <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
                   <Users className="h-4.5 w-4.5" />
                 </div>
@@ -236,7 +236,7 @@ function ReportsAnalyticsPageContent() {
                 <div className="flex items-center gap-1 mt-1.5 text-[10px] font-extrabold text-green-600">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+51.2%</span>
-                  <span className="text-gray-400 font-medium ml-1">vs last month</span>
+                  <span className="text-gray-600 font-medium ml-1">vs last month</span>
                 </div>
               </div>
             </div>
@@ -244,14 +244,14 @@ function ReportsAnalyticsPageContent() {
             {/* Avg Transaction */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider font-mono">Avg. Transaction</span>
+                <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wider font-mono">Avg. Transaction</span>
                 <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100">
                   <Calendar className="h-4.5 w-4.5" />
                 </div>
               </div>
               <div className="mt-3">
                 <p className="text-2xl font-black text-gray-900 leading-none">${stats.avgTransaction.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                <div className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-gray-400 font-mono">
+                <div className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-gray-600 font-mono">
                   <span>Per transaction</span>
                 </div>
               </div>
@@ -267,7 +267,7 @@ function ReportsAnalyticsPageContent() {
           <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="text-sm font-black text-gray-900 tracking-tight">Revenue & Transactions</h3>
-              <p className="text-[11px] text-gray-500 font-medium">Monthly volume breakdown</p>
+              <p className="text-[11px] text-gray-600 font-medium">Monthly volume breakdown</p>
             </div>
             <div className="flex items-center gap-4 text-[11px] font-bold">
               <div className="flex items-center gap-1.5">
@@ -282,7 +282,7 @@ function ReportsAnalyticsPageContent() {
           </div>
           <div className="flex-1 p-5 relative min-h-[250px]">
             {stats.revenueTxData.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">Loading Chart Data...</div>
+              <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">Loading Chart Data...</div>
             ) : (
               <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto overflow-visible select-none">
                 {/* Y Axis Gridlines */}
@@ -303,7 +303,7 @@ function ReportsAnalyticsPageContent() {
                         x={paddingLeft - 10}
                         y={y + 4}
                         textAnchor="end"
-                        className="text-[9px] font-bold text-gray-400 font-mono"
+                        className="text-[9px] font-bold text-gray-600 font-mono"
                       >
                         {val.toLocaleString()}
                       </text>
@@ -320,7 +320,7 @@ function ReportsAnalyticsPageContent() {
                       x={xCenter}
                       y={chartHeight - paddingBottom + 16}
                       textAnchor="middle"
-                      className="text-[10px] font-bold text-gray-500 font-mono"
+                      className="text-[10px] font-bold text-gray-600 font-mono"
                     >
                       {item.month}
                     </text>
@@ -441,7 +441,7 @@ function ReportsAnalyticsPageContent() {
 
           {loading ? (
             <div className="h-[260px] flex items-center justify-center bg-gray-50/50 rounded-xl border border-gray-100 border-dashed animate-pulse">
-              <span className="text-xs font-semibold text-gray-400">Loading chart data...</span>
+              <span className="text-xs font-semibold text-gray-600">Loading chart data...</span>
             </div>
           ) : (
             <div className="w-full flex flex-col">
@@ -466,7 +466,7 @@ function ReportsAnalyticsPageContent() {
                           x={paddingLeft - 10}
                           y={y + 4}
                           textAnchor="end"
-                          className="text-[9px] font-bold text-gray-400 font-mono"
+                          className="text-[9px] font-bold text-gray-600 font-mono"
                         >
                           {val.toLocaleString()}
                         </text>
@@ -484,7 +484,7 @@ function ReportsAnalyticsPageContent() {
                         x={x}
                         y={chartHeight - paddingBottom + 16}
                         textAnchor="middle"
-                        className="text-[10px] font-bold text-gray-500 font-mono"
+                        className="text-[10px] font-bold text-gray-600 font-mono"
                       >
                         {item.month}
                       </text>
@@ -625,7 +625,7 @@ function ReportsAnalyticsPageContent() {
               </div>
 
               {/* HTML Legends */}
-              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-4 text-xs font-bold text-gray-500 font-mono">
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-4 text-xs font-bold text-gray-600 font-mono">
                 <div className="flex items-center gap-2">
                   <span className="w-4 h-0.5 bg-[#0A3D91] relative flex items-center justify-center">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#0A3D91] border border-white" />
@@ -654,7 +654,7 @@ function ReportsAnalyticsPageContent() {
           <>
             {/* Conversion Rate */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-              <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wide font-mono">Conversion Rate</span>
+              <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide font-mono">Conversion Rate</span>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 flex-wrap">
                 <span className="text-2xl font-black text-gray-900 leading-none">82.1%</span>
                 <div className="flex items-center gap-1 text-[10px] font-extrabold text-green-700 flex-wrap">
@@ -662,14 +662,14 @@ function ReportsAnalyticsPageContent() {
                     <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
                     +3.2%
                   </span>
-                  <span className="text-gray-400 font-medium whitespace-nowrap">from last month</span>
+                  <span className="text-gray-600 font-medium whitespace-nowrap">from last month</span>
                 </div>
               </div>
             </div>
 
             {/* Avg Session Duration */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-              <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wide font-mono">Avg. Session Duration</span>
+              <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide font-mono">Avg. Session Duration</span>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 flex-wrap">
                 <span className="text-2xl font-black text-gray-900 leading-none">8m 42s</span>
                 <div className="flex items-center gap-1 text-[10px] font-extrabold text-green-700 flex-wrap">
@@ -677,14 +677,14 @@ function ReportsAnalyticsPageContent() {
                     <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
                     +12%
                   </span>
-                  <span className="text-gray-400 font-medium whitespace-nowrap">from last month</span>
+                  <span className="text-gray-600 font-medium whitespace-nowrap">from last month</span>
                 </div>
               </div>
             </div>
 
             {/* Support Ticket Resolution */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-              <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wide font-mono">Support Ticket Resolution</span>
+              <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide font-mono">Support Ticket Resolution</span>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 flex-wrap">
                 <span className="text-2xl font-black text-gray-900 leading-none">{stats.resolutionRate}%</span>
                 <div className="flex items-center gap-1 text-[10px] font-extrabold text-green-700 flex-wrap">
@@ -692,7 +692,7 @@ function ReportsAnalyticsPageContent() {
                     <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
                     +5.1%
                   </span>
-                  <span className="text-gray-400 font-medium whitespace-nowrap">from last month</span>
+                  <span className="text-gray-600 font-medium whitespace-nowrap">from last month</span>
                 </div>
               </div>
             </div>
