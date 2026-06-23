@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,63 @@ export async function PATCH(request: Request) {
 
     const supabaseAdmin = createAdminClient();
 
+    // Fetch withdrawal request details
+    const { data: wdr } = await supabaseAdmin
+      .from("withdrawal_requests")
+      .select("user_id, amount, method")
+      .eq("id", requestId)
+      .single();
+
+    if (!wdr) {
+      return NextResponse.json({ error: "Withdrawal request not found" }, { status: 404 });
+    }
+
+    if (status === "approved" || status === "completed") {
+      // 1. Fetch live CAD rates to convert CAD back to USDT
+      const rates = await fetchLiveCADRates();
+      const cadRate = rates.usdtCAD || 1.36;
+      const usdtToDeduct = wdr.amount / cadRate;
+
+      // 2. Fetch the user's current USDT balance
+      const { data: userWallet } = await supabaseAdmin
+        .from("user_wallets")
+        .select("balance")
+        .eq("user_id", wdr.user_id)
+        .eq("currency", "USDT")
+        .single();
+
+      const currentBalance = userWallet ? Number(userWallet.balance) : 0;
+      
+      // 3. Deduct the amount
+      const newBalance = currentBalance - usdtToDeduct;
+
+      // 4. If newBalance < 0, do not approve
+      if (newBalance < 0) {
+        return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
+      }
+
+      // 5. Update user_wallets
+      const { error: walletErr } = await supabaseAdmin
+        .from("user_wallets")
+        .update({ balance: newBalance })
+        .eq("user_id", wdr.user_id)
+        .eq("currency", "USDT");
+      if (walletErr) throw walletErr;
+
+      // 6. Insert into wallet_ledger
+      const { error: ledgerErr } = await supabaseAdmin
+        .from("wallet_ledger")
+        .insert({
+          user_id: wdr.user_id,
+          type: "WITHDRAWAL",
+          provider: "INTERAC",
+          currency: "USDT",
+          amount: usdtToDeduct,
+          status: "COMPLETED",
+        });
+      if (ledgerErr) throw ledgerErr;
+    }
+
     const { error } = await supabaseAdmin
       .from("withdrawal_requests")
       .update({ 
@@ -73,32 +131,21 @@ export async function PATCH(request: Request) {
 
     if (error) throw error;
 
-    // Fetch withdrawal request details for logging
-    const { data: wdr } = await supabaseAdmin
-      .from("withdrawal_requests")
-      .select("user_id, amount")
-      .eq("id", requestId)
-      .single();
-
     let userName = "Unknown User";
-    let userId = "N/A";
-    let amount = 0;
+    let userId = wdr.user_id;
+    let amount = wdr.amount;
 
-    if (wdr) {
-      userId = wdr.user_id;
-      amount = wdr.amount;
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("full_name")
-        .eq("id", wdr.user_id)
-        .single();
-      if (profile) {
-        userName = profile.full_name;
-      }
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", wdr.user_id)
+      .single();
+    if (profile) {
+      userName = profile.full_name;
     }
 
-    const action = status === "approved" ? "Withdrawal Approved" : "Withdrawal Rejected";
-    const severity = status === "approved" ? "Info" : "Warning";
+    const action = (status === "approved" || status === "completed") ? "Withdrawal Approved" : "Withdrawal Rejected";
+    const severity = (status === "approved" || status === "completed") ? "Info" : "Warning";
 
     await supabaseAdmin.from("security_logs").insert({
       action,
