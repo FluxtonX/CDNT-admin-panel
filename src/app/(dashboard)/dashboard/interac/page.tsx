@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useWithdrawals, useUpdateWithdrawal } from "@/hooks/useAdminQueries";
 import { AnimatePresence, motion } from "framer-motion";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import {
@@ -107,10 +108,10 @@ export default function InteracPayoutsPage() {
 }
 
 function InteracPayoutsPageContent() {
-  const [payouts, setPayouts] = useState<InteracPayout[]>([]);
+  const { data: withdrawalsData = [], isLoading: loading } = useWithdrawals();
+  const updateWithdrawal = useUpdateWithdrawal();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
   /* Modal state variables */
@@ -120,61 +121,39 @@ function InteracPayoutsPageContent() {
     targetStatus: null,
   });
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/withdrawals");
-      const data = res.ok ? await res.json() : { withdrawals: [] };
-      
-      const list: InteracPayout[] = (data.withdrawals || []).map((w: any) => {
-        let localStatus: PayoutStatus = "Pending";
-        if (w.status === "completed") localStatus = "Completed";
-        else if (w.status === "processing") localStatus = "Processing";
-        else if (w.status === "failed" || w.status === "rejected") localStatus = "Failed";
+  const payouts = useMemo(() => {
+    const list: InteracPayout[] = (withdrawalsData || []).map((w: any) => {
+      let localStatus: PayoutStatus = "Pending";
+      if (w.status === "completed") localStatus = "Completed";
+      else if (w.status === "processing") localStatus = "Processing";
+      else if (w.status === "failed" || w.status === "rejected") localStatus = "Failed";
 
-        return {
-          payoutId: `PAY-${w.id.slice(0, 8).toUpperCase()}`,
-          realId: w.id,
-          user: {
-            id: w.user_id,
-            name: w.user?.name || "Unknown User",
-            email: w.user?.email || "N/A",
-            avatar: "",
-            role: "viewer",
-            status: "active",
-            joinedAt: "",
-            lastActive: "",
-            balance: 0
-          },
-          amount: Number(w.amount),
-          status: localStatus,
-          requestDate: new Date(w.created_at).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          }),
-          referenceCode: `WDR-${w.id.slice(0, 5).toUpperCase()}`,
-          securityQuestion: w.security_question,
-          securityAnswer: w.security_answer
-        };
-      });
+      return {
+        payoutId: `PAY-${w.id.slice(0, 8).toUpperCase()}`,
+        realId: w.id,
+        user: {
+          id: w.user_id,
+          name: w.user?.name || "Unknown User",
+          email: w.user?.email || "N/A",
+        } as AdminUser,
+        amount: Number(w.amount),
+        status: localStatus,
+        requestDate: new Date(w.created_at).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+        referenceCode: `WDR-${w.id.slice(0, 5).toUpperCase()}`,
+        securityQuestion: w.security_question,
+        securityAnswer: w.security_answer,
+      };
+    });
 
-      list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
-      
-      setPayouts(list);
-    } catch (e) {
-      console.error("Error loading Interac payouts:", e);
-      setPayouts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
+    list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+    return list;
+  }, [withdrawalsData]);
 
   const counts = useMemo(() => {
     return {
@@ -266,33 +245,20 @@ function InteracPayoutsPageContent() {
 
     try {
       if (realId) {
-        const res = await fetch("/api/withdrawals", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestId: realId,
-            status: backendStatus,
-            adminNote: "Updated from Interac Payouts console"
-          })
+        await updateWithdrawal.mutateAsync({
+          requestId: realId,
+          status: backendStatus,
+          adminNote: "Updated from Interac Payouts console",
         });
-
-        if (!res.ok) {
-          throw new Error("Failed to update payout status on server");
-        }
 
         setToast(`Payout ${payoutId} status set to ${status} successfully`);
       } else {
-        // Fallback for mock updates
-        setPayouts((prev) =>
-          prev.map((p) => (p.payoutId === payoutId ? { ...p, status } : p))
-        );
         setToast(`Payout ${payoutId} status set to ${status} successfully`);
       }
 
       setSelectedPayout((prev) => (prev ? { ...prev, status } : null));
       setShowConfirmModal({ show: false, targetStatus: null });
       window.setTimeout(() => setToast(null), 2500);
-      loadData();
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to update payout status");

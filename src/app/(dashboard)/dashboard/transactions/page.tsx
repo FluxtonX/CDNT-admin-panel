@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { useDeposits, useWithdrawals, useUpdateDeposit, useUpdateWithdrawal } from "@/hooks/useAdminQueries";
 import { useRouter } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
@@ -233,11 +234,14 @@ export default function TransactionsDashboard() {
 
 function TransactionsDashboardContent() {
   const router = useRouter();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const { data: depositsData = [], isLoading: depositsLoading } = useDeposits();
+  const { data: withdrawalsData = [], isLoading: withdrawalsLoading } = useWithdrawals();
+  const updateDeposit = useUpdateDeposit();
+  const updateWithdrawal = useUpdateWithdrawal();
+  const loading = depositsLoading || withdrawalsLoading;
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [toast, setToast] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   /* Modal state variables */
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -247,97 +251,85 @@ function TransactionsDashboardContent() {
   });
   const [statusComment, setStatusComment] = useState("");
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [depRes, wdrRes, liveRates] = await Promise.all([
-        fetch("/api/deposits"),
-        fetch("/api/withdrawals"),
-        fetchLiveCADRates()
-      ]);
-      
-      const depositsData = depRes.ok ? await depRes.json() : { deposits: [] };
-      const withdrawalsData = wdrRes.ok ? await wdrRes.json() : { withdrawals: [] };
-      
-      const list: Transaction[] = [];
-      
-      const cadRateForAsset = (asset: string): number => {
-        const sym = (asset || '').toUpperCase().trim();
-        if (sym === 'BTC' || sym === 'BITCOIN') return liveRates.btcCAD;
-        if (sym === 'ETH' || sym === 'ETHEREUM') return liveRates.ethCAD;
-        if (sym === 'USDT' || sym === 'USDC' || sym === 'TETHER') return liveRates.usdtCAD;
-        return liveRates.usdtCAD; // fallback for unknown assets
-      };
-
-      (depositsData.deposits || []).forEach((d: any) => {
-        list.push({
-          txId: `DEP-${d.id.slice(0, 8).toUpperCase()}`,
-          realId: d.id,
-          user: {
-            id: d.user_id,
-            name: d.user?.name || "Unknown User",
-            email: d.user?.email || "N/A",
-            avatar: "",
-            role: "viewer",
-            status: "active",
-            joinedAt: "",
-            lastActive: "",
-            balance: 0
-          },
-          type: "Deposit",
-          amountCad: Number(d.expected_amount) * cadRateForAsset(d.asset),
-          cryptoAmount: `${d.expected_amount} ${d.asset}`,
-          cryptoCurrency: d.asset,
-          status: d.status === "approved" ? "Completed" : d.status === "rejected" ? "Failed" : "Pending",
-          riskScore: "Low Risk",
-          timestamp: new Date(d.created_at).toISOString().replace("T", " ").slice(0, 19),
-          toAddress: d.company_address,
-          txHash: d.tx_hash,
-          network: d.network,
-        } as any);
-      });
-
-      (withdrawalsData.withdrawals || []).forEach((w: any) => {
-        list.push({
-          txId: `WDR-${w.id.slice(0, 8).toUpperCase()}`,
-          realId: w.id,
-          user: {
-            id: w.user_id,
-            name: w.user?.name || "Unknown User",
-            email: w.user?.email || "N/A",
-            avatar: "",
-            role: "viewer",
-            status: "active",
-            joinedAt: "",
-            lastActive: "",
-            balance: 0
-          },
-          type: "Withdrawal",
-          amountCad: Number(w.amount),
-          cryptoAmount: `${w.amount} CAD`,
-          cryptoCurrency: "CAD",
-          status: w.status === "completed" ? "Completed" : w.status === "rejected" ? "Failed" : "Pending",
-          riskScore: "Medium Risk",
-          timestamp: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
-          fromAddress: w.interac_email,
-          txHash: w.security_question || "N/A",
-          network: "Interac e-Transfer",
-          feeCad: 2.50,
-        } as any);
-      });
-
-      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setTransactions(list);
-    } catch (e) {
-      console.error("Error loading admin transactions ledger:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [liveRates, setLiveRates] = useState<Awaited<ReturnType<typeof fetchLiveCADRates>> | null>(null);
 
   useEffect(() => {
-    loadData();
+    fetchLiveCADRates().then(setLiveRates);
   }, []);
+
+  const transactions = useMemo(() => {
+    if (!liveRates) return [] as Transaction[];
+
+    const list: Transaction[] = [];
+
+    const cadRateForAsset = (asset: string): number => {
+      const sym = (asset || "").toUpperCase().trim();
+      if (sym === "BTC" || sym === "BITCOIN") return liveRates.btcCAD;
+      if (sym === "ETH" || sym === "ETHEREUM") return liveRates.ethCAD;
+      if (sym === "USDT" || sym === "USDC" || sym === "TETHER") return liveRates.usdtCAD;
+      return liveRates.usdtCAD;
+    };
+
+    (depositsData || []).forEach((d: any) => {
+      list.push({
+        txId: `DEP-${d.id.slice(0, 8).toUpperCase()}`,
+        realId: d.id,
+        user: {
+          id: d.user_id,
+          name: d.user?.name || "Unknown User",
+          email: d.user?.email || "N/A",
+          avatar: "",
+          role: "viewer",
+          status: "active",
+          joinedAt: "",
+          lastActive: "",
+          balance: 0,
+        },
+        type: "Deposit",
+        amountCad: Number(d.expected_amount) * cadRateForAsset(d.asset),
+        cryptoAmount: `${d.expected_amount} ${d.asset}`,
+        cryptoCurrency: d.asset,
+        status: d.status === "approved" ? "Completed" : d.status === "rejected" ? "Failed" : "Pending",
+        riskScore: "Low Risk",
+        timestamp: new Date(d.created_at).toISOString().replace("T", " ").slice(0, 19),
+        toAddress: d.company_address,
+        txHash: d.tx_hash,
+        network: d.network,
+      } as any);
+    });
+
+    (withdrawalsData || []).forEach((w: any) => {
+      list.push({
+        txId: `WDR-${w.id.slice(0, 8).toUpperCase()}`,
+        realId: w.id,
+        user: {
+          id: w.user_id,
+          name: w.user?.name || "Unknown User",
+          email: w.user?.email || "N/A",
+          avatar: "",
+          role: "viewer",
+          status: "active",
+          joinedAt: "",
+          lastActive: "",
+          balance: 0,
+        },
+        type: "Withdrawal",
+        amountCad: Number(w.amount),
+        cryptoAmount: `${w.amount} CAD`,
+        cryptoCurrency: "CAD",
+        status: w.status === "completed" ? "Completed" : w.status === "rejected" ? "Failed" : "Pending",
+        riskScore: "Medium Risk",
+        timestamp: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
+        fromAddress: w.interac_email,
+        txHash: w.security_question || "N/A",
+        network: "Interac e-Transfer",
+        feeCad: 2.5,
+      } as any);
+    });
+
+    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return list;
+  }, [depositsData, withdrawalsData, liveRates]);
 
   const counts = useMemo(() => {
     return {
@@ -459,26 +451,24 @@ function TransactionsDashboardContent() {
     }
 
     try {
-      const endpoint = isDeposit ? "/api/deposits" : "/api/withdrawals";
-      const res = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (isDeposit) {
+        await updateDeposit.mutateAsync({
           requestId: realId,
           status: backendStatus,
           adminNote: statusComment,
-          rejectionReason: statusComment
-        })
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to update status on server");
+          rejectionReason: statusComment,
+        });
+      } else {
+        await updateWithdrawal.mutateAsync({
+          requestId: realId,
+          status: backendStatus,
+          adminNote: statusComment,
+          rejectionReason: statusComment,
+        });
       }
 
       setToast(`Transaction ${currentTxId} status updated successfully ✓`);
       window.setTimeout(() => setToast(null), 2500);
-      loadData();
       setSelectedTx(null);
       setShowStatusModal({ show: false, targetStatus: null });
       setStatusComment("");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useDashboardMetrics } from "@/hooks/useAdminQueries";
 
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -103,45 +103,25 @@ const formatMillions = (v: number) =>
 
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    verifiedUsers: 0,
-    pendingKyc: 0,
-    platformAssets: 0,
-    pendingWithdrawals: 0,
-    totalDepositsAmt: 0,
-    flaggedTransactions: 0,
-    userGrowthData: [] as any[],
-    assetData: [] as any[],
-    depositsData: [] as any[],
-    withdrawalQueue: [] as any[],
-    recentTransactions: [] as any[],
-    hotWallets: [] as any[],
-    coldWallets: [] as any[],
-    loading: true,
-  });
+  const { data, isLoading } = useDashboardMetrics();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("/api/dashboard", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          setStats({
-            ...data,
-            loading: false
-          });
-        } else {
-          console.error("Failed to fetch dashboard stats", await res.text());
-          setStats(prev => ({ ...prev, loading: false }));
-        }
-      } catch (err) {
-        console.error("Error fetching stats:", err);
-        setStats(prev => ({ ...prev, loading: false }));
-      }
-    };
-    fetchData();
-  }, []);
+  const stats = {
+    totalUsers: Number(data?.totalUsers ?? 0),
+    verifiedUsers: Number(data?.verifiedUsers ?? 0),
+    pendingKyc: Number(data?.pendingKyc ?? 0),
+    platformAssets: Number(data?.platformAssets ?? 0),
+    pendingWithdrawals: Number(data?.pendingWithdrawals ?? 0),
+    totalDepositsAmt: Number(data?.totalDepositsAmt ?? 0),
+    flaggedTransactions: Number(data?.flaggedTransactions ?? 0),
+    userGrowthData: (data?.userGrowthData as any[]) ?? [],
+    assetData: (data?.assetData as any[]) ?? [],
+    depositsData: (data?.depositsData as any[]) ?? [],
+    withdrawalQueue: (data?.withdrawalQueue as any[]) ?? [],
+    recentTransactions: (data?.recentTransactions as any[]) ?? [],
+    hotWallets: (data?.hotWallets as any[]) ?? [],
+    coldWallets: (data?.coldWallets as any[]) ?? [],
+    loading: isLoading,
+  };
 
   return (
     <div className="space-y-5">

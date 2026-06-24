@@ -2,7 +2,8 @@
 
 export const dynamic = "force-dynamic";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { usePlatformWallets } from "@/hooks/useAdminQueries";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
@@ -166,49 +167,31 @@ export default function WalletManagementPage() {
 }
 
 function WalletManagementPageContent() {
-  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const { data: walletData = [], isLoading: loading } = usePlatformWallets();
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
   /* Modal state variables */
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [targetStatus, setTargetStatus] = useState<WalletStatus | null>(null);
+  const [localStatusOverrides, setLocalStatusOverrides] = useState<Record<string, WalletStatus>>({});
 
-  /* Load wallets from API */
-  useEffect(() => {
-    async function loadWallets() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/platform-wallets", { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch platform wallets");
-        const data = await res.json();
-        
-        const mappedWallets: Wallet[] = data.map((w: any) => ({
-          walletId: w.wallet_id,
-          type: w.type as WalletType,
-          crypto: w.crypto,
-          address: w.address,
-          balanceCrypto: w.balance_crypto,
-          balanceCad: Number(w.balance_cad),
-          status: w.status as WalletStatus,
-          lastActivity: w.last_activity,
-          network: w.network,
-          transactions: w.transactions || [],
-        }));
-        setWallets(mappedWallets);
-      } catch (err) {
-        console.error("Failed to fetch platform wallets:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadWallets();
-  }, []);
-
-  /* Removed Supabase Realtime subscription since we aggregate from API */
+  const wallets = useMemo(() => {
+    const mappedWallets: Wallet[] = (walletData as any[]).map((w: any) => ({
+      walletId: w.wallet_id,
+      type: w.type as WalletType,
+      crypto: w.crypto,
+      address: w.address,
+      balanceCrypto: w.balance_crypto,
+      balanceCad: Number(w.balance_cad),
+      status: (localStatusOverrides[w.wallet_id] || w.status) as WalletStatus,
+      lastActivity: w.last_activity,
+      network: w.network,
+      transactions: w.transactions || [],
+    }));
+    return mappedWallets;
+  }, [walletData, localStatusOverrides]);
 
   const stats = useMemo(() => {
     const hotWallets = wallets.filter((w) => w.type === "Hot");
@@ -282,11 +265,7 @@ function WalletManagementPageContent() {
     const walletId = selectedWallet.walletId;
 
     try {
-      // For now, since it's an aggregated view, status changes are local optimistic updates.
-      // Optimistic local state updates
-      setWallets((prev) =>
-        prev.map((w) => (w.walletId === walletId ? { ...w, status: targetStatus } : w))
-      );
+      setLocalStatusOverrides((prev) => ({ ...prev, [walletId]: targetStatus }));
       setSelectedWallet((prev) => (prev ? { ...prev, status: targetStatus } : null));
       setToast(`Wallet ${walletId} status successfully set to ${targetStatus}`);
     } catch (err) {

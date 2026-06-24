@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useWithdrawals, useUpdateWithdrawal } from "@/hooks/useAdminQueries";
 import { useRouter } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
@@ -117,11 +118,11 @@ export default function WithdrawalRequestsPage() {
 
 function WithdrawalRequestsPageContent() {
   const router = useRouter();
-  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const { data: withdrawalsData = [], isLoading: loading } = useWithdrawals();
+  const updateWithdrawal = useUpdateWithdrawal();
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<TabValue>("Pending"); // default tab is Pending as per Screenshot 1
+  const [activeTab, setActiveTab] = useState<TabValue>("Pending");
   const [toast, setToast] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   /* ─── Modal state variables ─────────────────────────────────────── */
   const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
@@ -131,53 +132,36 @@ function WithdrawalRequestsPageContent() {
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [currentNote, setCurrentNote] = useState("");
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/withdrawals");
-      const data = res.ok ? await res.json() : { withdrawals: [] };
-      
-      const list: WithdrawalRequest[] = (data.withdrawals || []).map((w: any) => {
-        return {
-          requestId: `WD-${w.id.slice(0, 8).toUpperCase()}`,
-          realId: w.id,
-          user: {
-            id: w.user_id,
-            name: w.user?.name || "Unknown User",
-            email: w.user?.email || "N/A",
-            avatar: "",
-            role: "viewer",
-            status: "active",
-            joinedAt: "",
-            lastActive: "",
-            balance: 0
-          },
-          amount: Number(w.amount),
-          cryptoAmount: `${w.amount} CAD`,
-          cryptoCurrency: "CAD",
-          riskScore: "medium risk",
-          kycStatus: "verified",
-          requestDate: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
-          status: w.status === "completed" ? "Completed" : w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : w.status === "failed" ? "Failed" : "Pending",
-          interacRecipient: w.interac_email,
-          previousWithdrawals: 0,
-          currentBalance: Number(w.amount),
-        };
-      });
+  const requests = useMemo(() => {
+    const list: WithdrawalRequest[] = (withdrawalsData || []).map((w: any) => ({
+      requestId: `WD-${w.id.slice(0, 8).toUpperCase()}`,
+      realId: w.id,
+      user: {
+        id: w.user_id,
+        name: w.user?.name || "Unknown User",
+        email: w.user?.email || "N/A",
+        avatar: "",
+        role: "viewer",
+        status: "active",
+        joinedAt: "",
+        lastActive: "",
+        balance: 0,
+      },
+      amount: Number(w.amount),
+      cryptoAmount: `${w.amount} CAD`,
+      cryptoCurrency: "CAD",
+      riskScore: "medium risk" as const,
+      kycStatus: "verified" as const,
+      requestDate: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
+      status: w.status === "completed" ? "Completed" : w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : w.status === "failed" ? "Failed" : "Pending",
+      interacRecipient: w.interac_email,
+      previousWithdrawals: 0,
+      currentBalance: Number(w.amount),
+    }));
 
-      list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
-      setRequests(list);
-    } catch (e) {
-      console.error("Error loading admin withdrawals:", e);
-      setRequests([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+    list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+    return list;
+  }, [withdrawalsData]);
 
   const counts = useMemo(() => {
     return {
@@ -271,31 +255,21 @@ function WithdrawalRequestsPageContent() {
 
     try {
       if (!realId) throw new Error("Invalid request ID - missing database reference");
-      
-      const res = await fetch("/api/withdrawals", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId: realId,
-          status: "completed",
-          adminNote: currentNote
-        })
-      });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to approve withdrawal request");
-      }
+      await updateWithdrawal.mutateAsync({
+        requestId: realId,
+        status: "completed",
+        adminNote: currentNote,
+      });
 
       setToast(`Withdrawal request ${reqId} completed ✓`);
 
       if (currentNote.trim()) {
-        setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
+        setAdminNotes((prev) => ({ ...prev, [reqId]: currentNote }));
       }
       setSelectedRequest(null);
       setShowApproveModal(false);
       window.setTimeout(() => setToast(null), 2500);
-      loadData();
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to approve withdrawal");
@@ -310,31 +284,21 @@ function WithdrawalRequestsPageContent() {
     try {
       if (!realId) throw new Error("Invalid request ID - missing database reference");
 
-      const res = await fetch("/api/withdrawals", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId: realId,
-          status: "rejected",
-          rejectionReason: rejectionReason,
-          adminNote: currentNote
-        })
+      await updateWithdrawal.mutateAsync({
+        requestId: realId,
+        status: "rejected",
+        rejectionReason,
+        adminNote: currentNote,
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to reject withdrawal request");
-      }
 
       setToast(`Withdrawal request ${reqId} rejected`);
 
       if (currentNote.trim()) {
-        setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
+        setAdminNotes((prev) => ({ ...prev, [reqId]: currentNote }));
       }
       setSelectedRequest(null);
       setShowRejectModal(false);
       window.setTimeout(() => setToast(null), 2500);
-      loadData();
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to reject withdrawal");

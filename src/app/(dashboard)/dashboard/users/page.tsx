@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useUsers, useUpdateUserAccount } from "@/hooks/useAdminQueries";
 import { useRouter } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { motion, AnimatePresence } from "framer-motion";
@@ -401,30 +402,12 @@ export default function UsersPage() {
 
 function UsersPageContent() {
   const router = useRouter();
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const { data: users = [], isLoading: loading } = useUsers() as { data: AdminUser[]; isLoading: boolean };
+  const updateUserAccount = useUpdateUserAccount();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/users", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users || []);
-        }
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
-  }, []);
   const [showAddUser, setShowAddUser] = useState(false);
   const [activeUserForFreeze, setActiveUserForFreeze] = useState<AdminUser | null>(null);
   const [activeUserForNote, setActiveUserForNote] = useState<AdminUser | null>(null);
@@ -663,9 +646,9 @@ function UsersPageContent() {
                     key={user.id}
                     user={user}
                     onView={() => router.push(`/dashboard/users/${user.id}`)}
-                    onFreeze={() => {
+                    onFreeze={async () => {
                       if (user.account === "Frozen") {
-                        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, account: "Active" } : u));
+                        await updateUserAccount.mutateAsync({ userId: user.id, action: "unfreeze" });
                         setToastMsg("Account unfrozen successfully ✓");
                       } else {
                         setActiveUserForFreeze(user);
@@ -729,8 +712,8 @@ function UsersPageContent() {
         {activeUserForFreeze && (
           <FreezeModal
             onClose={() => setActiveUserForFreeze(null)}
-            onConfirm={(reason) => {
-              setUsers(prev => prev.map(u => u.id === activeUserForFreeze.id ? { ...u, account: "Frozen" } : u));
+            onConfirm={async (reason) => {
+              await updateUserAccount.mutateAsync({ userId: activeUserForFreeze.id, action: "freeze", reason });
               setActiveUserForFreeze(null);
               setToastMsg("Account frozen successfully ✓");
             }}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useUserDetail, useUpdateUserAccount, useAddUserNote, useUpdateKyc } from "@/hooks/useAdminQueries";
 import { useRouter, useParams } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { motion, AnimatePresence } from "framer-motion";
@@ -595,6 +596,7 @@ function PortfolioTab({ user }: { user: any }) {
 function DocumentsTab({ user }: { user: any }) {
   const [docs, setDocs] = useState(user.documents || []);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
+  const updateKyc = useUpdateKyc();
 
   const statusStyle: Record<string, string> = {
     approved: "bg-green-50 text-green-600 border-green-200",
@@ -670,9 +672,9 @@ function DocumentsTab({ user }: { user: any }) {
               </div>
               <div className="p-4 bg-gray-50/50 flex justify-end gap-3">
                 <button
-                  onClick={() => {
-                    fetch("/api/kyc", { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, status: "rejected", rejectionReason: "Rejected by admin" }) });
-                    setDocs((prev:any) => prev.map((d:any) => d.id === selectedDoc.id ? { ...d, status: "rejected" } : d));
+                  onClick={async () => {
+                    await updateKyc.mutateAsync({ userId: user.id, status: "rejected", rejectionReason: "Rejected by admin" });
+                    setDocs((prev: any) => prev.map((d: any) => d.id === selectedDoc.id ? { ...d, status: "rejected" } : d));
                     setSelectedDoc(null);
                   }}
                   className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-red-600 hover:bg-red-50/50 transition-colors"
@@ -680,9 +682,9 @@ function DocumentsTab({ user }: { user: any }) {
                   Reject Document
                 </button>
                 <button
-                  onClick={() => {
-                    fetch("/api/kyc", { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, status: "approved" }) });
-                    setDocs((prev:any) => prev.map((d:any) => d.id === selectedDoc.id ? { ...d, status: "approved" } : d));
+                  onClick={async () => {
+                    await updateKyc.mutateAsync({ userId: user.id, status: "approved" });
+                    setDocs((prev: any) => prev.map((d: any) => d.id === selectedDoc.id ? { ...d, status: "approved" } : d));
                     setSelectedDoc(null);
                   }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
@@ -783,65 +785,54 @@ function UserDetailPageContent() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
-
-  const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch(`/api/users/${userId}`, { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        const formattedUser = {
-          id: userId,
-          name: data.profile?.full_name || data.auth?.user_metadata?.full_name || "Unknown User",
-          email: data.auth?.email,
-          phone: data.profile?.phone || data.auth?.phone || "N/A",
-          dateOfBirth: data.kyc?.date_of_birth,
-          street: data.kyc?.street_address,
-          city: data.kyc?.city,
-          postalCode: data.kyc?.postal_code,
-          country: data.kyc?.country,
-          joinedDate: formatDate(data.auth?.created_at || new Date().toISOString()),
-          lastLogin: data.auth?.last_sign_in_at ? formatDate(data.auth.last_sign_in_at) : "N/A",
-          twoFactor: data.profile?.two_factor_enabled || false,
-          lastIp: data.profile?.last_ip || "N/A",
-          wallets: data.wallets || [],
-          transactions: data.transactions || [],
-          sessions: data.sessions || [],
-          documents: data.kycDocuments || [],
-          tickets: data.tickets || [],
-          security_logs: data.securityLogs || [],
-          notes: data.notes || [],
-          account: data.profile?.account_status || "Active",
-          risk: data.profile?.risk_level || "Low Risk",
-          kyc: data.kyc?.status === "approved" ? "Verified" : data.kyc?.status === "rejected" ? "Rejected" : data.kyc?.status === "pending" ? "Pending" : "Not Started",
-          balance: 0
-        };
-        
-        const liveRates = await fetchLiveCADRates();
-        const rates: Record<string, number> = { BTC: liveRates.btcCAD, ETH: liveRates.ethCAD, USDT: liveRates.usdtCAD, USDC: liveRates.usdtCAD };
-        let totalBalance = 0;
-        for (const w of formattedUser.wallets) {
-            const r = rates[w.currency?.toUpperCase()] || rates.USDT;
-            totalBalance += Number(w.balance || 0) * r;
-        }
-        formattedUser.balance = totalBalance;
-        
-        setUserData(formattedUser);
-      }
-    } catch (err) {
-      console.error("Error fetching users:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: rawUserData, isLoading: loading } = useUserDetail(userId);
+  const updateUserAccount = useUpdateUserAccount();
+  const addUserNote = useAddUserNote();
+  const [cadRates, setCadRates] = useState<Awaited<ReturnType<typeof fetchLiveCADRates>> | null>(null);
 
   useEffect(() => {
-    fetchUsers();
-  }, [userId]);
+    fetchLiveCADRates().then(setCadRates);
+  }, []);
 
-  const user = userData;
+  const user = useMemo(() => {
+    if (!rawUserData || !cadRates) return null;
+    const data = rawUserData as any;
+    const formattedUser = {
+      id: userId,
+      name: data.profile?.full_name || data.auth?.user_metadata?.full_name || "Unknown User",
+      email: data.auth?.email,
+      phone: data.profile?.phone || data.auth?.phone || "N/A",
+      dateOfBirth: data.kyc?.date_of_birth,
+      street: data.kyc?.street_address,
+      city: data.kyc?.city,
+      postalCode: data.kyc?.postal_code,
+      country: data.kyc?.country,
+      joinedDate: formatDate(data.auth?.created_at || new Date().toISOString()),
+      lastLogin: data.auth?.last_sign_in_at ? formatDate(data.auth.last_sign_in_at) : "N/A",
+      twoFactor: data.profile?.two_factor_enabled || false,
+      lastIp: data.profile?.last_ip || "N/A",
+      wallets: data.wallets || [],
+      transactions: data.transactions || [],
+      sessions: data.sessions || [],
+      documents: data.kycDocuments || [],
+      tickets: data.tickets || [],
+      security_logs: data.securityLogs || [],
+      notes: data.notes || [],
+      account: data.profile?.account_status || "Active",
+      risk: data.profile?.risk_level || "Low Risk",
+      kyc: data.kyc?.status === "approved" ? "Verified" : data.kyc?.status === "rejected" ? "Rejected" : data.kyc?.status === "pending" ? "Pending" : "Not Started",
+      balance: 0,
+    };
+
+    const rates: Record<string, number> = { BTC: cadRates.btcCAD, ETH: cadRates.ethCAD, USDT: cadRates.usdtCAD, USDC: cadRates.usdtCAD };
+    let totalBalance = 0;
+    for (const w of formattedUser.wallets) {
+      const r = rates[w.currency?.toUpperCase()] || rates.USDT;
+      totalBalance += Number(w.balance || 0) * r;
+    }
+    formattedUser.balance = totalBalance;
+    return formattedUser;
+  }, [rawUserData, cadRates, userId]);
 
   const [activeTab, setActiveTab]         = useState("overview");
   const [isFrozen, setIsFrozen]           = useState(false);
@@ -850,7 +841,7 @@ function UserDetailPageContent() {
   const [showNoteModal, setShowNote]      = useState(false);
   const [noteSaved, setNoteSaved]         = useState(false);
 
-  if (loading) {
+  if (loading || (rawUserData && !cadRates)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
         <span className="h-8 w-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></span>
@@ -910,10 +901,10 @@ function UserDetailPageContent() {
             <motion.button whileTap={{ scale: 0.97 }}
               onClick={async () => {
                 if (isFrozen) {
-                   await fetch(`/api/users`, { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, action: "unfreeze" }) });
-                   setIsFrozen(false);
+                  await updateUserAccount.mutateAsync({ userId: user.id, action: "unfreeze" });
+                  setIsFrozen(false);
                 } else {
-                   setShowFreeze(true);
+                  setShowFreeze(true);
                 }
               }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all"
@@ -928,7 +919,7 @@ function UserDetailPageContent() {
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {[
             { label: "Total Balance",  content: <p className="text-xl font-bold text-gray-900">${(user.balance || 0).toLocaleString("en-US",{minimumFractionDigits:2})}</p>, icon: Wallet,        iconBg: "bg-blue-50",  iconColor: "text-blue-600" },
-            { label: "KYC Status",     content: <KycBadge status={user.kyc} />,          icon: CheckCircle2,  iconBg: "bg-green-50", iconColor: "text-green-500" },
+            { label: "KYC Status",     content: <KycBadge status={user.kyc as KycStatus} />,          icon: CheckCircle2,  iconBg: "bg-green-50", iconColor: "text-green-500" },
             { label: "Account Status", content: <AccountBadge status={currentAccount} />, icon: Shield,        iconBg: "bg-blue-50",  iconColor: "text-blue-500" },
             { label: "Risk Level",     content: <RiskBadge level={user.risk} />,          icon: AlertTriangle, iconBg: "bg-amber-50", iconColor: "text-amber-500" },
           ].map(({ label, content, icon: Icon, iconBg, iconColor }) => (
@@ -1002,16 +993,15 @@ function UserDetailPageContent() {
 
       {/* Modals */}
       <AnimatePresence>
-        {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={async (reason) => { 
-          await fetch(`/api/users`, { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, action: "freeze", reason }) });
-          setIsFrozen(true); setShowFreeze(false); 
+        {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={async (reason) => {
+          await updateUserAccount.mutateAsync({ userId: user.id, action: "freeze", reason });
+          setIsFrozen(true); setShowFreeze(false);
         }} />}
       </AnimatePresence>
       <AnimatePresence>
-        {showNoteModal && <NoteModal onClose={() => setShowNote(false)} onConfirm={async (note) => { 
-          await fetch(`/api/users/notes`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId: user.id, note }) });
-          setShowNote(false); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 3000); 
-          fetchUsers(); // Refresh notes
+        {showNoteModal && <NoteModal onClose={() => setShowNote(false)} onConfirm={async (note) => {
+          await addUserNote.mutateAsync({ userId: user.id, note });
+          setShowNote(false); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 3000);
         }} />}
       </AnimatePresence>
 
