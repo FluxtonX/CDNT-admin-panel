@@ -283,7 +283,8 @@ function WithdrawalRequestsPageContent() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to approve withdrawal request");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to approve withdrawal request");
       }
 
       setToast(`Withdrawal request ${reqId} completed ✓`);
@@ -321,7 +322,8 @@ function WithdrawalRequestsPageContent() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to reject withdrawal request");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to reject withdrawal request");
       }
 
       setToast(`Withdrawal request ${reqId} rejected`);

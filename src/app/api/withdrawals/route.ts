@@ -65,7 +65,7 @@ export async function PATCH(request: Request) {
     // Fetch withdrawal request details
     const { data: wdr } = await supabaseAdmin
       .from("withdrawal_requests")
-      .select("user_id, amount, method")
+      .select("user_id, amount, method, currency")
       .eq("id", requestId)
       .single();
 
@@ -74,62 +74,79 @@ export async function PATCH(request: Request) {
     }
 
     if (status === "approved" || status === "completed") {
-      // 1. Fetch live CAD rates to convert CAD back to USDT
-      const rates = await fetchLiveCADRates();
-      const cadRate = rates.usdtCAD || 1.36;
-      const usdtToDeduct = wdr.amount / cadRate;
+      // 1. Read the crypto currency from the withdrawal request (default to USDT if missing)
+      const cryptoCurrency = (wdr.currency || "USDT").toUpperCase();
 
-      // 2. Fetch the user's current USDT balance
-      const { data: userWallet } = await supabaseAdmin
+      // 2. Fetch live CAD rates
+      const rates = await fetchLiveCADRates();
+      
+      // 3. Convert CAD withdrawal amount to that crypto using live CoinGecko rate
+      let cadRate = 1;
+      if (cryptoCurrency === "USDT" || cryptoCurrency === "USDC") {
+        cadRate = rates.usdtCAD || 1.36;
+      } else if (cryptoCurrency === "BTC") {
+        cadRate = rates.btcCAD || 95000;
+      } else if (cryptoCurrency === "ETH") {
+        cadRate = rates.ethCAD || 3500;
+      }
+
+      const amountToDeduct = wdr.amount / cadRate;
+
+      // 4. Fetch user balance for that specific currency from user_wallets
+      const { data: userWallet, error: walletQueryErr } = await supabaseAdmin
         .from("user_wallets")
         .select("balance")
         .eq("user_id", wdr.user_id)
-        .eq("currency", "USDT")
-        .single();
+        .eq("currency", cryptoCurrency)
+        .maybeSingle();
 
-      const currentBalance = userWallet ? Number(userWallet.balance) : 0;
-      
-      // 3. Deduct the amount
-      const newBalance = currentBalance - usdtToDeduct;
-
-      // 4. If newBalance < 0, do not approve
-      if (newBalance < 0) {
-        return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
+      if (walletQueryErr) {
+        console.error("Error fetching user wallet:", walletQueryErr);
       }
 
-      // 5. Update user_wallets
+      const currentBalance = userWallet ? Number(userWallet.balance) : 0;
+      const newBalance = currentBalance - amountToDeduct;
+
+      // Block if insufficient funds in the specific crypto wallet
+      if (newBalance < 0) {
+        return NextResponse.json({ error: `Insufficient balance: User only has ${currentBalance.toFixed(6)} ${cryptoCurrency}, but this withdrawal requires ${amountToDeduct.toFixed(6)} ${cryptoCurrency}.` }, { status: 400 });
+      }
+
+      // 5. Deduct from the correct currency wallet
       const { error: walletErr } = await supabaseAdmin
         .from("user_wallets")
         .update({ balance: newBalance })
         .eq("user_id", wdr.user_id)
-        .eq("currency", "USDT");
+        .eq("currency", cryptoCurrency);
       if (walletErr) throw walletErr;
 
-      // 6. Insert into wallet_ledger
+      // 6. wallet_ledger entry should also use the correct currency
       const { error: ledgerErr } = await supabaseAdmin
         .from("wallet_ledger")
         .insert({
           user_id: wdr.user_id,
           type: "WITHDRAWAL",
           provider: "INTERAC",
-          currency: "USDT",
-          amount: usdtToDeduct,
+          currency: cryptoCurrency,
+          amount: amountToDeduct,
           status: "COMPLETED",
         });
       if (ledgerErr) throw ledgerErr;
     }
 
+    const updateData: any = { status };
+    if (rejectionReason) updateData.rejection_reason = rejectionReason;
+    if (adminNote) updateData.admin_note = adminNote;
+    
     const { error } = await supabaseAdmin
       .from("withdrawal_requests")
-      .update({ 
-        status, 
-        rejection_reason: rejectionReason || null,
-        admin_note: adminNote || null,
-        reviewed_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq("id", requestId);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase update error:", error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
 
     let userName = "Unknown User";
     let userId = wdr.user_id;

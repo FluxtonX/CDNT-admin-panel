@@ -472,7 +472,8 @@ function TransactionsDashboardContent() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update status on server");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to update status on server");
       }
 
       setToast(`Transaction ${currentTxId} status updated successfully ✓`);
