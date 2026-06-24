@@ -27,7 +27,6 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { USERS_DATA, type AdminUser } from "@/lib/data/users";
 
 type WithdrawalStatus = "Pending" | "Approved" | "Rejected" | "Completed" | "Failed";
 type TabValue = "all" | WithdrawalStatus;
@@ -35,7 +34,7 @@ type TabValue = "all" | WithdrawalStatus;
 type WithdrawalRequest = {
   requestId: string;
   realId?: string;
-  user: AdminUser;
+  user: any;
   amount: number;
   cryptoAmount: string;
   cryptoCurrency: string;
@@ -50,137 +49,7 @@ type WithdrawalRequest = {
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
-const INITIAL_REQUESTS: WithdrawalRequest[] = [
-  {
-    requestId: "WD-10243",
-    user: USERS_DATA.find((u) => u.name === "Sarah Chen") || USERS_DATA[1],
-    amount: 5000,
-    cryptoAmount: "0.091 BTC",
-    cryptoCurrency: "BTC",
-    riskScore: "low risk",
-    kycStatus: "verified",
-    requestDate: "2026-06-02 14:30:15",
-    status: "Pending",
-    interacRecipient: "sarah.chen@email.com",
-    previousWithdrawals: 3,
-    currentBalance: 12450,
-  },
-  {
-    requestId: "WD-10242",
-    user: USERS_DATA.find((u) => u.name === "Michael Chen") || USERS_DATA[1], // fallback representing Michael Rodriguez
-    amount: 12500,
-    cryptoAmount: "5.21 ETH",
-    cryptoCurrency: "ETH",
-    riskScore: "medium risk",
-    kycStatus: "verified",
-    requestDate: "2026-06-02 14:18:42",
-    status: "Pending",
-    interacRecipient: "m.rodriguez@email.com",
-    previousWithdrawals: 8,
-    currentBalance: 34500,
-  },
-  {
-    requestId: "WD-10241",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12456") || USERS_DATA[2],
-    amount: 3000,
-    cryptoAmount: "3200 USDT",
-    cryptoCurrency: "USDT",
-    riskScore: "low risk",
-    kycStatus: "verified",
-    requestDate: "2026-06-02 14:05:23",
-    status: "Pending",
-    interacRecipient: "emma.t@email.com",
-    previousWithdrawals: 2,
-    currentBalance: 5420,
-  },
-  {
-    requestId: "WD-10240",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12455") || USERS_DATA[3],
-    amount: 25000,
-    cryptoAmount: "0.455 BTC",
-    cryptoCurrency: "BTC",
-    riskScore: "high risk",
-    kycStatus: "pending",
-    requestDate: "2026-06-02 14:18:42",
-    status: "Pending",
-    interacRecipient: "j.wilson@email.com",
-    previousWithdrawals: 0,
-    currentBalance: 25000,
-  },
-  // Historical Completed
-  {
-    requestId: "WD-10239",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12458") || USERS_DATA[0],
-    amount: 8500,
-    cryptoAmount: "0.15 BTC",
-    cryptoCurrency: "BTC",
-    riskScore: "low risk",
-    kycStatus: "verified",
-    requestDate: "2026-06-01 10:20:00",
-    status: "Completed",
-    interacRecipient: "sarah.johnson@email.com",
-    previousWithdrawals: 12,
-    currentBalance: 45832,
-  },
-  {
-    requestId: "WD-10238",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12457") || USERS_DATA[1],
-    amount: 15000,
-    cryptoAmount: "4.8 ETH",
-    cryptoCurrency: "ETH",
-    riskScore: "medium risk",
-    kycStatus: "verified",
-    requestDate: "2026-06-01 09:15:00",
-    status: "Completed",
-    interacRecipient: "m.chen@email.com",
-    previousWithdrawals: 14,
-    currentBalance: 128945,
-  },
-  // Historical Rejected
-  {
-    requestId: "WD-10236",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12447") || USERS_DATA[10],
-    amount: 5000,
-    cryptoAmount: "0.09 BTC",
-    cryptoCurrency: "BTC",
-    riskScore: "high risk",
-    kycStatus: "verified",
-    requestDate: "2026-05-30 16:30:00",
-    status: "Rejected",
-    interacRecipient: "k.brown@email.com",
-    previousWithdrawals: 1,
-    currentBalance: 0,
-  },
-  {
-    requestId: "WD-10235",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12439") || USERS_DATA[17],
-    amount: 12000,
-    cryptoAmount: "3.5 ETH",
-    cryptoCurrency: "ETH",
-    riskScore: "high risk",
-    kycStatus: "verified",
-    requestDate: "2026-05-29 11:22:00",
-    status: "Rejected",
-    interacRecipient: "l.walker@email.com",
-    previousWithdrawals: 4,
-    currentBalance: 0,
-  },
-  // Historical Failed
-  {
-    requestId: "WD-10234",
-    user: USERS_DATA.find((u) => u.id === "USR-2024-12452") || USERS_DATA[6],
-    amount: 1250,
-    cryptoAmount: "1250 USDC",
-    cryptoCurrency: "USDC",
-    riskScore: "low risk",
-    kycStatus: "not started",
-    requestDate: "2026-05-28 14:05:00",
-    status: "Failed",
-    interacRecipient: "sophie.a@email.com",
-    previousWithdrawals: 0,
-    currentBalance: 1250,
-  },
-];
+// Removed INITIAL_REQUESTS to enforce purely live data from Supabase
 
 const TABS: Array<{ label: string; value: TabValue }> = [
   { label: "All Requests", value: "all" },
@@ -297,16 +166,10 @@ function WithdrawalRequestsPageContent() {
       });
 
       list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
-      
-      // Fallback to INITIAL_REQUESTS if DB is empty to keep UX rich during setup
-      if (list.length > 0) {
-        setRequests(list);
-      } else {
-        setRequests(INITIAL_REQUESTS);
-      }
+      setRequests(list);
     } catch (e) {
       console.error("Error loading admin withdrawals:", e);
-      setRequests(INITIAL_REQUESTS);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -407,29 +270,23 @@ function WithdrawalRequestsPageContent() {
     const realId = selectedRequest.realId;
 
     try {
-      if (realId) {
-        const res = await fetch("/api/withdrawals", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestId: realId,
-            status: "completed",
-            adminNote: currentNote
-          })
-        });
+      if (!realId) throw new Error("Invalid request ID - missing database reference");
+      
+      const res = await fetch("/api/withdrawals", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: realId,
+          status: "completed",
+          adminNote: currentNote
+        })
+      });
 
-        if (!res.ok) {
-          throw new Error("Failed to approve withdrawal request");
-        }
-
-        setToast(`Withdrawal request ${reqId} completed ✓`);
-      } else {
-        // Fallback for mock data updates
-        setRequests((current) =>
-          current.map((r) => (r.requestId === reqId ? { ...r, status: "Completed" } : r))
-        );
-        setToast(`Withdrawal request ${reqId} for $${selectedRequest.amount.toLocaleString()} approved ✓`);
+      if (!res.ok) {
+        throw new Error("Failed to approve withdrawal request");
       }
+
+      setToast(`Withdrawal request ${reqId} completed ✓`);
 
       if (currentNote.trim()) {
         setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));
@@ -450,30 +307,24 @@ function WithdrawalRequestsPageContent() {
     const realId = selectedRequest.realId;
 
     try {
-      if (realId) {
-        const res = await fetch("/api/withdrawals", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestId: realId,
-            status: "rejected",
-            rejectionReason: rejectionReason,
-            adminNote: currentNote
-          })
-        });
+      if (!realId) throw new Error("Invalid request ID - missing database reference");
 
-        if (!res.ok) {
-          throw new Error("Failed to reject withdrawal request");
-        }
+      const res = await fetch("/api/withdrawals", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: realId,
+          status: "rejected",
+          rejectionReason: rejectionReason,
+          adminNote: currentNote
+        })
+      });
 
-        setToast(`Withdrawal request ${reqId} rejected`);
-      } else {
-        // Fallback for mock data updates
-        setRequests((current) =>
-          current.map((r) => (r.requestId === reqId ? { ...r, status: "Rejected" } : r))
-        );
-        setToast(`Withdrawal request ${reqId} rejected. Reason: ${rejectionReason}`);
+      if (!res.ok) {
+        throw new Error("Failed to reject withdrawal request");
       }
+
+      setToast(`Withdrawal request ${reqId} rejected`);
 
       if (currentNote.trim()) {
         setAdminNotes(prev => ({ ...prev, [reqId]: currentNote }));

@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const supabaseAdmin = createAdminClient();
+    const liveRates = await fetchLiveCADRates();
 
     const rates: Record<string, number> = {
-      BTC: 90000,
-      ETH: 4500,
-      USDT: 1.36,
-      USDC: 1.36
+      BTC: liveRates.btcCAD,
+      ETH: liveRates.ethCAD,
+      USDT: liveRates.usdtCAD,
+      USDC: liveRates.usdtCAD
     };
 
     // 1. Fetch data concurrently
@@ -38,7 +40,7 @@ export async function GET() {
 
     let platformAssets = 0;
     (userWallets || []).forEach(w => {
-      const rate = rates[w.currency?.toUpperCase()] || 1.36;
+      const rate = rates[w.currency?.toUpperCase()] || rates.USDT;
       platformAssets += Number(w.balance || 0) * rate;
     });
 
@@ -46,7 +48,7 @@ export async function GET() {
 
     let totalDepositsAmt = 0;
     (depositReqs || []).forEach(d => {
-      const rate = rates[d.asset?.toUpperCase()] || 1.36;
+      const rate = rates[d.asset?.toUpperCase()] || rates.USDT;
       totalDepositsAmt += Number(d.expected_amount || 0) * rate;
     });
 
@@ -110,7 +112,7 @@ export async function GET() {
         const date = new Date(d.created_at);
         const m = `${months[date.getMonth()]} ${date.getFullYear()}`;
         if (!depWithMap[m]) depWithMap[m] = { deposits: 0, withdrawals: 0 };
-        const rate = rates[d.asset?.toUpperCase()] || 1.36;
+        const rate = rates[d.asset?.toUpperCase()] || rates.USDT;
         depWithMap[m].deposits += Number(d.expected_amount || 0) * rate;
       }
     });
@@ -170,13 +172,13 @@ export async function GET() {
       const isDeposit = tx.txType === "Deposit";
       const coin = isDeposit ? (tx.asset?.toUpperCase() || "CAD") : "CAD";
       const amtNum = isDeposit ? tx.expected_amount : tx.amount;
-      const amountUsd = isDeposit ? (Number(amtNum) * (rates[coin] || 1.36)) : Number(amtNum);
+      const amountCad = isDeposit ? (Number(amtNum) * (rates[coin] || rates.USDT)) : Number(amtNum);
 
       return {
         name: user?.full_name || "Unknown User",
         type: tx.txType,
         txId: `TX-${tx.id.slice(0, 5).toUpperCase()}`,
-        amount: `$${amountUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+        amount: `$${amountCad.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
         crypto: isDeposit ? `+${amtNum} ${coin}` : `-$${amtNum} CAD`,
         coin: coin === "CAD" ? "CAD" : coin,
         positive: isDeposit

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,13 @@ export async function GET(request: Request) {
       throw walletsErr;
     }
 
-    // Static exchange rates to CAD
+    // Fetch live exchange rates to CAD
+    const liveRates = await fetchLiveCADRates();
     const rates: Record<string, number> = {
-      BTC: 90000,
-      ETH: 4500,
-      USDT: 1.36,
-      USDC: 1.36
+      BTC: liveRates.btcCAD,
+      ETH: liveRates.ethCAD,
+      USDT: liveRates.usdtCAD,
+      USDC: liveRates.usdtCAD
     };
 
     let btcAmount = 0;
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
     let performanceGrowth = 0;
     if (!ledgerErr && ledger) {
       performanceGrowth = ledger.reduce((acc: number, item: any) => {
-        const rate = rates[item.currency?.toUpperCase()] || 1.36;
+        const rate = rates[item.currency?.toUpperCase()] || rates.USDT;
         return acc + (Number(item.amount) * rate);
       }, 0);
     }

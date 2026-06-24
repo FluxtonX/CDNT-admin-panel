@@ -22,14 +22,11 @@ import {
   ShieldCheck,
   Check,
   AlertCircle,
-  ThumbsUp,
-  ThumbsDown,
-  ExternalLink,
   Coins,
   Activity,
   ArrowRightLeft,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, fetchLiveCADRates } from "@/lib/utils";
 import { USERS_DATA, type AdminUser } from "@/lib/data/users";
 
 type TransactionType = "Deposit" | "Withdrawal";
@@ -253,9 +250,10 @@ function TransactionsDashboardContent() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [depRes, wdrRes] = await Promise.all([
+      const [depRes, wdrRes, liveRates] = await Promise.all([
         fetch("/api/deposits"),
-        fetch("/api/withdrawals")
+        fetch("/api/withdrawals"),
+        fetchLiveCADRates()
       ]);
       
       const depositsData = depRes.ok ? await depRes.json() : { deposits: [] };
@@ -263,6 +261,14 @@ function TransactionsDashboardContent() {
       
       const list: Transaction[] = [];
       
+      const cadRateForAsset = (asset: string): number => {
+        const sym = (asset || '').toUpperCase().trim();
+        if (sym === 'BTC' || sym === 'BITCOIN') return liveRates.btcCAD;
+        if (sym === 'ETH' || sym === 'ETHEREUM') return liveRates.ethCAD;
+        if (sym === 'USDT' || sym === 'USDC' || sym === 'TETHER') return liveRates.usdtCAD;
+        return liveRates.usdtCAD; // fallback for unknown assets
+      };
+
       (depositsData.deposits || []).forEach((d: any) => {
         list.push({
           txId: `DEP-${d.id.slice(0, 8).toUpperCase()}`,
@@ -279,7 +285,7 @@ function TransactionsDashboardContent() {
             balance: 0
           },
           type: "Deposit",
-          amountCad: Number(d.expected_amount) * 1.35,
+          amountCad: Number(d.expected_amount) * cadRateForAsset(d.asset),
           cryptoAmount: `${d.expected_amount} ${d.asset}`,
           cryptoCurrency: d.asset,
           status: d.status === "approved" ? "Completed" : d.status === "rejected" ? "Failed" : "Pending",

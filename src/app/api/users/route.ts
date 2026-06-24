@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +27,16 @@ export async function GET(request: Request) {
     const { data: userWallets, error: walletsErr } = await supabaseAdmin.from("user_wallets").select("*");
     if (walletsErr) throw walletsErr;
 
+    const liveRates = await fetchLiveCADRates();
     const rates: Record<string, number> = {
-      BTC: 90000,
-      ETH: 4500,
-      USDT: 1.36,
-      USDC: 1.36
+      BTC: liveRates.btcCAD,
+      ETH: liveRates.ethCAD,
+      USDT: liveRates.usdtCAD,
+      USDC: liveRates.usdtCAD
     };
 
     const userBalanceMap = (userWallets || []).reduce((acc: Record<string, number>, w: any) => {
-      const rate = rates[w.currency?.toUpperCase()] || 1.36;
+      const rate = rates[w.currency?.toUpperCase()] || rates.USDT;
       const val = Number(w.balance) * rate;
       acc[w.user_id] = (acc[w.user_id] || 0) + val;
       return acc;

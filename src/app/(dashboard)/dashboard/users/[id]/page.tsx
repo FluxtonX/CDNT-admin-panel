@@ -12,7 +12,7 @@ import {
   MessageCircle, History, Monitor, LogOut, RefreshCw,
   Eye,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, fetchLiveCADRates } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
 
 export const formatDate = (dateStr: string | null | undefined) => {
@@ -380,6 +380,18 @@ function SecurityTab({ user }: { user: any }) {
 }
 
 function TransactionsTab({ user }: { user: any }) {
+  const [cadRates, setCadRates] = useState<{ btcCAD: number; ethCAD: number; usdtCAD: number } | null>(null);
+  useEffect(() => { fetchLiveCADRates().then(setCadRates); }, []);
+
+  const getCadValue = (amount: number, currency: string) => {
+    if (!cadRates) return amount * 1.36;
+    const sym = (currency || '').toUpperCase().trim();
+    if (sym === 'BTC') return amount * cadRates.btcCAD;
+    if (sym === 'ETH') return amount * cadRates.ethCAD;
+    if (sym === 'USDT' || sym === 'USDC') return amount * cadRates.usdtCAD;
+    return amount * cadRates.usdtCAD;
+  };
+
   const statusStyle: Record<string, string> = {
     completed: "bg-green-50 text-green-600 border-green-200",
     pending:   "bg-amber-50 text-amber-600 border-amber-200",
@@ -412,7 +424,7 @@ function TransactionsTab({ user }: { user: any }) {
             </div>
             <div className="text-right shrink-0 ml-6">
               <p className="text-sm font-bold text-gray-900">{tx.amount} {tx.currency}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{(Number(tx.amount || 0) * 1.36).toLocaleString("en-US", {style:"currency",currency:"CAD"})}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{getCadValue(Number(tx.amount || 0), tx.currency).toLocaleString("en-US", {style:"currency",currency:"CAD"})}</p>
             </div>
           </motion.div>
         ))}
@@ -476,12 +488,12 @@ function SupportTab({ user }: { user: any }) {
 
 /* ─── Portfolio Tab ──────────────────────────────────────────────── */
 function PortfolioTab({ user }: { user: any }) {
-  const rates: Record<string, number> = {
-    BTC: 90000,
-    ETH: 4500,
-    USDT: 1.36,
-    USDC: 1.36
-  };
+  const [rates, setRates] = useState<Record<string, number>>({ BTC: 90000, ETH: 4500, USDT: 1.36, USDC: 1.36 });
+  useEffect(() => {
+    fetchLiveCADRates().then(r => {
+      setRates({ BTC: r.btcCAD, ETH: r.ethCAD, USDT: r.usdtCAD, USDC: r.usdtCAD });
+    });
+  }, []);
 
   const coinColors: Record<string, string> = {
     BTC: "#F7931A",
@@ -807,10 +819,11 @@ function UserDetailPageContent() {
           balance: 0
         };
         
-        const rates: Record<string, number> = { BTC: 90000, ETH: 4500, USDT: 1.36, USDC: 1.36 };
+        const liveRates = await fetchLiveCADRates();
+        const rates: Record<string, number> = { BTC: liveRates.btcCAD, ETH: liveRates.ethCAD, USDT: liveRates.usdtCAD, USDC: liveRates.usdtCAD };
         let totalBalance = 0;
         for (const w of formattedUser.wallets) {
-            const r = rates[w.currency?.toUpperCase()] || 1.36;
+            const r = rates[w.currency?.toUpperCase()] || rates.USDT;
             totalBalance += Number(w.balance || 0) * r;
         }
         formattedUser.balance = totalBalance;
