@@ -63,19 +63,30 @@ export async function PATCH(request: Request) {
     const supabaseAdmin = createAdminClient();
 
     // Fetch withdrawal request details
-    const { data: wdr } = await supabaseAdmin
+    const { data: wdr, error: wdrLookupErr } = await supabaseAdmin
       .from("withdrawal_requests")
-      .select("user_id, amount, method, currency")
+      .select("user_id, amount, method, asset")
       .eq("id", requestId)
-      .single();
+      .maybeSingle();
 
-    if (!wdr) {
-      return NextResponse.json({ error: "Withdrawal request not found" }, { status: 404 });
+    if (wdrLookupErr || !wdr) {
+      console.error("Withdrawal lookup failed:", {
+        requestId,
+        error: wdrLookupErr?.message,
+        code: wdrLookupErr?.code,
+        details: wdrLookupErr?.details,
+      });
+      return NextResponse.json(
+        { error: "Withdrawal request not found", details: wdrLookupErr?.message },
+        { status: 404 }
+      );
     }
 
     if (status === "approved" || status === "completed") {
-      // 1. Read the crypto currency from the withdrawal request (default to USDT if missing)
-      const cryptoCurrency = (wdr.currency || "USDT").toUpperCase();
+      // Interac withdrawals store amount in CAD; crypto withdrawals use asset column
+      const cryptoCurrency = (
+        wdr.method === "interac" ? "USDT" : (wdr.asset || "USDT")
+      ).toUpperCase();
 
       // 2. Fetch live CAD rates
       const rates = await fetchLiveCADRates();

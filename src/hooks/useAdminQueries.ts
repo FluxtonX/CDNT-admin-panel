@@ -84,6 +84,12 @@ export function useUpdateWithdrawal() {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
+        console.error("Withdrawal update failed:", {
+          requestId: input.requestId,
+          status: input.status,
+          error: errData.error,
+          details: errData.details,
+        });
         throw new Error(errData.error || "Failed to update withdrawal");
       }
       return res.json();
