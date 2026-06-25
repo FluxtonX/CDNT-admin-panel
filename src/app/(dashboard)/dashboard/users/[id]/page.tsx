@@ -16,7 +16,7 @@ import {
 import { cn, fetchLiveCADRates } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
 
-export const formatDate = (dateStr: string | null | undefined) => {
+const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return 'N/A';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return 'N/A';

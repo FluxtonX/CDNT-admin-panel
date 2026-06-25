@@ -29,7 +29,6 @@ import {
   ExternalLink,
   ThumbsDown,
   ThumbsUp,
-  
 } from "lucide-react";
 import { cn, fetchLiveCADRates } from "@/lib/utils";
 import { USERS_DATA, type AdminUser } from "@/lib/data/users";
