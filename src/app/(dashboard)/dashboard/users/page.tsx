@@ -51,7 +51,7 @@ function AccountBadge({ status }: { status: AccountStatus }) {
   const styles: Record<AccountStatus, { cls: string; icon?: React.ReactNode }> = {
     Active:    { cls: "bg-green-50 text-green-700 border-green-200" },
     Suspended: { cls: "bg-red-50 text-red-700 border-red-200" },
-    Frozen:    { cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Lock className="h-3 w-3 text-amber-500" /> },
+    Frozen:    { cls: "bg-red-50 text-red-700 border-red-200", icon: <Lock className="h-3 w-3 text-red-500" /> },
   };
   const s = styles[status];
   return (

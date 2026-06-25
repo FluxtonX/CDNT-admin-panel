@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useUserDetail, useUpdateUserAccount, useAddUserNote, useUpdateKyc } from "@/hooks/useAdminQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { adminQueryKeys } from "@/lib/query-keys";
+import { supabase } from "@/lib/supabase";
 import { useRouter, useParams } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,7 +46,7 @@ function AccountBadge({ status }: { status: AccountStatus }) {
   const map: Record<AccountStatus, string> = {
     "Active":    "bg-green-50 text-green-700 border-green-200",
     "Suspended": "bg-red-50   text-red-700   border-red-200",
-    "Frozen":    "bg-blue-50  text-blue-700  border-blue-200",
+    "Frozen":    "bg-red-50   text-red-700   border-red-200",
   };
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[status] || map["Active"])}>
@@ -785,6 +788,7 @@ function UserDetailPageContent() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
+  const queryClient = useQueryClient();
   const { data: rawUserData, isLoading: loading } = useUserDetail(userId);
   const updateUserAccount = useUpdateUserAccount();
   const addUserNote = useAddUserNote();
@@ -818,7 +822,7 @@ function UserDetailPageContent() {
       tickets: data.tickets || [],
       security_logs: data.securityLogs || [],
       notes: data.notes || [],
-      account: data.profile?.account_status || "Active",
+      account: data.profile?.is_frozen ? "Frozen" : "Active",
       risk: data.profile?.risk_level || "Low Risk",
       kyc: data.kyc?.status === "approved" ? "Verified" : data.kyc?.status === "rejected" ? "Rejected" : data.kyc?.status === "pending" ? "Pending" : "Not Started",
       balance: 0,
@@ -836,7 +840,32 @@ function UserDetailPageContent() {
 
   const [activeTab, setActiveTab]         = useState("overview");
   const [isFrozen, setIsFrozen]           = useState(false);
-  useEffect(() => { if (user) setIsFrozen(user.account === "Frozen"); }, [user]);
+  useEffect(() => {
+    if (rawUserData) {
+      const data = rawUserData as { profile?: { is_frozen?: boolean } };
+      setIsFrozen(data.profile?.is_frozen === true);
+    }
+  }, [rawUserData]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel("admin-profile-freeze")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => {
+          setIsFrozen(!!(payload.new as { is_frozen?: boolean }).is_frozen);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
   const [showFreezeModal, setShowFreeze]  = useState(false);
   const [showNoteModal, setShowNote]      = useState(false);
   const [noteSaved, setNoteSaved]         = useState(false);
@@ -865,9 +894,7 @@ function UserDetailPageContent() {
     );
   }
 
-  const currentAccount: AccountStatus = isFrozen
-    ? "Frozen"
-    : user.account === "Frozen" ? "Active" : user.account;
+  const currentAccount: AccountStatus = isFrozen ? "Frozen" : "Active";
 
   return (
     <>
@@ -903,12 +930,13 @@ function UserDetailPageContent() {
                 if (isFrozen) {
                   await updateUserAccount.mutateAsync({ userId: user.id, action: "unfreeze" });
                   setIsFrozen(false);
+                  queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(user.id) });
                 } else {
                   setShowFreeze(true);
                 }
               }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all"
-              style={{ background: isFrozen ? "#22C55E" : "#F59E0B" }}>
+              style={{ background: isFrozen ? "#22C55E" : "#EF4444" }}>
               {isFrozen ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               {isFrozen ? "Unfreeze Account" : "Freeze Account"}
             </motion.button>
@@ -995,7 +1023,9 @@ function UserDetailPageContent() {
       <AnimatePresence>
         {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={async (reason) => {
           await updateUserAccount.mutateAsync({ userId: user.id, action: "freeze", reason });
-          setIsFrozen(true); setShowFreeze(false);
+          setIsFrozen(true);
+          setShowFreeze(false);
+          queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(user.id) });
         }} />}
       </AnimatePresence>
       <AnimatePresence>

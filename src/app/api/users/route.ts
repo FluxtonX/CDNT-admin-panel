@@ -15,8 +15,10 @@ export async function GET(request: Request) {
     const { data: { users }, error: authErr } = await supabaseAdmin.auth.admin.listUsers();
     if (authErr) throw authErr;
 
-    // Fetch profiles to get their full names
-    const { data: profiles, error: profErr } = await supabaseAdmin.from("profiles").select("*");
+    // Fetch profiles to get their full names and freeze status
+    const { data: profiles, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, is_frozen");
     if (profErr) throw profErr;
 
     // Fetch KYC submissions to get real verification statuses
@@ -63,8 +65,7 @@ export async function GET(request: Request) {
           balance: Number(w.balance),
         }));
 
-      // Default static values for Risk and Account
-      const accountStatus = "Active";
+      const accountStatus = profile?.is_frozen ? "Frozen" : "Active";
       const riskLevel = "Low Risk";
 
       // Parse metadata
@@ -105,15 +106,16 @@ export async function PATCH(request: Request) {
     }
 
     const supabaseAdmin = createAdminClient();
-    
-    let newStatus = "";
-    if (action === "freeze") newStatus = "Frozen";
-    else if (action === "unfreeze") newStatus = "Active";
-    else return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+
+    if (action !== "freeze" && action !== "unfreeze") {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    const isFrozen = action === "freeze";
 
     const { error } = await supabaseAdmin
       .from("profiles")
-      .update({ account_status: newStatus })
+      .update({ is_frozen: isFrozen })
       .eq("id", userId);
 
     if (error) {
@@ -124,7 +126,7 @@ export async function PATCH(request: Request) {
       throw error;
     }
 
-    return NextResponse.json({ success: true, status: newStatus });
+    return NextResponse.json({ success: true, status: isFrozen ? "Frozen" : "Active" });
   } catch (error: any) {
     console.error("Failed to update user status:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
