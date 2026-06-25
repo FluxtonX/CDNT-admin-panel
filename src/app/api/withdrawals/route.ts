@@ -65,7 +65,7 @@ export async function PATCH(request: Request) {
     // Fetch withdrawal request details
     const { data: wdr, error: wdrLookupErr } = await supabaseAdmin
       .from("withdrawal_requests")
-      .select("user_id, amount, method, asset")
+      .select("*")
       .eq("id", requestId)
       .maybeSingle();
 
@@ -83,10 +83,8 @@ export async function PATCH(request: Request) {
     }
 
     if (status === "approved" || status === "completed") {
-      // Interac withdrawals store amount in CAD; crypto withdrawals use asset column
-      const cryptoCurrency = (
-        wdr.method === "interac" ? "USDT" : (wdr.asset || "USDT")
-      ).toUpperCase();
+      // Use requested currency when provided; fall back to asset; then USDT.
+      const cryptoCurrency = String((wdr as any).currency || (wdr as any).asset || "USDT").toUpperCase();
 
       // 2. Fetch live CAD rates
       const rates = await fetchLiveCADRates();
