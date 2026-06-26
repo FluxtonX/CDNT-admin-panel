@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import NextTopLoader from "nextjs-toploader";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased" suppressHydrationWarning>
+        <NextTopLoader color="#2563eb" height={3} showSpinner={false} crawl={true} crawlSpeed={200} initialPosition={0.08} />
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
