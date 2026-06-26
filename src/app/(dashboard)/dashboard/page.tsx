@@ -11,7 +11,7 @@ import {
   Users, CheckCircle2, Clock, DollarSign, AlertTriangle,
   Wallet, TrendingUp, ArrowUpRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, COIN_COLORS } from "@/lib/utils";
 
 /* ─── Sub-components ─────────────────────────────────────────────── */
 
@@ -89,13 +89,6 @@ const riskStyles = {
   medium: "bg-yellow-100 text-yellow-700",
   high:   "bg-red-100 text-red-700",
   "N/A":  "bg-gray-100 text-gray-700",
-};
-
-const coinColors: Record<string, string> = {
-  BTC:  "#F7931A",
-  ETH:  "#627EEA",
-  USDT: "#26A17B",
-  CAD:  "#1650AB"
 };
 
 const formatMillions = (v: number) =>
@@ -201,7 +194,7 @@ export default function DashboardPage() {
                 paddingAngle={3} dataKey="value"
               >
                 {stats.assetData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={COIN_COLORS[entry.name] || entry.color} />
                 ))}
               </Pie>
               <Tooltip
@@ -214,7 +207,7 @@ export default function DashboardPage() {
             {stats.assetData.map((item) => (
               <div key={item.name} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: COIN_COLORS[item.name] || item.color }} />
                   <span className="text-gray-600 text-xs">{item.name}</span>
                 </div>
                 <span className="font-semibold text-gray-900 text-xs">${item.value}M</span>
@@ -301,7 +294,7 @@ export default function DashboardPage() {
                 {/* Coin icon */}
                 <div
                   className="h-9 w-9 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
-                  style={{ background: coinColors[tx.coin] || "#ccc" }}
+                  style={{ background: COIN_COLORS[tx.coin] || "#ccc" }}
                 >
                   {tx.coin}
                 </div>
@@ -339,7 +332,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <div
                     className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                    style={{ background: coinColors[w.coin] || "#ccc" }}
+                    style={{ background: COIN_COLORS[w.coin] || "#ccc" }}
                   >
                     {w.coin}
                   </div>
@@ -370,7 +363,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <div
                     className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                    style={{ background: coinColors[w.coin] || "#ccc" }}
+                    style={{ background: COIN_COLORS[w.coin] || "#ccc" }}
                   >
                     {w.coin}
                   </div>

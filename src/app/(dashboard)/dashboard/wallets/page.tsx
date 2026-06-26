@@ -22,7 +22,7 @@ import {
   History,
   Info,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, COIN_COLORS } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 
@@ -53,81 +53,6 @@ type Wallet = {
 };
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
-
-const INITIAL_WALLETS: Wallet[] = [
-  {
-    walletId: "WALLET-HOT-BTC-001",
-    type: "Hot",
-    crypto: "BTC",
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    balanceCrypto: "2.58340000 BTC",
-    balanceCad: 254123.45,
-    status: "Active",
-    lastActivity: "Jun 2, 11:30 a.m.",
-    network: "Bitcoin Mainnet",
-    transactions: [
-      { txId: "TX-90214", type: "Deposit", amountCad: 15400, amountCrypto: "0.155 BTC", timestamp: "Jun 2, 11:30 a.m.", txHash: "0xfd8a9e22db38cf9e8f17b3c2f0f9b6e8d646a782bcfd992d9f1092e038ff1234" },
-      { txId: "TX-90192", type: "Withdrawal", amountCad: 5000, amountCrypto: "0.051 BTC", timestamp: "Jun 1, 04:15 p.m.", txHash: "0x6a2c94db8e11a28a3f890a82746b1c0a876a345e82b7cd1e86ba20d6f3e1a2b3" },
-    ],
-  },
-  {
-    walletId: "WALLET-COLD-BTC-001",
-    type: "Cold",
-    crypto: "BTC",
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    balanceCrypto: "45.23410000 BTC",
-    balanceCad: 4451234.12,
-    status: "Active",
-    lastActivity: "Jun 1, 09:00 a.m.",
-    network: "Bitcoin Mainnet Secure Vault",
-    transactions: [
-      { txId: "TX-89210", type: "Deposit", amountCad: 500000, amountCrypto: "5.09 BTC", timestamp: "Jun 1, 09:00 a.m.", txHash: "0x3a9b8c7d6e5f4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c" },
-    ],
-  },
-  {
-    walletId: "WALLET-HOT-ETH-001",
-    type: "Hot",
-    crypto: "ETH",
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    balanceCrypto: "125.45230000 ETH",
-    balanceCad: 541234.56,
-    status: "Active",
-    lastActivity: "Jun 2, 10:45 a.m.",
-    network: "Ethereum Mainnet",
-    transactions: [
-      { txId: "TX-90201", type: "Deposit", amountCad: 25000, amountCrypto: "10.4 ETH", timestamp: "Jun 2, 10:45 a.m.", txHash: "0x2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b" },
-      { txId: "TX-90180", type: "Withdrawal", amountCad: 12000, amountCrypto: "5.0 ETH", timestamp: "Jun 2, 08:30 a.m.", txHash: "0xbc8d9f1092e038ff1234fd8a9e22db38cf9e8f17b3c2f0f9b6e8d646a782bcfd" },
-    ],
-  },
-  {
-    walletId: "WALLET-COLD-ETH-001",
-    type: "Cold",
-    crypto: "ETH",
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    balanceCrypto: "834.23410000 ETH",
-    balanceCad: 3598765.43,
-    status: "Active",
-    lastActivity: "May 30, 02:20 p.m.",
-    network: "Ethereum Cold Vault (Multi-Sig)",
-    transactions: [
-      { txId: "TX-87129", type: "Deposit", amountCad: 1200000, amountCrypto: "500 ETH", timestamp: "May 30, 02:20 p.m.", txHash: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b" },
-    ],
-  },
-  {
-    walletId: "WALLET-HOT-USDT-001",
-    type: "Hot",
-    crypto: "USDT",
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    balanceCrypto: "250000.00 USDT",
-    balanceCad: 340000.00,
-    status: "Active",
-    lastActivity: "Jun 2, 11:15 a.m.",
-    network: "TRON (TRC-20) / Ethereum",
-    transactions: [
-      { txId: "TX-90208", type: "Deposit", amountCad: 50000, amountCrypto: "50000 USDT", timestamp: "Jun 2, 11:15 a.m.", txHash: "0x7a8d9f1092e038ff1234fd8a9e22db38cf9e8f17b3c2f0f9b6e8d646a782bcfd9" },
-    ],
-  },
-];
 
 function TypeBadge({ type }: { type: WalletType }) {
   const map: Record<WalletType, { cls: string; icon: React.ReactNode }> = {

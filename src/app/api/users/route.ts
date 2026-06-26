@@ -29,16 +29,16 @@ export async function GET(request: Request) {
     const { data: userWallets, error: walletsErr } = await supabaseAdmin.from("user_wallets").select("*");
     if (walletsErr) throw walletsErr;
 
-    const liveRates = await fetchLiveCADRates();
-    const rates: Record<string, number> = {
-      BTC: liveRates.btcCAD,
-      ETH: liveRates.ethCAD,
-      USDT: liveRates.usdtCAD,
-      USDC: liveRates.usdtCAD
-    };
+    // Extract unique currencies from user_wallets for dynamic rate fetching
+    const uniqueCurrencies = new Set<string>();
+    (userWallets || []).forEach(w => {
+      if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
+    });
+    const currencySymbols = Array.from(uniqueCurrencies);
+    const liveRates = await fetchLiveCADRates(currencySymbols);
 
     const userBalanceMap = (userWallets || []).reduce((acc: Record<string, number>, w: any) => {
-      const rate = rates[w.currency?.toUpperCase()] || rates.USDT;
+      const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
       const val = Number(w.balance) * rate;
       acc[w.user_id] = (acc[w.user_id] || 0) + val;
       return acc;
@@ -107,44 +107,82 @@ export async function PATCH(request: Request) {
 
     const supabaseAdmin = createAdminClient();
 
-    if (action !== "freeze" && action !== "unfreeze") {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-    }
+    if (action === "freeze" || action === "unfreeze") {
+      const isFrozen = action === "freeze";
 
-    const isFrozen = action === "freeze";
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update({ is_frozen: isFrozen })
+        .eq("id", userId);
 
-    const { error } = await supabaseAdmin
-      .from("profiles")
-      .update({ is_frozen: isFrozen })
-      .eq("id", userId);
-
-    if (error) {
-      // Return success if profiles doesn't exist yet, to not break the UI
-      if (error.message.includes("relation")) {
-         return NextResponse.json({ success: true, warning: "profiles table does not exist" });
+      if (error) {
+        if (error.message.includes("relation")) {
+           return NextResponse.json({ success: true, warning: "profiles table does not exist" });
+        }
+        throw error;
       }
-      throw error;
+
+      if (isFrozen) {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: userId,
+          title: "Account Frozen",
+          message: "Your account has been temporarily frozen. Please contact support for assistance.",
+          type: "error",
+          is_read: false,
+        });
+      } else {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: userId,
+          title: "Account Activated",
+          message: "Your account has been reactivated successfully.",
+          type: "success",
+          is_read: false,
+        });
+      }
+
+      return NextResponse.json({ success: true, status: isFrozen ? "Frozen" : "Active" });
     }
 
-    if (isFrozen) {
-      await supabaseAdmin.from("notifications").insert({
-        user_id: userId,
-        title: "Account Frozen",
-        message: "Your account has been temporarily frozen. Please contact support for assistance.",
-        type: "error",
-        is_read: false,
-      });
-    } else {
-      await supabaseAdmin.from("notifications").insert({
-        user_id: userId,
-        title: "Account Activated",
-        message: "Your account has been reactivated successfully.",
-        type: "success",
-        is_read: false,
-      });
+    if (action === "adjust-balance") {
+      const { currency, delta } = body;
+      if (!currency || delta === undefined) {
+        return NextResponse.json({ error: "Missing currency or delta for balance adjustment" }, { status: 400 });
+      }
+
+      const { data: wallet, error: fetchErr } = await supabaseAdmin
+        .from("user_wallets")
+        .select("balance")
+        .eq("user_id", userId)
+        .eq("currency", currency)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+
+      const currentBalance = wallet ? Number(wallet.balance) : 0;
+      const newBalance = currentBalance + delta;
+
+      if (newBalance < 0) {
+        return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
+      }
+
+      if (wallet) {
+        const { error } = await supabaseAdmin
+          .from("user_wallets")
+          .update({ balance: newBalance, updated_at: new Date().toISOString() })
+          .eq("user_id", userId)
+          .eq("currency", currency);
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseAdmin
+          .from("user_wallets")
+          .insert({ user_id: userId, currency, balance: newBalance });
+        if (error) throw error;
+      }
+
+      return NextResponse.json({ success: true, newBalance });
     }
 
-    return NextResponse.json({ success: true, status: isFrozen ? "Frozen" : "Active" });
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error: any) {
     console.error("Failed to update user status:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

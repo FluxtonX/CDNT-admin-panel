@@ -16,7 +16,7 @@ import {
   MessageCircle, History, Monitor, LogOut, RefreshCw,
   Eye, Plus, DollarSign,
 } from "lucide-react";
-import { cn, fetchLiveCADRates } from "@/lib/utils";
+import { cn, fetchLiveCADRates, COIN_COLORS } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
 
 const formatDate = (dateStr: string | null | undefined) => {
@@ -216,35 +216,16 @@ function NoteModal({ onConfirm, onClose }: { onConfirm: (n: string) => void; onC
 const COIN_OPTIONS = ["BTC", "ETH", "USDT", "CAD"] as const;
 
 async function applyWalletDelta(userId: string, currency: string, delta: number) {
-  const { data: wallet, error: fetchErr } = await supabase
-    .from("user_wallets")
-    .select("balance")
-    .eq("user_id", userId)
-    .eq("currency", currency)
-    .maybeSingle();
-
-  if (fetchErr) throw new Error(fetchErr.message);
-
-  const currentBalance = wallet ? Number(wallet.balance) : 0;
-  const newBalance = currentBalance + delta;
-
-  if (newBalance < 0) {
-    throw new Error(`Insufficient balance: user has ${currentBalance} ${currency}`);
+  const res = await fetch("/api/users", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, action: "adjust-balance", currency, delta }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to adjust balance");
   }
-
-  if (wallet) {
-    const { error } = await supabase
-      .from("user_wallets")
-      .update({ balance: newBalance, updated_at: new Date().toISOString() })
-      .eq("user_id", userId)
-      .eq("currency", currency);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase
-      .from("user_wallets")
-      .insert({ user_id: userId, currency, balance: newBalance });
-    if (error) throw new Error(error.message);
-  }
+  return res.json();
 }
 
 function AddTransactionModal({
@@ -676,16 +657,13 @@ function TransactionsTab({
   user: any;
   onAddTransaction: () => void;
 }) {
-  const [cadRates, setCadRates] = useState<{ btcCAD: number; ethCAD: number; usdtCAD: number } | null>(null);
+  const [cadRates, setCadRates] = useState<Record<string, number> | null>(null);
   useEffect(() => { fetchLiveCADRates().then(setCadRates); }, []);
 
   const getCadValue = (amount: number, currency: string) => {
     if (!cadRates) return amount * 1.36;
     const sym = (currency || '').toUpperCase().trim();
-    if (sym === 'BTC') return amount * cadRates.btcCAD;
-    if (sym === 'ETH') return amount * cadRates.ethCAD;
-    if (sym === 'USDT' || sym === 'USDC') return amount * cadRates.usdtCAD;
-    return amount * cadRates.usdtCAD;
+    return amount * (cadRates[sym] || cadRates.USDT || 1.36);
   };
 
   const statusStyle: Record<string, string> = {
@@ -792,26 +770,15 @@ function SupportTab({ user }: { user: any }) {
 
 /* ─── Portfolio Tab ──────────────────────────────────────────────── */
 function PortfolioTab({ user }: { user: any }) {
-  const [rates, setRates] = useState<Record<string, number>>({ BTC: 90000, ETH: 4500, USDT: 1.36, USDC: 1.36 });
+  const [rates, setRates] = useState<Record<string, number> | null>(null);
+  
   useEffect(() => {
-    fetchLiveCADRates().then(r => {
-      setRates({ BTC: r.btcCAD, ETH: r.ethCAD, USDT: r.usdtCAD, USDC: r.usdtCAD });
-    });
-  }, []);
-
-  const coinColors: Record<string, string> = {
-    BTC: "#F7931A",
-    ETH: "#627EEA",
-    USDT: "#26A17B",
-    USDC: "#30A17B"
-  };
-
-  const coinNames: Record<string, string> = {
-    BTC: "Bitcoin",
-    ETH: "Ethereum",
-    USDT: "Tether",
-    USDC: "USD Coin"
-  };
+    const userWallets = user.wallets || [];
+    const currencySymbols = userWallets.length > 0
+      ? userWallets.map((w: any) => w.currency?.toUpperCase()).filter(Boolean)
+      : ["BTC", "ETH", "USDT"];
+    fetchLiveCADRates(currencySymbols).then(setRates);
+  }, [user.wallets]);
 
   const userWallets = user.wallets || [];
   
@@ -821,16 +788,16 @@ function PortfolioTab({ user }: { user: any }) {
 
   const rawAssets = activeCurrencies.map((currency: string) => {
     const w = userWallets.find((x: any) => x.currency === currency) || { balance: 0 };
-    const rate = rates[currency?.toUpperCase()] || 1.36;
+    const rate = rates?.[currency?.toUpperCase()] || rates?.USDT || 1.36;
     const cadValue = Number(w.balance) * rate;
     
     return {
       coin: currency,
-      name: coinNames[currency?.toUpperCase()] || currency,
+      name: currency,
       balance: `${Number(w.balance).toLocaleString(undefined, { maximumFractionDigits: 8 })} ${currency}`,
       usd: `$${cadValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       rawCad: cadValue,
-      color: coinColors[currency?.toUpperCase()] || "#0A3D91",
+      color: COIN_COLORS[currency?.toUpperCase()] || "#0A3D91",
     };
   });
 

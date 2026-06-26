@@ -7,14 +7,6 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const supabaseAdmin = createAdminClient();
-    const liveRates = await fetchLiveCADRates();
-
-    const rates: Record<string, number> = {
-      BTC: liveRates.btcCAD,
-      ETH: liveRates.ethCAD,
-      USDT: liveRates.usdtCAD,
-      USDC: liveRates.usdtCAD
-    };
 
     // 1. Fetch data concurrently
     const [
@@ -33,6 +25,18 @@ export async function GET() {
       supabaseAdmin.from("withdrawal_requests").select("*")
     ]);
 
+    // Extract unique currencies from user_wallets and deposit_requests
+    const uniqueCurrencies = new Set<string>();
+    (userWallets || []).forEach(w => {
+      if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
+    });
+    (depositReqs || []).forEach(d => {
+      if (d.asset) uniqueCurrencies.add(d.asset.toUpperCase());
+    });
+    
+    const currencySymbols = Array.from(uniqueCurrencies);
+    const liveRates = await fetchLiveCADRates(currencySymbols);
+
     // Top Stats
     const totalUsers = (profiles || []).length;
     const verifiedUsers = (kycData || []).filter(k => k.status === "approved").length;
@@ -40,7 +44,7 @@ export async function GET() {
 
     let platformAssets = 0;
     (userWallets || []).forEach(w => {
-      const rate = rates[w.currency?.toUpperCase()] || rates.USDT;
+      const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
       platformAssets += Number(w.balance || 0) * rate;
     });
 
@@ -48,7 +52,7 @@ export async function GET() {
 
     let totalDepositsAmt = 0;
     (depositReqs || []).forEach(d => {
-      const rate = rates[d.asset?.toUpperCase()] || rates.USDT;
+      const rate = liveRates[d.asset?.toUpperCase()] || liveRates.USDT || 1.36;
       totalDepositsAmt += Number(d.expected_amount || 0) * rate;
     });
 
@@ -66,44 +70,46 @@ export async function GET() {
     });
 
     const userGrowthData = Object.entries(userGrowthMap).map(([month, users]) => ({ month, users }));
-    // Sort logic could be applied, but sticking to simple mapping for now. We can sort by chronological order.
     userGrowthData.sort((a, b) => {
       const [mA, yA] = a.month.split(" ");
       const [mB, yB] = b.month.split(" ");
       return new Date(`${mA} 1, ${yA}`).getTime() - new Date(`${mB} 1, ${yB}`).getTime();
     });
 
-    // Asset Distribution (Platform Wallets or User Wallets sum)
-    let btcBal = 0, ethBal = 0, usdtBal = 0;
+    // Asset Distribution - Dynamic for all currencies
+    const currencyBalances: Record<string, number> = {};
     if (platformWallets && platformWallets.length > 0) {
       platformWallets.forEach(w => {
         const coin = w.crypto?.toUpperCase();
         const amt = Number(w.balance_crypto || 0);
-        if (coin === 'BTC') btcBal += amt;
-        if (coin === 'ETH') ethBal += amt;
-        if (coin === 'USDT' || coin === 'USDC') usdtBal += amt;
+        currencyBalances[coin] = (currencyBalances[coin] || 0) + amt;
       });
     } else {
-      // Fallback to user_wallets if platform_wallets is empty, as per instructions "sum real balances from user_wallets and/or platform_wallets"
+      // Fallback to user_wallets
       (userWallets || []).forEach(w => {
         const coin = w.currency?.toUpperCase();
         const amt = Number(w.balance || 0);
-        if (coin === 'BTC') btcBal += amt;
-        if (coin === 'ETH') ethBal += amt;
-        if (coin === 'USDT' || coin === 'USDC') usdtBal += amt;
+        currencyBalances[coin] = (currencyBalances[coin] || 0) + amt;
       });
     }
 
-    const btcUsd = btcBal * rates.BTC;
-    const ethUsd = ethBal * rates.ETH;
-    const usdtUsd = usdtBal * rates.USDT;
+    const totalAssetVal = Object.entries(currencyBalances).reduce((sum, [coin, bal]) => {
+      const rate = liveRates[coin] || 1;
+      return sum + (bal * rate);
+    }, 0);
 
-    const totalAssetVal = btcUsd + ethUsd + usdtUsd;
-    const assetData = [
-      { name: "Bitcoin", value: totalAssetVal ? Number((btcUsd / 1000000).toFixed(2)) : 0, color: "#1650AB" },
-      { name: "Ethereum", value: totalAssetVal ? Number((ethUsd / 1000000).toFixed(2)) : 0, color: "#1E3A8A" },
-      { name: "USDT", value: totalAssetVal ? Number((usdtUsd / 1000000).toFixed(2)) : 0, color: "#F59E0B" }
-    ];
+    const assetData = Object.entries(currencyBalances)
+      .filter(([_, bal]) => bal > 0)
+      .map(([coin, bal]) => {
+        const rate = liveRates[coin] || 1;
+        const cadValue = bal * rate;
+        return {
+          name: coin,
+          value: totalAssetVal ? Number((cadValue / 1000000).toFixed(2)) : 0,
+          color: "#1650AB" // Will be overridden with dynamic colors in UI
+        };
+      })
+      .sort((a, b) => b.value - a.value);
 
     // Deposits vs Withdrawals Monthly
     const depWithMap: Record<string, { deposits: number, withdrawals: number }> = {};
@@ -112,7 +118,7 @@ export async function GET() {
         const date = new Date(d.created_at);
         const m = `${months[date.getMonth()]} ${date.getFullYear()}`;
         if (!depWithMap[m]) depWithMap[m] = { deposits: 0, withdrawals: 0 };
-        const rate = rates[d.asset?.toUpperCase()] || rates.USDT;
+        const rate = liveRates[d.asset?.toUpperCase()] || liveRates.USDT || 1.36;
         depWithMap[m].deposits += Number(d.expected_amount || 0) * rate;
       }
     });
@@ -172,7 +178,7 @@ export async function GET() {
       const isDeposit = tx.txType === "Deposit";
       const coin = isDeposit ? (tx.asset?.toUpperCase() || "CAD") : "CAD";
       const amtNum = isDeposit ? tx.expected_amount : tx.amount;
-      const amountCad = isDeposit ? (Number(amtNum) * (rates[coin] || rates.USDT)) : Number(amtNum);
+      const amountCad = isDeposit ? (Number(amtNum) * (liveRates[coin] || liveRates.USDT || 1.36)) : Number(amtNum);
 
       return {
         name: user?.full_name || "Unknown User",
