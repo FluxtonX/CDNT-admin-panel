@@ -179,6 +179,19 @@ export async function PATCH(request: Request) {
         if (error) throw error;
       }
 
+      // Insert wallet_ledger entry using admin client to bypass RLS
+      const { error: ledgerError } = await supabaseAdmin
+        .from("wallet_ledger")
+        .insert({
+          user_id: userId,
+          type: "ADMIN_ADJUSTMENT",
+          provider: "ADMIN",
+          currency: currency,
+          amount: delta,
+          status: "COMPLETED",
+        });
+      if (ledgerError) throw ledgerError;
+
       return NextResponse.json({ success: true, newBalance });
     }
 
