@@ -35,7 +35,7 @@ export async function POST(request: Request) {
             </div>
             <p style="color: #475569; font-size: 14px;">This code will expire shortly. If you did not initiate this login, please ignore this email.</p>
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-            <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian Digital National Trust Bank</p>
+            <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
           </div>
         `,
       }),

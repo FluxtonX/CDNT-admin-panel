@@ -14,7 +14,7 @@ import {
   User, Mail, Phone, Calendar, MapPin, Activity,
   Smartphone, Globe, Wallet, BarChart3, FileText,
   MessageCircle, History, Monitor, LogOut, RefreshCw,
-  Eye,
+  Eye, Plus, DollarSign,
 } from "lucide-react";
 import { cn, fetchLiveCADRates } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
@@ -213,6 +213,292 @@ function NoteModal({ onConfirm, onClose }: { onConfirm: (n: string) => void; onC
   );
 }
 
+const COIN_OPTIONS = ["BTC", "ETH", "USDT", "CAD"] as const;
+
+async function applyWalletDelta(userId: string, currency: string, delta: number) {
+  const { data: wallet, error: fetchErr } = await supabase
+    .from("user_wallets")
+    .select("balance")
+    .eq("user_id", userId)
+    .eq("currency", currency)
+    .maybeSingle();
+
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const currentBalance = wallet ? Number(wallet.balance) : 0;
+  const newBalance = currentBalance + delta;
+
+  if (newBalance < 0) {
+    throw new Error(`Insufficient balance: user has ${currentBalance} ${currency}`);
+  }
+
+  if (wallet) {
+    const { error } = await supabase
+      .from("user_wallets")
+      .update({ balance: newBalance, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("currency", currency);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("user_wallets")
+      .insert({ user_id: userId, currency, balance: newBalance });
+    if (error) throw new Error(error.message);
+  }
+}
+
+function AddTransactionModal({
+  user,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  user: { id: string; name: string; email: string };
+  onClose: () => void;
+  onSuccess: () => void;
+  onError: (message: string) => void;
+}) {
+  const [coin, setCoin] = useState<string>("BTC");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [txType, setTxType] = useState<"Deposit" | "Withdrawal">("Deposit");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    const numericAmount = Number(amount);
+    if (!numericAmount || numericAmount <= 0) {
+      onError("Enter a valid amount greater than zero.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const txDate = new Date(date).toISOString();
+      const adminRef = `ADMIN-${Date.now()}`;
+
+      if (txType === "Deposit") {
+        const { error: insertErr } = await supabase.from("deposit_requests").insert({
+          user_id: user.id,
+          asset: coin,
+          network: "ADMIN",
+          company_address: "ADMIN_MANUAL",
+          expected_amount: numericAmount,
+          tx_hash: adminRef,
+          status: "completed",
+          created_at: txDate,
+          reviewed_at: txDate,
+          admin_note: "Manual admin transaction",
+        });
+        if (insertErr) throw new Error(insertErr.message);
+
+        await applyWalletDelta(user.id, coin, numericAmount);
+
+        const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
+          user_id: user.id,
+          type: "DEPOSIT",
+          provider: "ADMIN_MANUAL",
+          currency: coin,
+          amount: numericAmount,
+          status: "COMPLETED",
+          created_at: txDate,
+        });
+        if (ledgerErr) throw new Error(ledgerErr.message);
+      } else {
+        const { error: insertErr } = await supabase.from("withdrawal_requests").insert({
+          user_id: user.id,
+          amount: numericAmount,
+          currency: coin,
+          method: "admin_manual",
+          status: "completed",
+          created_at: txDate,
+        });
+        if (insertErr) throw new Error(insertErr.message);
+
+        await applyWalletDelta(user.id, coin, -numericAmount);
+
+        const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
+          user_id: user.id,
+          type: "WITHDRAWAL",
+          provider: "ADMIN_MANUAL",
+          currency: coin,
+          amount: numericAmount,
+          status: "COMPLETED",
+          created_at: txDate,
+        });
+        if (ledgerErr) throw new Error(ledgerErr.message);
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : "Failed to add transaction.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+      >
+        <div className="p-6 space-y-4">
+          <div>
+            <h2 className="text-[17px] font-bold text-gray-900">Add Transaction</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Record a completed deposit or withdrawal</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">User</label>
+            <input readOnly value={`${user.name} (${user.email})`} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Coin</label>
+              <select value={coin} onChange={(e) => setCoin(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+                {COIN_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Type</label>
+              <select value={txType} onChange={(e) => setTxType(e.target.value as "Deposit" | "Withdrawal")} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+                <option value="Deposit">Deposit</option>
+                <option value="Withdrawal">Withdrawal</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</label>
+              <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Date</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
+              {loading ? "Saving…" : "Add Transaction"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function AdjustBalanceModal({
+  userId,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  userId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+  onError: (message: string) => void;
+}) {
+  const [currency, setCurrency] = useState<string>("BTC");
+  const [amount, setAmount] = useState("");
+  const [action, setAction] = useState<"Add" | "Deduct">("Add");
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    const numericAmount = Number(amount);
+    if (!numericAmount || numericAmount <= 0) {
+      onError("Enter a valid amount greater than zero.");
+      return;
+    }
+    if (!reason.trim()) {
+      onError("Please provide a reason for this adjustment.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const delta = action === "Add" ? numericAmount : -numericAmount;
+      await applyWalletDelta(userId, currency, delta);
+
+      const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
+        user_id: userId,
+        type: "ADMIN_ADJUSTMENT",
+        provider: reason.trim(),
+        currency,
+        amount: numericAmount,
+        status: "COMPLETED",
+      });
+      if (ledgerErr) throw new Error(ledgerErr.message);
+
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : "Failed to adjust balance.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+      >
+        <div className="p-6 space-y-4">
+          <div>
+            <h2 className="text-[17px] font-bold text-gray-900">Adjust Balance</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Directly add or deduct wallet balance</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Currency</label>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+                {COIN_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Action</label>
+              <select value={action} onChange={(e) => setAction(e.target.value as "Add" | "Deduct")} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+                <option value="Add">Add</option>
+                <option value="Deduct">Deduct</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</label>
+            <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Reason / Note</label>
+            <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for adjustment..." className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800 resize-none" />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
+              {loading ? "Saving…" : "Adjust Balance"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ─── Tab Content Components ─────────────────────────────────────── */
 
 function OverviewTab({ user }: { user: any }) {
@@ -383,7 +669,13 @@ function SecurityTab({ user }: { user: any }) {
   );
 }
 
-function TransactionsTab({ user }: { user: any }) {
+function TransactionsTab({
+  user,
+  onAddTransaction,
+}: {
+  user: any;
+  onAddTransaction: () => void;
+}) {
   const [cadRates, setCadRates] = useState<{ btcCAD: number; ethCAD: number; usdtCAD: number } | null>(null);
   useEffect(() => { fetchLiveCADRates().then(setCadRates); }, []);
 
@@ -404,7 +696,15 @@ function TransactionsTab({ user }: { user: any }) {
 
   return (
     <div>
-      <h3 className="text-base font-bold text-gray-900 mb-4">Recent Transactions</h3>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h3 className="text-base font-bold text-gray-900">Recent Transactions</h3>
+        <button
+          onClick={onAddTransaction}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+        >
+          <Plus className="h-4 w-4" /> Add Transaction
+        </button>
+      </div>
       <div className="space-y-3">
         {(!user.transactions || user.transactions.length === 0) ? (
           <p className="text-sm text-gray-500 py-4 text-center">No transactions found.</p>
@@ -868,7 +1168,19 @@ function UserDetailPageContent() {
 
   const [showFreezeModal, setShowFreeze]  = useState(false);
   const [showNoteModal, setShowNote]      = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [noteSaved, setNoteSaved]         = useState(false);
+  const [actionToast, setActionToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const refreshUser = () => {
+    queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(userId) });
+  };
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setActionToast({ type, message });
+    setTimeout(() => setActionToast(null), 3000);
+  };
 
   if (loading || (rawUserData && !cadRates)) {
     return (
@@ -920,6 +1232,10 @@ function UserDetailPageContent() {
             <button onClick={() => setShowNote(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
               <FileEdit className="h-4 w-4" /> Add Note
+            </button>
+            <button onClick={() => setShowAdjustModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+              <DollarSign className="h-4 w-4" /> Adjust Balance
             </button>
             <button onClick={() => alert("Exporting…")}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
@@ -1008,7 +1324,7 @@ function UserDetailPageContent() {
                   </>
                 )}
                 {activeTab === "portfolio"     && <PortfolioTab user={user} />}
-                {activeTab === "transactions"  && <TransactionsTab user={user} />}
+                {activeTab === "transactions"  && <TransactionsTab user={user} onAddTransaction={() => setShowTransactionModal(true)} />}
                 {activeTab === "security"      && <SecurityTab user={user} />}
                 {activeTab === "documents"     && <DocumentsTab user={user} />}
                 {activeTab === "support"       && <SupportTab user={user} />}
@@ -1034,8 +1350,50 @@ function UserDetailPageContent() {
           setShowNote(false); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 3000);
         }} />}
       </AnimatePresence>
+      <AnimatePresence>
+        {showTransactionModal && (
+          <AddTransactionModal
+            user={{ id: user.id, name: user.name, email: user.email }}
+            onClose={() => setShowTransactionModal(false)}
+            onSuccess={() => {
+              showToast("success", "Transaction added successfully.");
+              refreshUser();
+            }}
+            onError={(message) => showToast("error", message)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showAdjustModal && (
+          <AdjustBalanceModal
+            userId={user.id}
+            onClose={() => setShowAdjustModal(false)}
+            onSuccess={() => {
+              showToast("success", "Balance adjusted successfully.");
+              refreshUser();
+            }}
+            onError={(message) => showToast("error", message)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Toast */}
+      <AnimatePresence>
+        {actionToast && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+            className={cn(
+              "fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 text-sm font-medium rounded-xl shadow-xl",
+              actionToast.type === "success" ? "bg-gray-900 text-white" : "bg-red-600 text-white"
+            )}>
+            {actionToast.type === "success" ? (
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
+            ) : (
+              <XCircle className="h-4 w-4 text-white" />
+            )}
+            {actionToast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {noteSaved && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}

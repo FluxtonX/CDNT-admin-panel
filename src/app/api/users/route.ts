@@ -126,6 +126,24 @@ export async function PATCH(request: Request) {
       throw error;
     }
 
+    if (isFrozen) {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: userId,
+        title: "Account Frozen",
+        message: "Your account has been temporarily frozen. Please contact support for assistance.",
+        type: "error",
+        is_read: false,
+      });
+    } else {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: userId,
+        title: "Account Activated",
+        message: "Your account has been reactivated successfully.",
+        type: "success",
+        is_read: false,
+      });
+    }
+
     return NextResponse.json({ success: true, status: isFrozen ? "Frozen" : "Active" });
   } catch (error: any) {
     console.error("Failed to update user status:", error);

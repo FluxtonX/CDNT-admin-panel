@@ -30,7 +30,7 @@ function AdminSettingsPageContent() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // General Settings State
-  const [platformName, setPlatformName] = useState("Canadian Digital National Trust Bank");
+  const [platformName, setPlatformName] = useState("Canadian National Trust Bank");
   const [supportEmail, setSupportEmail] = useState("support@cdntb.ca");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 

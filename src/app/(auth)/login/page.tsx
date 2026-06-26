@@ -174,7 +174,7 @@ export default function LoginPage() {
         <CdntLogo />
         <div>
           <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight">
-            Canadian Digital National Trust Bank
+            Canadian National Trust Bank
           </h1>
           <p className="text-white/60 text-sm mt-1.5 font-normal">
             Secure access for authorized administrators

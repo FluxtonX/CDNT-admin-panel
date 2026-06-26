@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 type NotificationType = "Info" | "Warning" | "Success" | "Error";
 type TargetAudience = "All" | "Verified" | "Unverified" | "High Value";
 
+type UserOption = { id: string; name: string; email: string };
+
 type PlatformNotification = {
   id: string;
   realId?: string;
@@ -93,6 +95,8 @@ export default function NotificationCenterPage() {
   const [verifiedUsers, setVerifiedUsers] = useState(0);
   const [unverifiedUsers, setUnverifiedUsers] = useState(0);
   const [highValueUsers, setHighValueUsers] = useState(0);
+  const [userOptions, setUserOptions] = useState<UserOption[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
 
   const audienceCounts: Record<TargetAudience, number> = useMemo(() => ({
     All: totalUsers,
@@ -143,6 +147,18 @@ export default function NotificationCenterPage() {
         });
         
         setNotifications(list);
+      }
+
+      const usersRes = await fetch("/api/users");
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setUserOptions(
+          (usersData.users || []).map((u: { id: string; name: string; email: string }) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+          }))
+        );
       }
     } catch (e) {
       console.error("Error loading announcements:", e);
@@ -203,28 +219,42 @@ export default function NotificationCenterPage() {
     }
 
     try {
+      const payload: {
+        type: NotificationType;
+        title: string;
+        message: string;
+        audience: TargetAudience;
+        userId?: string;
+      } = {
+        type,
+        title,
+        message,
+        audience,
+      };
+
+      if (selectedUserId) {
+        payload.userId = selectedUserId;
+        payload.audience = "All";
+      }
+
       const res = await fetch("/api/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          title,
-          message,
-          audience,
-        })
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         throw new Error("Failed to send notification");
       }
 
-      setToast(`Notification successfully dispatched to ${audience} Users ✓`);
+      setToast(`Notification successfully dispatched to ${selectedUserId ? "selected user" : `${audience} Users`} ✓`);
       window.setTimeout(() => setToast(null), 2500);
       
       setTitle("");
       setMessage("");
       setType("Info");
       setAudience("All");
+      setSelectedUserId("");
       
       loadData();
     } catch (err: any) {
@@ -328,11 +358,25 @@ export default function NotificationCenterPage() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">Target Audience</label>
                   <select
-                    value={audience}
-                    onChange={(e) => setAudience(e.target.value as TargetAudience)}
+                    value={selectedUserId ? `user:${selectedUserId}` : audience}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.startsWith("user:")) {
+                        setSelectedUserId(value.replace("user:", ""));
+                        setAudience("All");
+                      } else {
+                        setSelectedUserId("");
+                        setAudience(value as TargetAudience);
+                      }
+                    }}
                     className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-50 text-gray-800 transition-all cursor-pointer"
                   >
                     <option value="All">All Users ({audienceCounts.All.toLocaleString()})</option>
+                    {userOptions.map((user) => (
+                      <option key={user.id} value={`user:${user.id}`}>
+                        {user.name} ({user.email})
+                      </option>
+                    ))}
                     <option value="Verified">Verified Users ({audienceCounts.Verified.toLocaleString()})</option>
                     <option value="Unverified">Unverified Users ({audienceCounts.Unverified.toLocaleString()})</option>
                     <option value="High Value">High Value Users ({audienceCounts["High Value"].toLocaleString()})</option>
@@ -369,7 +413,7 @@ export default function NotificationCenterPage() {
                   style={{ background: BRAND_GRADIENT }}
                 >
                   <SendHorizontal className="h-4.5 w-4.5" />
-                  Send to {audienceCounts[audience].toLocaleString()} Users
+                  Send to {selectedUserId ? "1 User" : `${audienceCounts[audience].toLocaleString()} Users`}
                 </button>
               </form>
             </div>

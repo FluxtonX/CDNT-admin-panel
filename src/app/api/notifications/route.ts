@@ -74,21 +74,27 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { type, title, message, audience } = await request.json();
+    const { type, title, message, audience, userId } = await request.json();
     if (!type || !title || !message) {
       return NextResponse.json({ error: "type, title, and message are required" }, { status: 400 });
     }
 
     const supabaseAdmin = createAdminClient();
 
+    const insertPayload: Record<string, unknown> = {
+      type,
+      title,
+      message,
+      audience: audience || "All",
+    };
+
+    if (userId) {
+      insertPayload.user_id = userId;
+    }
+
     const { data, error } = await supabaseAdmin
       .from("notifications")
-      .insert({
-        type,
-        title,
-        message,
-        audience: audience || "All",
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
