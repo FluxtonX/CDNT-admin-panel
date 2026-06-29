@@ -100,6 +100,14 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Insert audit log
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: userId || null,
+      admin_id: null,
+      action: "NOTIFICATION_SENT",
+      details: { title, message, audience: audience || "All" },
+    });
+
     return NextResponse.json({ success: true, notification: data });
   } catch (error: any) {
     console.error("POST Notification Error:", error);

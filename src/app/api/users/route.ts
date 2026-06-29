@@ -140,6 +140,14 @@ export async function PATCH(request: Request) {
         });
       }
 
+      // Insert audit log
+      await supabaseAdmin.from("audit_logs").insert({
+        user_id: userId,
+        admin_id: null,
+        action: isFrozen ? "ACCOUNT_FROZEN" : "ACCOUNT_UNFROZEN",
+        details: { reason: "admin action" },
+      });
+
       return NextResponse.json({ success: true, status: isFrozen ? "Frozen" : "Active" });
     }
 
@@ -191,6 +199,14 @@ export async function PATCH(request: Request) {
           status: "COMPLETED",
         });
       if (ledgerError) throw ledgerError;
+
+      // Insert audit log
+      await supabaseAdmin.from("audit_logs").insert({
+        user_id: userId,
+        admin_id: null,
+        action: "BALANCE_ADJUSTED",
+        details: { currency, amount: delta, type: delta > 0 ? "add" : "deduct" },
+      });
 
       return NextResponse.json({ success: true, newBalance });
     }

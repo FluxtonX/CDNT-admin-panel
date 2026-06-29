@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -44,24 +45,66 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       profiles,
       kyc,
       wallets,
-      transactions,
+      depositRequests,
+      withdrawalRequests,
       sessions,
       notes,
       securityLogs,
-      tickets
+      tickets,
+      auditLogs
     ] = await Promise.all([
       safeFetch("profiles", { id: userId }),
       safeFetch("kyc_submissions", { user_id: userId }),
       safeFetch("user_wallets", { user_id: userId }),
-      safeFetch("transactions", { user_id: userId }),
+      safeFetch("deposit_requests", { user_id: userId }),
+      safeFetch("withdrawal_requests", { user_id: userId }),
       safeFetch("user_sessions", { user_id: userId }),
       safeFetch("admin_notes", { user_id: userId }),
       safeFetch("security_logs", { user_id: userId }),
       safeFetch("support_tickets", { user_id: userId }),
+      safeFetch("audit_logs", { user_id: userId }),
     ]);
 
     const profile = profiles[0] || {};
     const kycSubmission = kyc[0] || {};
+
+    // Combine deposit_requests and withdrawal_requests into transactions
+    const combinedTransactions = [
+      ...(depositRequests || []).map((d: any) => ({
+        id: d.id,
+        type: "Deposit",
+        amount: d.expected_amount,
+        currency: d.asset,
+        status: d.status,
+        created_at: d.created_at,
+        metadata: d.admin_note || "",
+      })),
+      ...(withdrawalRequests || []).map((w: any) => ({
+        id: w.id,
+        type: "Withdrawal",
+        amount: w.amount,
+        currency: w.crypto_currency || w.asset || "CAD",
+        status: w.status,
+        created_at: w.created_at,
+        metadata: "",
+      })),
+    ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20);
+
+    // Calculate total balance dynamically using live CAD rates
+    let totalBalance = 0;
+    if (wallets && wallets.length > 0) {
+      const uniqueCurrencies = new Set<string>();
+      wallets.forEach((w: any) => {
+        if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
+      });
+      const currencySymbols = Array.from(uniqueCurrencies);
+      const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
+      
+      totalBalance = wallets.reduce((sum: number, w: any) => {
+        const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
+        return sum + (Number(w.balance || 0) * rate);
+      }, 0);
+    }
 
     // Combine data into a structured payload
     return NextResponse.json({
@@ -70,11 +113,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       kyc: kycSubmission,
       kycDocuments: kyc, // In case there are multiple or history
       wallets,
-      transactions: transactions.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20),
+      balance: totalBalance,
+      transactions: combinedTransactions,
       sessions,
       notes: notes.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
       securityLogs: securityLogs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
       tickets: tickets.sort((a: any, b: any) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()),
+      auditLogs: auditLogs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     });
 
   } catch (error: any) {

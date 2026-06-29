@@ -92,6 +92,14 @@ export async function PATCH(request: Request) {
       performed_by_admin: "ADM-001"
     });
 
+    // Insert audit log
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: userId,
+      admin_id: null,
+      action: "KYC_UPDATED",
+      details: { status },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("PATCH KYC Error:", error);

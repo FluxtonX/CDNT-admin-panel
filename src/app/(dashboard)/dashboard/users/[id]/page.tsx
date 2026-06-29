@@ -255,58 +255,20 @@ function AddTransactionModal({
     setLoading(true);
     try {
       const txDate = new Date(date).toISOString();
-      const adminRef = `ADMIN-${Date.now()}`;
-
-      if (txType === "Deposit") {
-        const { error: insertErr } = await supabase.from("deposit_requests").insert({
-          user_id: user.id,
-          asset: coin,
-          network: "ADMIN",
-          company_address: "ADMIN_MANUAL",
-          expected_amount: numericAmount,
-          tx_hash: adminRef,
-          status: "completed",
-          created_at: txDate,
-          reviewed_at: txDate,
-          admin_note: "Manual admin transaction",
-        });
-        if (insertErr) throw new Error(insertErr.message);
-
-        await applyWalletDelta(user.id, coin, numericAmount);
-
-        const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
-          user_id: user.id,
-          type: "DEPOSIT",
-          provider: "ADMIN_MANUAL",
-          currency: coin,
+      const res = await fetch("/api/users/transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          txType,
+          coin,
           amount: numericAmount,
-          status: "COMPLETED",
-          created_at: txDate,
-        });
-        if (ledgerErr) throw new Error(ledgerErr.message);
-      } else {
-        const { error: insertErr } = await supabase.from("withdrawal_requests").insert({
-          user_id: user.id,
-          amount: numericAmount,
-          currency: coin,
-          method: "admin_manual",
-          status: "completed",
-          created_at: txDate,
-        });
-        if (insertErr) throw new Error(insertErr.message);
-
-        await applyWalletDelta(user.id, coin, -numericAmount);
-
-        const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
-          user_id: user.id,
-          type: "WITHDRAWAL",
-          provider: "ADMIN_MANUAL",
-          currency: coin,
-          amount: numericAmount,
-          status: "COMPLETED",
-          created_at: txDate,
-        });
-        if (ledgerErr) throw new Error(ledgerErr.message);
+          txDate,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add transaction");
       }
 
       onSuccess();
@@ -376,22 +338,49 @@ function AddTransactionModal({
   );
 }
 
-function AdjustBalanceModal({
-  userId,
+function ManageBalanceModal({
+  user,
   onClose,
   onSuccess,
   onError,
 }: {
-  userId: string;
+  user: { id: string; name: string; email: string };
   onClose: () => void;
   onSuccess: () => void;
   onError: (message: string) => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"adjust" | "deposit" | "withdrawal">("adjust");
   const [currency, setCurrency] = useState<string>("BTC");
   const [amount, setAmount] = useState("");
   const [action, setAction] = useState<"Add" | "Deduct">("Add");
   const [reason, setReason] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
+  const [currentBalance, setCurrentBalance] = useState<number>(0);
+  const [cadRate, setCadRate] = useState<number>(0);
+
+  // Fetch current balance and CAD rate for selected currency
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [userRes, rates] = await Promise.all([
+          fetch(`/api/users/${user.id}`),
+          fetchLiveCADRates([currency]),
+        ]);
+        
+        if (userRes.ok) {
+          const data = await userRes.json();
+          const wallet = data.wallets?.find((w: any) => w.currency === currency);
+          setCurrentBalance(wallet ? Number(wallet.balance) : 0);
+        }
+        
+        setCadRate(rates[currency] || rates.USDT || 1.36);
+      } catch (e) {
+        console.error("Failed to fetch data:", e);
+      }
+    };
+    fetchData();
+  }, [user.id, currency]);
 
   const handleSubmit = async () => {
     const numericAmount = Number(amount);
@@ -399,30 +388,53 @@ function AdjustBalanceModal({
       onError("Enter a valid amount greater than zero.");
       return;
     }
-    if (!reason.trim()) {
+    if (activeTab === "adjust" && !reason.trim()) {
       onError("Please provide a reason for this adjustment.");
+      return;
+    }
+    if (activeTab === "withdrawal" && numericAmount > currentBalance) {
+      onError("Insufficient balance for withdrawal.");
       return;
     }
 
     setLoading(true);
     try {
-      const delta = action === "Add" ? numericAmount : -numericAmount;
-      await applyWalletDelta(userId, currency, delta);
+      const txDate = new Date(date).toISOString();
 
-      const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
-        user_id: userId,
-        type: "ADMIN_ADJUSTMENT",
-        provider: reason.trim(),
-        currency,
-        amount: numericAmount,
-        status: "COMPLETED",
-      });
-      if (ledgerErr) throw new Error(ledgerErr.message);
+      if (activeTab === "adjust") {
+        const delta = action === "Add" ? numericAmount : -numericAmount;
+        const res = await fetch("/api/users", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.id, action: "adjust-balance", currency, delta }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to adjust balance");
+        }
+      } else {
+        const txType = activeTab === "deposit" ? "Deposit" : "Withdrawal";
+        const res = await fetch("/api/users/transaction", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            txType,
+            coin: currency,
+            amount: numericAmount,
+            txDate,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to add transaction");
+        }
+      }
 
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : "Failed to adjust balance.");
+      onError(err instanceof Error ? err.message : "Operation failed.");
     } finally {
       setLoading(false);
     }
@@ -440,38 +452,88 @@ function AdjustBalanceModal({
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
       >
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-5">
           <div>
-            <h2 className="text-[17px] font-bold text-gray-900">Adjust Balance</h2>
-            <p className="text-sm text-gray-600 mt-0.5">Directly add or deduct wallet balance</p>
+            <h2 className="text-[17px] font-bold text-gray-900">Manage Balance</h2>
+            <p className="text-sm text-gray-600 mt-0.5">{user.name} • {user.email}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          {/* Tabs */}
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+            {[
+              { id: "adjust", label: "Adjust" },
+              { id: "deposit", label: "Deposit" },
+              { id: "withdrawal", label: "Withdrawal" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === tab.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Current Balance Display */}
+          <div className="flex flex-col gap-2 p-3 bg-blue-50 rounded-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600">Current {currency} Balance</span>
+              <span className="text-sm font-bold text-gray-900">{currentBalance.toFixed(8)} {currency}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600">CAD Value</span>
+              <span className="text-sm font-bold text-gray-900">≈ ${(currentBalance * cadRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD</span>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Currency</label>
               <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
                 {COIN_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+
+            {activeTab === "adjust" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Action</label>
+                <select value={action} onChange={(e) => setAction(e.target.value as "Add" | "Deduct")} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+                  <option value="Add">Add</option>
+                  <option value="Deduct">Deduct</option>
+                </select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Action</label>
-              <select value={action} onChange={(e) => setAction(e.target.value as "Add" | "Deduct")} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
-                <option value="Add">Add</option>
-                <option value="Deduct">Deduct</option>
-              </select>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</label>
+              <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
             </div>
+
+            {activeTab === "adjust" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Reason / Note</label>
+                <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for adjustment..." className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800 resize-none" />
+              </div>
+            )}
+
+            {(activeTab === "deposit" || activeTab === "withdrawal") && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Date</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+              </div>
+            )}
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</label>
-            <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Reason / Note</label>
-            <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for adjustment..." className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800 resize-none" />
-          </div>
+
           <div className="flex gap-3 pt-2">
             <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
             <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
-              {loading ? "Saving…" : "Adjust Balance"}
+              {loading ? "Processing…" : activeTab === "adjust" ? "Adjust Balance" : activeTab === "deposit" ? "Add Deposit" : "Add Withdrawal"}
             </button>
           </div>
         </div>
@@ -652,10 +714,8 @@ function SecurityTab({ user }: { user: any }) {
 
 function TransactionsTab({
   user,
-  onAddTransaction,
 }: {
   user: any;
-  onAddTransaction: () => void;
 }) {
   const [cadRates, setCadRates] = useState<Record<string, number> | null>(null);
   useEffect(() => { fetchLiveCADRates().then(setCadRates); }, []);
@@ -676,12 +736,6 @@ function TransactionsTab({
     <div>
       <div className="flex items-center justify-between gap-3 mb-4">
         <h3 className="text-base font-bold text-gray-900">Recent Transactions</h3>
-        <button
-          onClick={onAddTransaction}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <Plus className="h-4 w-4" /> Add Transaction
-        </button>
       </div>
       <div className="space-y-3">
         {(!user.transactions || user.transactions.length === 0) ? (
@@ -972,70 +1026,48 @@ function DocumentsTab({ user }: { user: any }) {
 
 /* ─── Audit Logs Tab ─────────────────────────────────────────────── */
 function AuditLogsTab({ user }: { user: any }) {
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const actionBadgeStyle: Record<string, string> = {
+    ACCOUNT_FROZEN: "bg-red-50 text-red-600 border-red-200",
+    ACCOUNT_UNFROZEN: "bg-green-50 text-green-600 border-green-200",
+    BALANCE_ADJUSTED: "bg-blue-50 text-blue-600 border-blue-200",
+    DEPOSIT_ADDED: "bg-green-50 text-green-600 border-green-200",
+    WITHDRAWAL_ADDED: "bg-orange-50 text-orange-600 border-orange-200",
+    KYC_UPDATED: "bg-purple-50 text-purple-600 border-purple-200",
+    NOTIFICATION_SENT: "bg-gray-50 text-gray-600 border-gray-200",
+  };
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const raw = localStorage.getItem("platform_notifications");
-      if (raw) {
-        try {
-          const list = JSON.parse(raw);
-          const received = list.filter((notif: any) => {
-            const aud = notif.audience || "";
-            if (!aud || aud === "All") return true;
-            if (aud === "Verified" && user.kyc === "Verified") return true;
-            if (aud === "Unverified" && user.kyc !== "Verified") return true;
-            if (aud === "High Value" && user.balance >= 50000) return true;
-            return false;
-          }).map((notif: any) => ({
-            date: notif.timestamp,
-            title: `System Broadcast: ${notif.title}`,
-            desc: notif.message,
-            isAnnouncement: true,
-            badgeType: notif.type,
-          }));
-          setAnnouncements(received);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-  }, [user]);
-
-  const baseEvents = (user.security_logs || []).map((l:any) => ({ date: formatDate(l.timestamp), title: l.action || "Activity", desc: l.details || "System action logged" }));
-  const events = [...announcements, ...baseEvents];
+  const formatDetails = (details: any) => {
+    if (!details) return "";
+    if (typeof details === "string") return details;
+    return Object.entries(details)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(", ");
+  };
 
   return (
     <div>
-      <h3 className="text-base font-bold text-gray-900 mb-6">Account Activity Log</h3>
-      <div className="relative border-l border-gray-100 ml-3 pl-6 space-y-6">
-        {events.length === 0 && <p className="text-sm text-gray-500">No activity logs found.</p>}
-        {events.map((event, i) => (
-          <div key={i} className="relative">
-            <span className={cn(
-              "absolute -left-[31px] top-1.5 h-2 w-2 rounded-full ring-4 ring-white",
-              event.isAnnouncement
-                ? event.badgeType === "Warning" ? "bg-amber-500"
-                  : event.badgeType === "Success" ? "bg-green-500"
-                  : event.badgeType === "Error" ? "bg-red-500"
-                  : "bg-blue-500"
-                : "bg-blue-600"
-            )} />
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-gray-900">{event.title}</h4>
-                  {event.isAnnouncement && (
-                    <span className="text-[8px] bg-blue-50 text-blue-700 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-150 animate-pulse">
-                      Announcement
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 mt-0.5">{event.desc}</p>
+      <h3 className="text-base font-bold text-gray-900 mb-4">Audit Logs</h3>
+      <div className="space-y-3">
+        {(!user.audit_logs || user.audit_logs.length === 0) ? (
+          <p className="text-sm text-gray-500 py-4 text-center">No audit logs found.</p>
+        ) : user.audit_logs.map((log: any, i: number) => (
+          <motion.div
+            key={log.id || i}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2.5 mb-1">
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", actionBadgeStyle[log.action] || actionBadgeStyle.NOTIFICATION_SENT)}>
+                  {log.action.replace(/_/g, " ").toLowerCase()}
+                </span>
               </div>
-              <span className="text-[11px] text-gray-600 font-medium whitespace-nowrap">{event.date}</span>
+              <p className="text-xs text-gray-600">{formatDate(log.created_at)}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{formatDetails(log.details)}</p>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>
@@ -1089,19 +1121,13 @@ function UserDetailPageContent() {
       tickets: data.tickets || [],
       security_logs: data.securityLogs || [],
       notes: data.notes || [],
+      audit_logs: data.auditLogs || [],
       account: data.profile?.is_frozen ? "Frozen" : "Active",
       risk: data.profile?.risk_level || "Low Risk",
       kyc: data.kyc?.status === "approved" ? "Verified" : data.kyc?.status === "rejected" ? "Rejected" : data.kyc?.status === "pending" ? "Pending" : "Not Started",
-      balance: 0,
+      balance: data.balance || 0,
     };
 
-    const rates: Record<string, number> = { BTC: cadRates.btcCAD, ETH: cadRates.ethCAD, USDT: cadRates.usdtCAD, USDC: cadRates.usdtCAD };
-    let totalBalance = 0;
-    for (const w of formattedUser.wallets) {
-      const r = rates[w.currency?.toUpperCase()] || rates.USDT;
-      totalBalance += Number(w.balance || 0) * r;
-    }
-    formattedUser.balance = totalBalance;
     return formattedUser;
   }, [rawUserData, cadRates, userId]);
 
@@ -1136,7 +1162,7 @@ function UserDetailPageContent() {
   const [showFreezeModal, setShowFreeze]  = useState(false);
   const [showNoteModal, setShowNote]      = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
-  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showManageBalanceModal, setShowManageBalanceModal] = useState(false);
   const [noteSaved, setNoteSaved]         = useState(false);
   const [actionToast, setActionToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -1200,9 +1226,9 @@ function UserDetailPageContent() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
               <FileEdit className="h-4 w-4" /> Add Note
             </button>
-            <button onClick={() => setShowAdjustModal(true)}
+            <button onClick={() => setShowManageBalanceModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
-              <DollarSign className="h-4 w-4" /> Adjust Balance
+              <DollarSign className="h-4 w-4" /> Manage Balance
             </button>
             <button onClick={() => alert("Exporting…")}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
@@ -1291,7 +1317,7 @@ function UserDetailPageContent() {
                   </>
                 )}
                 {activeTab === "portfolio"     && <PortfolioTab user={user} />}
-                {activeTab === "transactions"  && <TransactionsTab user={user} onAddTransaction={() => setShowTransactionModal(true)} />}
+                {activeTab === "transactions"  && <TransactionsTab user={user} />}
                 {activeTab === "security"      && <SecurityTab user={user} />}
                 {activeTab === "documents"     && <DocumentsTab user={user} />}
                 {activeTab === "support"       && <SupportTab user={user} />}
@@ -1331,12 +1357,12 @@ function UserDetailPageContent() {
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {showAdjustModal && (
-          <AdjustBalanceModal
-            userId={user.id}
-            onClose={() => setShowAdjustModal(false)}
+        {showManageBalanceModal && (
+          <ManageBalanceModal
+            user={{ id: user.id, name: user.name, email: user.email }}
+            onClose={() => setShowManageBalanceModal(false)}
             onSuccess={() => {
-              showToast("success", "Balance adjusted successfully.");
+              showToast("success", "Balance updated successfully.");
               refreshUser();
             }}
             onError={(message) => showToast("error", message)}
