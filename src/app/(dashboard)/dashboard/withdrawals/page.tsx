@@ -277,7 +277,7 @@ function WithdrawalRequestsPageContent() {
   };
 
   const handleConfirmReject = async () => {
-    if (!selectedRequest || !rejectionReason.trim()) return;
+    if (!selectedRequest) return;
     const reqId = selectedRequest.requestId;
     const realId = selectedRequest.realId;
 
@@ -287,7 +287,7 @@ function WithdrawalRequestsPageContent() {
       await updateWithdrawal.mutateAsync({
         requestId: realId,
         status: "rejected",
-        rejectionReason,
+        rejectionReason: currentNote,
         adminNote: currentNote,
       });
 
@@ -609,7 +609,13 @@ function WithdrawalRequestsPageContent() {
                   {/* Footer buttons (Approve / Reject) */}
                   <div className="flex gap-3 justify-end pt-5 border-t border-gray-100">
                     <button
-                      onClick={() => setShowRejectModal(true)}
+                      onClick={() => {
+                        if (selectedRequest.status === "Rejected") {
+                          alert("This withdrawal is already rejected");
+                          return;
+                        }
+                        setShowRejectModal(true);
+                      }}
                       className="px-6 py-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-700 text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ThumbsDown className="h-4 w-4" />
@@ -699,21 +705,9 @@ function WithdrawalRequestsPageContent() {
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900 leading-tight">Reject Withdrawal?</h3>
-                <p className="text-xs text-gray-600 mt-2 font-semibold">Please provide a reason for rejecting this withdrawal request</p>
-
-                {/* Reason Field */}
-                <div className="mt-4 space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest block">
-                    Rejection Reason *
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Enter reason for rejection (will be sent to user)..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/40 text-sm outline-none resize-none focus:border-red-400 focus:ring-2 focus:ring-red-50 min-h-[100px] text-gray-800 placeholder:text-gray-500 font-medium transition-all"
-                  />
-                </div>
+                <p className="text-xs text-gray-600 mt-2 font-semibold">
+                  Are you sure you want to reject this withdrawal request?
+                </p>
 
                 {/* Footer Buttons */}
                 <div className="flex gap-3 mt-6">
@@ -725,8 +719,7 @@ function WithdrawalRequestsPageContent() {
                   </button>
                   <button
                     onClick={handleConfirmReject}
-                    disabled={!rejectionReason.trim()}
-                    className="flex-1 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 text-sm font-bold shadow-sm transition-colors cursor-pointer"
                   >
                     Confirm Rejection
                   </button>

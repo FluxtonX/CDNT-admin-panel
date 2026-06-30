@@ -179,6 +179,21 @@ export async function PATCH(request: Request) {
       performed_by_admin: "ADM-001"
     });
 
+    const isApproved = status === "approved" || status === "completed";
+    const notifTitle = isApproved ? "Withdrawal Approved" : "Withdrawal Rejected";
+    const notifType = isApproved ? "Success" : "Error";
+    const notifMessage = isApproved 
+      ? `Your withdrawal request for $${amount.toLocaleString()} CAD has been approved and processed.`
+      : `Your withdrawal request for $${amount.toLocaleString()} CAD was rejected.${rejectionReason || adminNote ? ` Reason: ${rejectionReason || adminNote}` : ''}`;
+
+    await supabaseAdmin.from("notifications").insert({
+      user_id: userId,
+      type: notifType,
+      title: notifTitle,
+      message: notifMessage,
+      is_read: false
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("PATCH Withdrawal Error:", error);

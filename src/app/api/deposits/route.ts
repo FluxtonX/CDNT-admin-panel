@@ -95,7 +95,7 @@ export async function PATCH(request: Request) {
     // Check if the requestId exists in payment_orders (Binance Pay)
     const { data: order } = await supabaseAdmin
       .from("payment_orders")
-      .select("status, merchant_trade_no")
+      .select("status, merchant_trade_no, user_id, amount, currency")
       .eq("id", requestId)
       .maybeSingle();
 
@@ -122,6 +122,12 @@ export async function PATCH(request: Request) {
       }
     } else {
       // Otherwise update the traditional manual deposit_requests
+      const { data: dep } = await supabaseAdmin
+        .from("deposit_requests")
+        .select("user_id, expected_amount, asset")
+        .eq("id", requestId)
+        .maybeSingle();
+
       const { error } = await supabaseAdmin
         .from("deposit_requests")
         .update({ 
@@ -132,6 +138,40 @@ export async function PATCH(request: Request) {
         .eq("id", requestId);
 
       if (error) throw error;
+
+      if (dep) {
+        const isApproved = status === "approved" || status === "completed";
+        const notifTitle = isApproved ? "Deposit Confirmed" : "Deposit Rejected";
+        const notifType = isApproved ? "Success" : "Error";
+        const notifMessage = isApproved 
+          ? `Your deposit of ${dep.expected_amount} ${dep.asset} has been confirmed and added to your balance.`
+          : `Your deposit of ${dep.expected_amount} ${dep.asset} was rejected.${adminNote ? ` Reason: ${adminNote}` : ''}`;
+
+        await supabaseAdmin.from("notifications").insert({
+          user_id: dep.user_id,
+          type: notifType,
+          title: notifTitle,
+          message: notifMessage,
+          is_read: false
+        });
+      }
+    }
+
+    if (order) {
+      const isApproved = status === "approved" || status === "completed";
+      const notifTitle = isApproved ? "Deposit Confirmed" : "Deposit Rejected";
+      const notifType = isApproved ? "Success" : "Error";
+      const notifMessage = isApproved 
+        ? `Your deposit of ${order.amount} ${order.currency} via Binance Pay has been confirmed.`
+        : `Your deposit of ${order.amount} ${order.currency} via Binance Pay was rejected.${adminNote ? ` Reason: ${adminNote}` : ''}`;
+
+      await supabaseAdmin.from("notifications").insert({
+        user_id: order.user_id,
+        type: notifType,
+        title: notifTitle,
+        message: notifMessage,
+        is_read: false
+      });
     }
 
     return NextResponse.json({ success: true });
