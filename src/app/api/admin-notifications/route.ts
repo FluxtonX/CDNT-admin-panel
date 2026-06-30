@@ -42,3 +42,28 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { ids } = await request.json();
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: "ids array is required" }, { status: 400 });
+    }
+
+    const supabaseAdmin = createAdminClient();
+
+    // Only delete admin-audience notifications to protect user data
+    const { error } = await supabaseAdmin
+      .from("notifications")
+      .delete()
+      .in("id", ids)
+      .eq("audience", "Admin");
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("DELETE Admin Notifications Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

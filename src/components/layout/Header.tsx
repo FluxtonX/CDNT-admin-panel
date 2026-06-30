@@ -188,6 +188,18 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
                     })
                   )}
                 </div>
+                
+                <div className="border-t border-gray-100 bg-gray-50 rounded-b-xl">
+                  <button 
+                    onClick={() => {
+                      setNotificationsOpen(false);
+                      router.push('/dashboard/admin-notifications');
+                    }}
+                    className="w-full text-center py-2.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    View all notifications
+                  </button>
+                </div>
               </div>
             </>
           )}
