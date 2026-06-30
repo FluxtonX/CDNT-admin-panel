@@ -121,7 +121,7 @@ export async function PATCH(request: Request) {
       // fetchLiveCADRates returns keys as uppercase coin symbols: BTC, ETH, USDT, etc.
       const cadRate = Number(rates[cryptoCurrency]) || Number(rates["USDT"]) || 1.36;
 
-      const amountToDeduct = wdr.amount / cadRate;
+      let amountToDeduct = wdr.amount / cadRate;
       cryptoAmountToDeduct = amountToDeduct;
 
       // 4. Fetch user balance for that specific currency from user_wallets
@@ -137,11 +137,21 @@ export async function PATCH(request: Request) {
       }
 
       const currentBalance = userWallet ? Number(userWallet.balance) : 0;
-      const newBalance = currentBalance - amountToDeduct;
+      let newBalance = currentBalance - amountToDeduct;
 
-      // Block if insufficient funds in the specific crypto wallet
+      // Block if insufficient funds in the specific crypto wallet, with a 5% slippage tolerance
       if (newBalance < 0) {
-        return NextResponse.json({ error: `Insufficient balance: User only has ${currentBalance.toFixed(6)} ${cryptoCurrency}, but this withdrawal requires ${amountToDeduct.toFixed(6)} ${cryptoCurrency}.` }, { status: 400 });
+        const diff = amountToDeduct - currentBalance;
+        if (currentBalance > 0 && diff <= currentBalance * 0.05) {
+          // If the difference is minor (<= 5%), clamp to current balance to allow the withdrawal
+          newBalance = 0;
+          amountToDeduct = currentBalance;
+          cryptoAmountToDeduct = currentBalance;
+        } else {
+          return NextResponse.json({ 
+            error: `Insufficient balance due to price change: User has ${currentBalance.toFixed(6)} ${cryptoCurrency}, but this withdrawal now requires ${amountToDeduct.toFixed(6)} ${cryptoCurrency}. Please reject and ask user to re-request.` 
+          }, { status: 400 });
+        }
       }
 
       // 5. Deduct from the correct currency wallet
