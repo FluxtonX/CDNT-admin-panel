@@ -3,6 +3,34 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
 import { fetchLiveCADRates } from "@/lib/utils";
 
+// Helper function to send email via Brevo
+async function sendBrevoEmail(email: string, subject: string, htmlContent: string) {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  if (!BREVO_API_KEY) {
+    console.log(`[LOCAL DEV] Would send email to ${email}: ${subject}`);
+    return;
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { name: "CDNTB Support", email: "noreply@cdntbank.com" },
+      to: [{ email }],
+      subject,
+      htmlContent,
+    }),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    console.error("[sendBrevoEmail] Brevo API Error:", responseBody);
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
@@ -82,10 +110,10 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (status === "approved" || status === "completed") {
-      // Use requested currency when provided; fall back to asset; then USDT.
-      const cryptoCurrency = String((wdr as any).currency || (wdr as any).asset || "USDT").toUpperCase();
+    const cryptoCurrency = String((wdr as any).currency || (wdr as any).asset || "USDT").toUpperCase();
+    let cryptoAmountToDeduct = 0;
 
+    if (status === "approved" || status === "completed") {
       // 2. Fetch live CAD rates
       const rates = await fetchLiveCADRates();
       
@@ -94,6 +122,7 @@ export async function PATCH(request: Request) {
       const cadRate = Number(rates[cryptoCurrency]) || Number(rates["USDT"]) || 1.36;
 
       const amountToDeduct = wdr.amount / cadRate;
+      cryptoAmountToDeduct = amountToDeduct;
 
       // 4. Fetch user balance for that specific currency from user_wallets
       const { data: userWallet, error: walletQueryErr } = await supabaseAdmin
@@ -152,16 +181,18 @@ export async function PATCH(request: Request) {
     }
 
     let userName = "Unknown User";
+    let userEmail = "";
     let userId = wdr.user_id;
     let amount = wdr.amount;
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("full_name")
+      .select("full_name, email")
       .eq("id", wdr.user_id)
       .single();
     if (profile) {
       userName = profile.full_name;
+      userEmail = profile.email;
     }
 
     const action = (status === "approved" || status === "completed") ? "Withdrawal Approved" : "Withdrawal Rejected";
@@ -193,6 +224,40 @@ export async function PATCH(request: Request) {
       message: notifMessage,
       is_read: false
     });
+
+    if (userEmail) {
+      const emailDate = new Date().toLocaleString();
+      const emailHtml = isApproved 
+        ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+             <h2 style="color: #0F172A;">Withdrawal Approved</h2>
+             <p style="color: #475569; font-size: 16px;">Hello ${userName},</p>
+             <p style="color: #475569; font-size: 16px;">Your withdrawal request has been approved and processed.</p>
+             <p style="color: #475569; font-size: 14px;"><strong>Withdrawal Amount:</strong> ${cryptoAmountToDeduct.toFixed(6)} ${cryptoCurrency}</p>
+             <p style="color: #475569; font-size: 14px;"><strong>CAD Value:</strong> $${amount.toLocaleString()} CAD</p>
+             <p style="color: #475569; font-size: 14px;"><strong>Approval Date:</strong> ${emailDate}</p>
+             ${adminNote ? `<p style="color: #475569; font-size: 14px;"><strong>Admin Note:</strong> ${adminNote}</p>` : ''}
+             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+             <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
+           </div>`
+        : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+             <h2 style="color: #0F172A;">Withdrawal Rejected</h2>
+             <p style="color: #475569; font-size: 16px;">Hello ${userName},</p>
+             <p style="color: #475569; font-size: 16px;">Your withdrawal request was rejected.</p>
+             <p style="color: #475569; font-size: 14px;"><strong>Withdrawal Amount:</strong> $${amount.toLocaleString()} CAD</p>
+             <p style="color: #475569; font-size: 14px;"><strong>Currency:</strong> ${cryptoCurrency}</p>
+             <p style="color: #475569; font-size: 14px;"><strong>Rejection Date:</strong> ${emailDate}</p>
+             <p style="color: #475569; font-size: 14px;"><strong>Reason:</strong> ${rejectionReason || adminNote || 'No specific reason provided.'}</p>
+             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+             <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
+           </div>`;
+
+      // Do not await to avoid blocking the response
+      sendBrevoEmail(
+        userEmail, 
+        isApproved ? "Withdrawal Approved - CDNT Bank" : "Withdrawal Rejected - CDNT Bank", 
+        emailHtml
+      ).catch(e => console.error("Failed to send withdrawal email:", e));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
