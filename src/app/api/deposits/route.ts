@@ -2,6 +2,34 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
 
+// Helper function to send email via Brevo
+async function sendBrevoEmail(email: string, subject: string, htmlContent: string) {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  if (!BREVO_API_KEY) {
+    console.log(`[LOCAL DEV] Would send email to ${email}: ${subject}`);
+    return;
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { name: "CDNTB Support", email: "noreply@cdntbank.com" },
+      to: [{ email }],
+      subject,
+      htmlContent,
+    }),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    console.error("[sendBrevoEmail] Brevo API Error:", responseBody);
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
@@ -140,6 +168,18 @@ export async function PATCH(request: Request) {
       if (error) throw error;
 
       if (dep) {
+        let userName = "Unknown User";
+        let userEmail = "";
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", dep.user_id)
+          .single();
+        if (profile) {
+          userName = profile.full_name;
+          userEmail = profile.email;
+        }
+
         const isApproved = status === "approved" || status === "completed";
         const notifTitle = isApproved ? "Deposit Confirmed" : "Deposit Rejected";
         const notifType = isApproved ? "Success" : "Error";
@@ -154,10 +194,53 @@ export async function PATCH(request: Request) {
           message: notifMessage,
           is_read: false
         });
+
+        if (userEmail) {
+          const emailDate = new Date().toLocaleString();
+          const emailHtml = isApproved 
+            ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+                 <h2 style="color: #0F172A;">Deposit Approved</h2>
+                 <p style="color: #475569; font-size: 16px;">Hello ${userName},</p>
+                 <p style="color: #475569; font-size: 16px;">Your deposit has been approved and added to your balance.</p>
+                 <p style="color: #475569; font-size: 14px;"><strong>Deposit Amount:</strong> ${dep.expected_amount} ${dep.asset}</p>
+                 <p style="color: #475569; font-size: 14px;"><strong>Approval Date:</strong> ${emailDate}</p>
+                 ${adminNote ? `<p style="color: #475569; font-size: 14px;"><strong>Admin Note:</strong> ${adminNote}</p>` : ''}
+                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                 <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
+               </div>`
+            : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+                 <h2 style="color: #0F172A;">Deposit Rejected</h2>
+                 <p style="color: #475569; font-size: 16px;">Hello ${userName},</p>
+                 <p style="color: #475569; font-size: 16px;">Your deposit request was rejected.</p>
+                 <p style="color: #475569; font-size: 14px;"><strong>Deposit Amount:</strong> ${dep.expected_amount} ${dep.asset}</p>
+                 <p style="color: #475569; font-size: 14px;"><strong>Rejection Date:</strong> ${emailDate}</p>
+                 <p style="color: #475569; font-size: 14px;"><strong>Reason:</strong> ${adminNote || 'No specific reason provided.'}</p>
+                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                 <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
+               </div>`;
+
+          sendBrevoEmail(
+            userEmail, 
+            isApproved ? "Deposit Approved - CDNT Bank" : "Deposit Rejected - CDNT Bank", 
+            emailHtml
+          ).catch(e => console.error("Failed to send deposit email:", e));
+        }
       }
     }
 
     if (order) {
+      let userName = "Unknown User";
+      let userEmail = "";
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", order.user_id)
+        .single();
+      if (profile) {
+        userName = profile.full_name;
+        userEmail = profile.email;
+      }
+
       const isApproved = status === "approved" || status === "completed";
       const notifTitle = isApproved ? "Deposit Confirmed" : "Deposit Rejected";
       const notifType = isApproved ? "Success" : "Error";
@@ -172,6 +255,37 @@ export async function PATCH(request: Request) {
         message: notifMessage,
         is_read: false
       });
+
+      if (userEmail) {
+        const emailDate = new Date().toLocaleString();
+        const emailHtml = isApproved 
+          ? `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+               <h2 style="color: #0F172A;">Deposit Approved</h2>
+               <p style="color: #475569; font-size: 16px;">Hello ${userName},</p>
+               <p style="color: #475569; font-size: 16px;">Your Binance Pay deposit has been confirmed.</p>
+               <p style="color: #475569; font-size: 14px;"><strong>Deposit Amount:</strong> ${order.amount} ${order.currency}</p>
+               <p style="color: #475569; font-size: 14px;"><strong>Approval Date:</strong> ${emailDate}</p>
+               ${adminNote ? `<p style="color: #475569; font-size: 14px;"><strong>Admin Note:</strong> ${adminNote}</p>` : ''}
+               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+               <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
+             </div>`
+          : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+               <h2 style="color: #0F172A;">Deposit Rejected</h2>
+               <p style="color: #475569; font-size: 16px;">Hello ${userName},</p>
+               <p style="color: #475569; font-size: 16px;">Your Binance Pay deposit was rejected.</p>
+               <p style="color: #475569; font-size: 14px;"><strong>Deposit Amount:</strong> ${order.amount} ${order.currency}</p>
+               <p style="color: #475569; font-size: 14px;"><strong>Rejection Date:</strong> ${emailDate}</p>
+               <p style="color: #475569; font-size: 14px;"><strong>Reason:</strong> ${adminNote || 'No specific reason provided.'}</p>
+               <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+               <p style="color: #94A3B8; font-size: 12px; text-align: center;">Secure Admin Portal &copy; Canadian National Trust Bank</p>
+             </div>`;
+
+        sendBrevoEmail(
+          userEmail, 
+          isApproved ? "Deposit Approved - CDNT Bank" : "Deposit Rejected - CDNT Bank", 
+          emailHtml
+        ).catch(e => console.error("Failed to send deposit email:", e));
+      }
     }
 
     return NextResponse.json({ success: true });
