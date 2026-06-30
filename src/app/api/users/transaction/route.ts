@@ -30,7 +30,8 @@ export async function POST(request: Request) {
         tx_hash: adminRef,
         status: "completed",
         created_at: txDate,
-        reviewed_at: txDate,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: `ADMIN-${adminRef}`,
         admin_note: "Manual admin transaction",
       });
       if (insertErr) throw new Error(insertErr.message);
@@ -89,6 +90,9 @@ export async function POST(request: Request) {
         method: "ADMIN",
         interac_email: "",
         created_at: txDate,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: `ADMIN-${adminRef}`,
+        admin_note: "Manual admin transaction",
       });
       if (insertErr) throw new Error(insertErr.message);
 

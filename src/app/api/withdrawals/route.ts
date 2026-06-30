@@ -89,15 +89,9 @@ export async function PATCH(request: Request) {
       // 2. Fetch live CAD rates
       const rates = await fetchLiveCADRates();
       
-      // 3. Convert CAD withdrawal amount to that crypto using live CoinGecko rate
-      let cadRate = 1;
-      if (cryptoCurrency === "USDT" || cryptoCurrency === "USDC") {
-        cadRate = rates.usdtCAD || 1.36;
-      } else if (cryptoCurrency === "BTC") {
-        cadRate = rates.btcCAD || 95000;
-      } else if (cryptoCurrency === "ETH") {
-        cadRate = rates.ethCAD || 3500;
-      }
+      // 3. Convert CAD withdrawal amount to that crypto using live rate
+      // fetchLiveCADRates returns keys as uppercase coin symbols: BTC, ETH, USDT, etc.
+      const cadRate = Number(rates[cryptoCurrency]) || Number(rates["USDT"]) || 1.36;
 
       const amountToDeduct = wdr.amount / cadRate;
 

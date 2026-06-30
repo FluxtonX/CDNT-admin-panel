@@ -267,10 +267,8 @@ function TransactionsDashboardContent() {
 
     const cadRateForAsset = (asset: string): number => {
       const sym = (asset || "").toUpperCase().trim();
-      if (sym === "BTC" || sym === "BITCOIN") return liveRates.btcCAD;
-      if (sym === "ETH" || sym === "ETHEREUM") return liveRates.ethCAD;
-      if (sym === "USDT" || sym === "USDC" || sym === "TETHER") return liveRates.usdtCAD;
-      return liveRates.usdtCAD;
+      // fetchLiveCADRates returns uppercase symbol keys: BTC, ETH, USDT, etc.
+      return Number(liveRates[sym]) || Number(liveRates["USDT"]) || 1.36;
     };
 
     (depositsData || []).forEach((d: any) => {
@@ -289,10 +287,10 @@ function TransactionsDashboardContent() {
           balance: 0,
         },
         type: "Deposit",
-        amountCad: Number(d.expected_amount) * cadRateForAsset(d.asset),
+        amountCad: (Number(d.expected_amount) || 0) * cadRateForAsset(d.asset),
         cryptoAmount: `${d.expected_amount} ${d.asset}`,
         cryptoCurrency: d.asset,
-        status: d.status === "approved" ? "Completed" : d.status === "rejected" ? "Failed" : "Pending",
+        status: (d.status === "approved" || d.status === "completed") ? "Completed" : d.status === "rejected" ? "Failed" : "Pending",
         riskScore: "Low Risk",
         timestamp: new Date(d.created_at).toISOString().replace("T", " ").slice(0, 19),
         toAddress: d.company_address,
@@ -317,7 +315,7 @@ function TransactionsDashboardContent() {
           balance: 0,
         },
         type: "Withdrawal",
-        amountCad: Number(w.amount),
+        amountCad: Number(w.amount) || 0,
         cryptoAmount: `${w.amount} CAD`,
         cryptoCurrency: "CAD",
         status: w.status === "completed" ? "Completed" : w.status === "rejected" ? "Failed" : "Pending",
