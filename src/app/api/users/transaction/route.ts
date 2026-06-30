@@ -80,6 +80,17 @@ export async function POST(request: Request) {
         action: "DEPOSIT_ADDED",
         details: { coin, amount, date: txDate },
       });
+
+      // Insert notification for user
+      await supabase.from("notifications").insert({
+        user_id: userId,
+        type: "Success",
+        title: "Deposit Processed",
+        message: `A deposit of ${amount} ${coin} has been processed and added to your wallet.`,
+        audience: "All",
+        is_read: false,
+        link: "/transactions"
+      });
     } else {
       // Insert withdrawal_requests using admin client
       const { error: insertErr } = await supabase.from("withdrawal_requests").insert({
@@ -140,6 +151,17 @@ export async function POST(request: Request) {
         admin_id: null,
         action: "WITHDRAWAL_ADDED",
         details: { coin, amount, date: txDate },
+      });
+
+      // Insert notification for user
+      await supabase.from("notifications").insert({
+        user_id: userId,
+        type: "Info",
+        title: "Withdrawal Processed",
+        message: `A manual withdrawal of ${amount} ${coin} has been processed from your wallet.`,
+        audience: "All",
+        is_read: false,
+        link: "/transactions"
       });
     }
 

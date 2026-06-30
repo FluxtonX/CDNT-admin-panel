@@ -110,7 +110,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const cryptoCurrency = String((wdr as any).currency || (wdr as any).asset || "USDT").toUpperCase();
+    const cryptoCurrency = String((wdr as any).asset || (wdr as any).currency || "USDT").toUpperCase();
     let cryptoAmountToDeduct = 0;
 
     if (status === "approved" || status === "completed") {
