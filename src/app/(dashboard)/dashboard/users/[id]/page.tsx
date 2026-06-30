@@ -799,7 +799,7 @@ function SupportTab({ user }: { user: any }) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2.5 flex-wrap mb-1">
                 <span className="text-sm font-bold text-gray-900">{ticket.subject || "Support Request"}</span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status || "open"] || statusStyle.open)}>
+                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status?.toLowerCase() || "open"] || statusStyle.open)}>
                   {ticket.status || "open"}
                 </span>
                 <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", priorityStyle[ticket.priority || "medium priority"] || priorityStyle["medium priority"])}>
