@@ -151,7 +151,7 @@ function WithdrawalRequestsPageContent() {
       cryptoAmount: `${w.amount} CAD`,
       cryptoCurrency: "CAD",
       riskScore: "medium risk" as const,
-      kycStatus: "verified" as const,
+      kycStatus: w.kycStatus || "not started",
       requestDate: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
       status: w.status === "completed" ? "Completed" : w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : w.status === "failed" ? "Failed" : "Pending",
       interacRecipient: w.interac_email,

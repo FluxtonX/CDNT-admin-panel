@@ -60,15 +60,45 @@ export async function GET(request: Request) {
 
     if (profErr) throw profErr;
 
-    // Map profiles to withdrawals in-memory
+    // Fetch KYC submissions to get KYC status
+    const { data: kycSubmissions, error: kycErr } = await supabaseAdmin
+      .from("kyc_submissions")
+      .select("user_id, status");
+
+    if (kycErr) {
+      console.error("Error fetching KYC submissions:", kycErr);
+    }
+
+    // Map profiles and KYC status to withdrawals in-memory
     const mappedWithdrawals = (withdrawals || []).map((wdr: any) => {
       const profile = (profiles || []).find((p: any) => p.id === wdr.user_id);
+      const kycSubmission = (kycSubmissions || []).find((k: any) => k.user_id === wdr.user_id);
+      
+      // Map KYC status from database to frontend format
+      let kycStatus = "not started";
+      if (kycSubmission) {
+        switch (kycSubmission.status) {
+          case "approved":
+            kycStatus = "verified";
+            break;
+          case "pending":
+            kycStatus = "pending";
+            break;
+          case "rejected":
+            kycStatus = "rejected";
+            break;
+          default:
+            kycStatus = "not started";
+        }
+      }
+
       return {
         ...wdr,
         user: {
           name: profile?.full_name || "Unknown User",
           email: profile?.email || "N/A",
-        }
+        },
+        kycStatus,
       };
     });
 
