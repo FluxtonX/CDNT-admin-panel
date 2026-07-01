@@ -815,10 +815,7 @@ function KycVerificationPageContent() {
                   
                   {/* Badges */}
                   <div className="flex gap-2.5 mt-3">
-                    <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-100 px-3 py-1 rounded-full text-xs font-semibold">
-                      <Clock className="h-3.5 w-3.5" />
-                      Pending
-                    </span>
+                    <StatusBadge status={selectedRequest.status} />
                     <span className="inline-flex items-center bg-green-50 text-green-600 border border-green-100 px-3 py-1 rounded-full text-xs font-semibold">
                       {selectedRequest.user.risk}
                     </span>
@@ -908,23 +905,34 @@ function KycVerificationPageContent() {
                   </div>
 
                   {/* Actions footer inside the modal */}
-                  <div className="flex gap-3 justify-end pt-5 border-t border-gray-100">
-                    <button
-                      onClick={() => setShowRejectModal(true)}
-                      className="px-6 py-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-700 text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <ThumbsDown className="h-4 w-4" />
-                      Reject KYC
-                    </button>
-                    <button
-                      onClick={() => setShowApproveModal(true)}
-                      className="px-6 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 cursor-pointer"
-                      style={{ background: BRAND_GRADIENT }}
-                    >
-                      <ThumbsUp className="h-4 w-4" />
-                      Approve KYC
-                    </button>
-                  </div>
+                  {selectedRequest.status === "Approved" || selectedRequest.status === "Rejected" ? (
+                    <div className="flex justify-center pt-5 border-t border-gray-100">
+                      <button
+                        onClick={handleCloseReviewModal}
+                        className="px-6 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-bold transition-all cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3 justify-end pt-5 border-t border-gray-100">
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        className="px-6 py-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-700 text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <ThumbsDown className="h-4 w-4" />
+                        Reject KYC
+                      </button>
+                      <button
+                        onClick={() => setShowApproveModal(true)}
+                        className="px-6 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 cursor-pointer"
+                        style={{ background: BRAND_GRADIENT }}
+                      >
+                        <ThumbsUp className="h-4 w-4" />
+                        Approve KYC
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
