@@ -132,7 +132,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
                   <span className="text-sm font-bold text-gray-900">Notifications</span>
                   {unreadCount > 0 && (
                     <button
-                      onClick={() => markAsRead.mutate()}
+                      onClick={() => markAsRead.mutate(undefined)}
                       className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
                     >
                       Mark all as read
