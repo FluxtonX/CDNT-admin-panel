@@ -772,6 +772,9 @@ function TransactionsTab({
 function SupportTab({ user }: { user: any }) {
   const router = useRouter();
 
+  console.log(`[DEBUG] SupportTab rendered for user ID: ${user.id}`);
+  console.log(`[DEBUG] SupportTab user.threads prop:`, user.threads);
+
   const allChats = user.threads || [];
 
   const statusStyle: Record<string, string> = {
@@ -1121,6 +1124,7 @@ function UserDetailPageContent() {
       sessions: data.sessions || [],
       documents: data.kycDocuments || [],
       tickets: data.tickets || [],
+      threads: data.threads || [],
       security_logs: data.securityLogs || [],
       notes: data.notes || [],
       audit_logs: data.auditLogs || [],

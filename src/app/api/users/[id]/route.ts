@@ -4,6 +4,8 @@ import { checkAdminPermission } from "@/lib/checkAdminPermission";
 import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -66,6 +68,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       safeFetch("support_threads", { user_id: userId }),
       safeFetch("audit_logs", { user_id: userId }),
     ]);
+
+    console.log(`[DEBUG] API Route /api/users/[id] hit! userId param: "${userId}"`);
+    console.log(`[DEBUG] Raw support_threads result:`, JSON.stringify(threads, null, 2));
 
     const profile = profiles[0] || {};
     const kycSubmission = kyc[0] || {};
