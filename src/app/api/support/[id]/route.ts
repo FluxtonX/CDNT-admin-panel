@@ -140,3 +140,29 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { allowed } = await checkAdminPermission(request, "view-users");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const { id: threadId } = await context.params;
+    const supabaseAdmin = createAdminClient();
+
+    // Delete the thread (cascade delete will handle messages)
+    const { error: deleteError } = await supabaseAdmin
+      .from("support_threads")
+      .delete()
+      .eq("id", threadId);
+
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting support ticket:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
