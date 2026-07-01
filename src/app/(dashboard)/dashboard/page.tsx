@@ -1,6 +1,7 @@
 "use client";
 
 import { useDashboardMetrics } from "@/hooks/useAdminQueries";
+import Link from "next/link";
 
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -76,9 +77,9 @@ function StatCard2({
         <p className="text-3xl font-bold text-gray-900">{value}</p>
       </div>
       {link && (
-        <button className="text-xs text-blue-600 font-medium hover:underline text-left">
+        <Link href={link} className="text-xs text-blue-600 font-medium hover:underline text-left">
           {link}
-        </button>
+        </Link>
       )}
     </div>
   );
@@ -139,7 +140,7 @@ export default function DashboardPage() {
           label="Pending Withdrawals" value={stats.loading ? "..." : stats.pendingWithdrawals.toString()}
           badge="Urgent" badgeType={stats.pendingWithdrawals > 0 ? "urgent" : "neutral"}
           icon={Clock} iconBg="#F97316"
-          link="Review Requests"
+          link="/dashboard/withdrawals"
         />
         <StatCard2
           label="Total Deposits" value={stats.loading ? "..." : `$${(stats.totalDepositsAmt / 1000000).toFixed(1)}M`}
@@ -246,7 +247,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-800">Withdrawal Approval Queue</h3>
-            <button className="text-xs text-blue-600 font-medium hover:underline">View All</button>
+            <Link href="/dashboard/withdrawals" className="text-xs text-blue-600 font-medium hover:underline">View All</Link>
           </div>
           <div className="space-y-3">
             {stats.loading ? (
@@ -282,7 +283,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-800">Recent Transactions</h3>
-            <button className="text-xs text-blue-600 font-medium hover:underline">View All</button>
+            <Link href="/dashboard/transactions" className="text-xs text-blue-600 font-medium hover:underline">View All</Link>
           </div>
           <div className="space-y-3">
             {stats.loading ? (
