@@ -533,8 +533,37 @@ function ReportsAnalyticsPageContent() {
                       }, "");
                     };
 
+                    // Area path generator (closes the path at the bottom)
+                    const getAreaPath = (points: { x: number; y: number }[]) => {
+                      const linePath = getBezierPath(points);
+                      const bottomY = paddingTop + drawableHeight;
+                      const firstX = points[0]?.x || paddingLeft;
+                      const lastX = points[points.length - 1]?.x || paddingLeft + drawableWidth;
+                      return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+                    };
+
                     return (
                       <>
+                        {/* Area fills (behind lines) */}
+                        <motion.path
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 1, ease: "easeInOut" }}
+                          d={getAreaPath(totalUsersPoints)}
+                          fill="rgba(10, 61, 145, 0.1)"
+                          stroke="none"
+                        />
+
+                        <motion.path
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 1, ease: "easeInOut", delay: 0.1 }}
+                          d={getAreaPath(verifiedUsersPoints)}
+                          fill="rgba(245, 158, 11, 0.1)"
+                          stroke="none"
+                        />
+
+                        {/* Line strokes */}
                         <motion.path
                           initial={{ pathLength: 0 }}
                           animate={{ pathLength: 1 }}

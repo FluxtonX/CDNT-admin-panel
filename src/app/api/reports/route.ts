@@ -44,26 +44,34 @@ export async function GET(request: Request) {
     const resolvedTickets = threads?.filter((t: any) => t.status === "resolved").length || 0;
     const resolutionRate = totalTickets > 0 ? (resolvedTickets / totalTickets) * 100 : 100.0;
 
-    // 4. Fetch real historical data by month for charts
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-    const currentYear = new Date().getFullYear();
+    // 4. Fetch real historical data by month for charts (last 6 months)
+    const now = new Date();
+    const months: string[] = [];
+    const monthIndices: number[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(d.toLocaleString('default', { month: 'short' }));
+      monthIndices.push(d.getMonth());
+    }
     
     // Group ledger transactions by month for revenue/transactions chart
     const monthlyTxData: Record<string, { revenue: number; transactions: number }> = {};
-    months.forEach((m, i) => {
+    months.forEach(m => {
       monthlyTxData[m] = { revenue: 0, transactions: 0 };
     });
 
     ledger?.forEach((tx: any) => {
       if (tx.created_at) {
         const txDate = new Date(tx.created_at);
-        if (txDate.getFullYear() === currentYear) {
-          const monthIndex = txDate.getMonth();
-          if (monthIndex >= 0 && monthIndex < 6) {
-            const monthName = months[monthIndex];
-            monthlyTxData[monthName].transactions += 1;
-            monthlyTxData[monthName].revenue += Math.abs(Number(tx.amount || 0)) * 0.01;
-          }
+        const monthIndex = txDate.getMonth();
+        const monthName = txDate.toLocaleString('default', { month: 'short' });
+        
+        // Only include if within last 6 months
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        if (txDate >= sixMonthsAgo && monthlyTxData[monthName]) {
+          monthlyTxData[monthName].transactions += 1;
+          monthlyTxData[monthName].revenue += Math.abs(Number(tx.amount || 0)) * 0.01;
         }
       }
     });
@@ -88,15 +96,13 @@ export async function GET(request: Request) {
     profiles?.forEach((profile: any) => {
       if (profile.created_at) {
         const createdDate = new Date(profile.created_at);
-        if (createdDate.getFullYear() === currentYear) {
-          const monthIndex = createdDate.getMonth();
-          if (monthIndex >= 0 && monthIndex < 6) {
-            const monthName = months[monthIndex];
-            monthlyUserData[monthName].totalUsers += 1;
-            // Assuming verified users have some flag or we count all as verified for now
-            // You may need to adjust this based on your actual verification logic
-            monthlyUserData[monthName].verifiedUsers += 1;
-          }
+        const monthName = createdDate.toLocaleString('default', { month: 'short' });
+        
+        // Only include if within last 6 months
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        if (createdDate >= sixMonthsAgo && monthlyUserData[monthName]) {
+          monthlyUserData[monthName].totalUsers += 1;
+          monthlyUserData[monthName].verifiedUsers += 1;
         }
       }
     });
