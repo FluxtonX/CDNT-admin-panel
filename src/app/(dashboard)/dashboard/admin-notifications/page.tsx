@@ -213,7 +213,7 @@ export default function AdminNotificationsListPage() {
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
               <button
-                onClick={() => markAsRead.mutate()}
+                onClick={() => markAsRead.mutate(undefined)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
