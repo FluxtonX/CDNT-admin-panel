@@ -19,7 +19,6 @@ import {
   CheckCheck,
   ShieldCheck,
   Loader2,
-  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AdminUser } from "@/lib/data/users";
@@ -451,32 +450,6 @@ function LiveChatSupportPageContent() {
     }
   };
 
-  /* Delete thread */
-  const handleDeleteThread = async (threadId: string) => {
-    if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("support_threads")
-        .delete()
-        .eq("id", threadId);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setThreads((current) => current.filter((t) => t.threadId !== threadId));
-      
-      // Clear active thread if it was the deleted one
-      if (activeThreadId === threadId) {
-        setActiveThreadId("");
-      }
-    } catch (err) {
-      console.error("Error deleting thread:", err);
-    }
-  };
-
   return (
     <>
       <motion.div
@@ -528,24 +501,12 @@ function LiveChatSupportPageContent() {
                       key={thread.threadId}
                       onClick={() => setActiveThreadId(thread.threadId)}
                       className={cn(
-                        "w-full text-left p-3.5 border rounded-2xl transition-all flex items-start gap-3.5 cursor-pointer relative group",
+                        "w-full text-left p-3.5 border rounded-2xl transition-all flex items-start gap-3.5 cursor-pointer",
                         isActive
                           ? "bg-white border-blue-200 shadow-md ring-2 ring-blue-50"
                           : "bg-transparent border-transparent hover:bg-gray-100/60"
                       )}
                     >
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteThread(thread.threadId);
-                        }}
-                        className="absolute top-2 right-2 p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete conversation"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-
                       {/* Avatar */}
                       <div className="relative">
                         <div className="h-9 w-9 rounded-xl bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-sm shrink-0">

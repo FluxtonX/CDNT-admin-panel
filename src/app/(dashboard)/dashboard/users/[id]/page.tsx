@@ -14,7 +14,7 @@ import {
   User, Mail, Phone, Calendar, MapPin, Activity,
   Smartphone, Globe, Wallet, BarChart3, FileText,
   MessageCircle, History, Monitor, LogOut, RefreshCw,
-  Eye, Plus, DollarSign, X, Send, Loader2, ChevronRight, Trash2,
+  Eye, Plus, DollarSign, X, Send, Loader2, ChevronRight,
 } from "lucide-react";
 import { cn, fetchLiveCADRates, COIN_COLORS } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
@@ -785,28 +785,6 @@ function SupportTab({ user }: { user: any }) {
     closed: "bg-gray-100 text-gray-600 border-gray-200",
   };
 
-  const handleDeleteThread = async (threadId: string) => {
-    if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/support/${threadId}`, {
-        method: "DELETE",
-      });
-      
-      if (response.ok) {
-        // Refresh the page to show updated data
-        router.refresh();
-      } else {
-        alert("Failed to delete conversation");
-      }
-    } catch (error) {
-      console.error("Error deleting thread:", error);
-      alert("Failed to delete conversation");
-    }
-  };
-
   return (
     <div className="space-y-8">
       <div>
@@ -820,12 +798,10 @@ function SupportTab({ user }: { user: any }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
-              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors relative group"
+              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={() => router.push(`/dashboard/live-chat?thread=${chat.id}`)}
             >
-              <div 
-                className="min-w-0 flex-1 cursor-pointer"
-                onClick={() => router.push(`/dashboard/live-chat?thread=${chat.id}`)}
-              >
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2.5 flex-wrap mb-1">
                   {chat.is_ticket ? (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 tracking-wider">TICKET</span>
@@ -842,16 +818,7 @@ function SupportTab({ user }: { user: any }) {
                 <p className="text-xs text-gray-600">{chat.last_message_preview || "No messages"}</p>
                 <p className="text-xs text-gray-500 mt-1">Last active: {formatDate(chat.last_message_at)}</p>
               </div>
-              <div className="flex items-center gap-2 ml-4">
-                <button
-                  onClick={() => handleDeleteThread(chat.id)}
-                  className="p-2 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete conversation"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
-              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 ml-4" />
             </motion.div>
           ))}
         </div>
