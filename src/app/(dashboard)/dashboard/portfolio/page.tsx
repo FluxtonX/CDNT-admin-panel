@@ -68,10 +68,13 @@ function PortfolioManagementPageContent() {
   }, [refreshCount]);
 
   const cardAllocations = useMemo(() => {
-    const btc = allocations.find(a => a.asset === "Bitcoin") || { asset: "Bitcoin", percentage: 0, valueCad: 0, color: "bg-amber-500", strokeColor: "#f59e0b" };
-    const eth = allocations.find(a => a.asset === "Ethereum") || { asset: "Ethereum", percentage: 0, valueCad: 0, color: "bg-blue-600", strokeColor: "#2563eb" };
-    const usdt = allocations.find(a => a.asset === "USDT") || { asset: "USDT", percentage: 0, valueCad: 0, color: "bg-emerald-500", strokeColor: "#10b981" };
-    return [btc, eth, usdt];
+    // Take top 3 allocations by value
+    return allocations
+      .slice(0, 3)
+      .map(a => ({
+        ...a,
+        asset: a.asset
+      }));
   }, [allocations]);
 
   // Calculate SVG Pie Segments

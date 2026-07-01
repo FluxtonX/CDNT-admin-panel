@@ -23,58 +23,62 @@ export async function GET(request: Request) {
       .from("user_wallets")
       .select("*");
 
-    // Fetch live exchange rates to CAD
-    const liveRates = await fetchLiveCADRates();
-    const rates: Record<string, number> = {
-      BTC: liveRates.btcCAD || 95000,
-      ETH: liveRates.ethCAD || 3500,
-      USDT: liveRates.usdtCAD || 1.36,
-      USDC: liveRates.usdtCAD || 1.36
-    };
-
-    let btcAmount = 0;
-    let ethAmount = 0;
-    let usdtAmount = 0;
-
+    // Extract unique currencies from user_wallets
+    const uniqueCurrencies = new Set<string>();
     if (!walletsErr && userWallets) {
-      userWallets.forEach((w: any) => {
-        const asset = w.currency?.toUpperCase();
-        const amount = Number(w.balance) || 0;
-        if (asset === "BTC") btcAmount += amount;
-        else if (asset === "ETH") ethAmount += amount;
-        else if (asset === "USDT" || asset === "USDC") usdtAmount += amount;
+      userWallets.forEach(w => {
+        if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
       });
     }
 
-    const btcVal = btcAmount * rates.BTC;
-    const ethVal = ethAmount * rates.ETH;
-    const usdtVal = usdtAmount * rates.USDT;
+    const currencySymbols = Array.from(uniqueCurrencies);
+    const liveRates = await fetchLiveCADRates(currencySymbols);
 
-    const totalAum = btcVal + ethVal + usdtVal;
+    // Aggregate balances by currency dynamically
+    const currencyBalances: Record<string, number> = {};
+    if (!walletsErr && userWallets) {
+      userWallets.forEach((w: any) => {
+        const coin = w.currency?.toUpperCase();
+        const amount = Number(w.balance) || 0;
+        if (coin && amount > 0) {
+          currencyBalances[coin] = (currencyBalances[coin] || 0) + amount;
+        }
+      });
+    }
 
-    const allocations = [
-      { 
-        asset: "Bitcoin", 
-        percentage: totalAum > 0 ? Number(((btcVal / totalAum) * 100).toFixed(1)) : 0, 
-        valueCad: btcVal || 0, 
-        color: "bg-amber-500", 
-        strokeColor: "#f59e0b" 
-      },
-      { 
-        asset: "USDT", 
-        percentage: totalAum > 0 ? Number(((usdtVal / totalAum) * 100).toFixed(1)) : 0, 
-        valueCad: usdtVal || 0, 
-        color: "bg-emerald-500", 
-        strokeColor: "#10b981" 
-      },
-      { 
-        asset: "Ethereum", 
-        percentage: totalAum > 0 ? Number(((ethVal / totalAum) * 100).toFixed(1)) : 0, 
-        valueCad: ethVal || 0, 
-        color: "bg-blue-600", 
-        strokeColor: "#2563eb" 
-      },
-    ];
+    // Calculate total AUM in CAD
+    const totalAum = Object.entries(currencyBalances).reduce((sum, [coin, bal]) => {
+      const rate = liveRates[coin] || 1;
+      return sum + (bal * rate);
+    }, 0);
+
+    // Create allocations dynamically for all currencies
+    const colorMap: Record<string, { color: string; strokeColor: string }> = {
+      BTC: { color: "bg-amber-500", strokeColor: "#f59e0b" },
+      ETH: { color: "bg-blue-600", strokeColor: "#2563eb" },
+      USDT: { color: "bg-emerald-500", strokeColor: "#10b981" },
+      USDC: { color: "bg-emerald-500", strokeColor: "#10b981" },
+      LTC: { color: "bg-gray-500", strokeColor: "#6b7280" },
+      DOGE: { color: "bg-yellow-500", strokeColor: "#eab308" },
+      SOL: { color: "bg-purple-500", strokeColor: "#a855f7" },
+      ADA: { color: "bg-blue-400", strokeColor: "#60a5fa" },
+    };
+
+    const allocations = Object.entries(currencyBalances)
+      .filter(([_, bal]) => bal > 0)
+      .map(([coin, bal]) => {
+        const rate = liveRates[coin] || 1;
+        const cadValue = bal * rate;
+        const colors = colorMap[coin] || { color: "bg-gray-400", strokeColor: "#9ca3af" };
+        return {
+          asset: coin,
+          percentage: totalAum > 0 ? Number(((cadValue / totalAum) * 100).toFixed(1)) : 0,
+          valueCad: cadValue || 0,
+          color: colors.color,
+          strokeColor: colors.strokeColor
+        };
+      })
+      .sort((a, b) => b.valueCad - a.valueCad);
 
     // 30d growth = sum of deposits in wallet_ledger in last 30 days
     const thirtyDaysAgo = new Date();
@@ -88,7 +92,7 @@ export async function GET(request: Request) {
     let performanceGrowth = 0;
     if (!ledgerErr && ledger) {
       performanceGrowth = ledger.reduce((acc: number, item: any) => {
-        const rate = rates[item.currency?.toUpperCase()] || rates.USDT;
+        const rate = liveRates[item.currency?.toUpperCase()] || 1;
         return acc + (Number(item.amount) * rate);
       }, 0);
     }
