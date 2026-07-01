@@ -51,6 +51,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       notes,
       securityLogs,
       tickets,
+      threads,
       auditLogs
     ] = await Promise.all([
       safeFetch("profiles", { id: userId }),
@@ -62,6 +63,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       safeFetch("admin_notes", { user_id: userId }),
       safeFetch("security_logs", { user_id: userId }),
       safeFetch("support_tickets", { user_id: userId }),
+      safeFetch("support_threads", { user_id: userId }),
       safeFetch("audit_logs", { user_id: userId }),
     ]);
 
@@ -106,6 +108,19 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       }, 0);
     }
 
+    // Attach last message preview to threads
+    const enrichedThreads = await Promise.all(
+      (threads || []).map(async (t: any) => {
+        const { data: msgs } = await supabaseAdmin
+          .from("support_messages")
+          .select("text")
+          .eq("thread_id", t.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        return { ...t, last_message_preview: msgs && msgs.length > 0 ? msgs[0].text : "No messages" };
+      })
+    );
+
     // Combine data into a structured payload
     return NextResponse.json({
       auth: user,
@@ -119,6 +134,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       notes: notes.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
       securityLogs: securityLogs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
       tickets: tickets.sort((a: any, b: any) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()),
+      threads: enrichedThreads.sort((a: any, b: any) => new Date(b.last_message_at || b.created_at).getTime() - new Date(a.last_message_at || a.created_at).getTime()),
       auditLogs: auditLogs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     });
 

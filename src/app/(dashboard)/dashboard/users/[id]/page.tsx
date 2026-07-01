@@ -14,7 +14,7 @@ import {
   User, Mail, Phone, Calendar, MapPin, Activity,
   Smartphone, Globe, Wallet, BarChart3, FileText,
   MessageCircle, History, Monitor, LogOut, RefreshCw,
-  Eye, Plus, DollarSign,
+  Eye, Plus, DollarSign, X, Send, Loader2, ChevronRight,
 } from "lucide-react";
 import { cn, fetchLiveCADRates, COIN_COLORS } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
@@ -770,54 +770,82 @@ function TransactionsTab({
 }
 
 function SupportTab({ user }: { user: any }) {
-  const statusStyle: Record<string, string> = {
-    open:     "bg-orange-50 text-orange-600 border-orange-200",
-    resolved: "bg-green-50  text-green-600  border-green-200",
-    closed:   "bg-gray-100  text-gray-600   border-gray-200",
-  };
+  const router = useRouter();
 
-  const priorityStyle: Record<string, string> = {
-    "high priority":   "bg-red-50   text-red-600   border-red-200",
-    "medium priority": "bg-gray-100 text-gray-600  border-gray-200",
-    "low priority":    "bg-blue-50  text-blue-500  border-blue-200",
+  const activeChats = user.threads?.filter((t: any) => !t.is_ticket) || [];
+  const convertedTickets = user.threads?.filter((t: any) => t.is_ticket) || [];
+
+  const statusStyle: Record<string, string> = {
+    open: "bg-orange-50 text-orange-600 border-orange-200",
+    waiting: "bg-amber-50 text-amber-600 border-amber-200",
+    active: "bg-green-50 text-green-600 border-green-200",
+    resolved: "bg-gray-100 text-gray-600 border-gray-200",
+    closed: "bg-gray-100 text-gray-600 border-gray-200",
   };
 
   return (
-    <div>
-      <h3 className="text-base font-bold text-gray-900 mb-4">Support Tickets</h3>
-      <div className="space-y-3">
-        {(!user.tickets || user.tickets.length === 0) ? (
-          <p className="text-sm text-gray-500 py-4 text-center">No support tickets found.</p>
-        ) : user.tickets.map((ticket: any, i: number) => (
-          <motion.div
-            key={ticket.id || i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2.5 flex-wrap mb-1">
-                <span className="text-sm font-bold text-gray-900">{ticket.subject || "Support Request"}</span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status?.toLowerCase() || "open"] || statusStyle.open)}>
-                  {ticket.status || "open"}
-                </span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", priorityStyle[ticket.priority || "medium priority"] || priorityStyle["medium priority"])}>
-                  {ticket.priority || "medium priority"}
-                </span>
-              </div>
-              <p className="text-xs text-gray-600">{ticket.id} • Created {formatDate(ticket.created_at)}</p>
-              <p className="text-xs text-gray-600 mt-0.5">Last updated {formatDate(ticket.updated_at || ticket.created_at)}</p>
-            </div>
-            <button
-              onClick={() => alert(`Opening ticket ${ticket.id}…`)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white hover:text-blue-600 hover:border-blue-200 transition-all shrink-0 ml-4"
+    <div className="space-y-8">
+      {/* Active Chats */}
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-4">Live Chats</h3>
+        <div className="space-y-3">
+          {activeChats.length === 0 ? (
+            <p className="text-sm text-gray-500 py-4 text-center">No active chats found.</p>
+          ) : activeChats.map((chat: any, i: number) => (
+            <motion.div
+              key={chat.id || i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={() => router.push(`/dashboard/live-chat?thread=${chat.id}`)}
             >
-              <Eye className="h-3.5 w-3.5" /> View
-            </button>
-          </motion.div>
-        ))}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                  <span className="text-sm font-bold text-gray-900">Live Chat</span>
+                  <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[chat.status?.toLowerCase() || "open"] || statusStyle.open)}>
+                    {chat.status || "Waiting"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600">{chat.last_message_preview || "No messages"}</p>
+                <p className="text-xs text-gray-500 mt-1">Last active: {formatDate(chat.last_message_at)}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 ml-4" />
+            </motion.div>
+          ))}
+        </div>
       </div>
+
+      {/* Converted Tickets */}
+      {convertedTickets.length > 0 && (
+        <div>
+          <h3 className="text-base font-bold text-gray-900 mb-4">Converted Tickets</h3>
+          <div className="space-y-3">
+            {convertedTickets.map((ticket: any, i: number) => (
+              <motion.div
+                key={ticket.id || i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors cursor-pointer"
+                onClick={() => router.push(`/dashboard/live-chat?thread=${ticket.id}`)}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                    <span className="text-sm font-bold text-gray-900">{ticket.ticket_id || "Ticket"} • {ticket.category || "Other"}</span>
+                    <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[ticket.status?.toLowerCase() || "open"] || statusStyle.open)}>
+                      {ticket.status || "open"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600">{ticket.last_message_preview || "No messages"}</p>
+                  <p className="text-xs text-gray-500 mt-1">Last active: {formatDate(ticket.last_message_at)}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 ml-4" />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

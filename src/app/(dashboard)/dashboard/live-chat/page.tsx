@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
   Send,
@@ -42,6 +43,9 @@ type ChatThread = {
   lastMessageTime: string;
   messages: Message[];
   lastMessageAtISO: string;
+  is_ticket?: boolean;
+  category?: string;
+  ticket_id?: string;
 };
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
@@ -58,12 +62,17 @@ function StatusIndicator({ status }: { status: ChatStatus }) {
 export default function LiveChatSupportPage() {
   return (
     <RequirePermission permission={["respond-chat", "manage-tickets"]}>
-      <LiveChatSupportPageContent />
+      <Suspense fallback={<div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" /></div>}>
+        <LiveChatSupportPageContent />
+      </Suspense>
     </RequirePermission>
   );
 }
 
 function LiveChatSupportPageContent() {
+  const searchParams = useSearchParams();
+  const initialThreadId = searchParams.get("thread");
+  
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -88,6 +97,9 @@ function LiveChatSupportPageContent() {
             unread_count_user,
             last_message_at,
             user_id,
+            is_ticket,
+            category,
+            ticket_id,
             profiles:user_id (
               id,
               full_name
@@ -142,13 +154,20 @@ function LiveChatSupportPageContent() {
               lastMessageTime: new Date(t.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
               messages: [],
               lastMessageAtISO: t.last_message_at,
+              is_ticket: t.is_ticket,
+              category: t.category,
+              ticket_id: t.ticket_id,
             };
           });
 
           setThreads(mappedThreads);
 
           if (mappedThreads.length > 0) {
-            setActiveThreadId(mappedThreads[0].threadId);
+            if (initialThreadId && mappedThreads.some((th: any) => th.threadId === initialThreadId)) {
+              setActiveThreadId(initialThreadId);
+            } else {
+              setActiveThreadId(mappedThreads[0].threadId);
+            }
           }
         }
       } catch (err) {
@@ -509,6 +528,11 @@ function LiveChatSupportPageContent() {
                         </p>
                         <div className="flex items-center gap-1.5 pt-1">
                           <span className="text-[9px] text-gray-600 font-mono uppercase tracking-tight">{thread.user.id.substring(0, 8)}</span>
+                          {thread.is_ticket && (
+                            <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-tight">
+                              Ticket: {thread.category || "Other"}
+                            </span>
+                          )}
                           {thread.status === "Waiting" && (
                             <span className="text-[8px] bg-amber-50 text-amber-700 font-bold uppercase px-1 rounded">waiting</span>
                           )}
