@@ -208,7 +208,7 @@ function PortfolioManagementPageContent() {
           {cardAllocations.map((alloc) => (
             <div key={alloc.asset} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2.5">
               <p className="text-sm font-medium text-gray-600">{alloc.asset}</p>
-              <p className="text-3xl font-bold text-gray-900 leading-none">${alloc.valueCad.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+              <p className="text-3xl font-bold text-gray-900 leading-none">${(alloc.valueCad || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
               <p className="text-xs text-gray-600 font-semibold mt-1">{alloc.percentage}% of portfolio</p>
             </div>
           ))}
@@ -299,7 +299,7 @@ function PortfolioManagementPageContent() {
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-extrabold text-gray-900 font-mono">{alloc.percentage}%</p>
-                          <p className="text-[10px] text-gray-600 font-semibold">${alloc.valueCad.toLocaleString()}</p>
+                          <p className="text-[10px] text-gray-600 font-semibold">${(alloc.valueCad || 0).toLocaleString()}</p>
                         </div>
                       </div>
                     );
