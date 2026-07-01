@@ -38,6 +38,8 @@ function ReportsAnalyticsPageContent() {
     activeUsers: 0,
     avgTransaction: 0,
     resolutionRate: "100.0",
+    conversionRate: "0.0",
+    avgSessionDuration: "0m 0s",
     revenueTxData: [] as any[],
     userGrowthData: [] as any[]
   });
@@ -656,7 +658,7 @@ function ReportsAnalyticsPageContent() {
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide font-mono">Conversion Rate</span>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 flex-wrap">
-                <span className="text-2xl font-black text-gray-900 leading-none">82.1%</span>
+                <span className="text-2xl font-black text-gray-900 leading-none">{stats.conversionRate}%</span>
                 <div className="flex items-center gap-1 text-[10px] font-extrabold text-green-700 flex-wrap">
                   <span className="flex items-center gap-0.5 bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-200 font-bold">
                     <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
@@ -671,7 +673,7 @@ function ReportsAnalyticsPageContent() {
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
               <span className="text-[10px] font-extrabold text-gray-600 uppercase tracking-wide font-mono">Avg. Session Duration</span>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 flex-wrap">
-                <span className="text-2xl font-black text-gray-900 leading-none">8m 42s</span>
+                <span className="text-2xl font-black text-gray-900 leading-none">{stats.avgSessionDuration}</span>
                 <div className="flex items-center gap-1 text-[10px] font-extrabold text-green-700 flex-wrap">
                   <span className="flex items-center gap-0.5 bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-200 font-bold">
                     <ArrowUpRight className="h-3 w-3 stroke-[2.5]" />
