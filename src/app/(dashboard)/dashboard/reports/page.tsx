@@ -112,7 +112,9 @@ function ReportsAnalyticsPageContent() {
 
         setLoading(true);
 
-        const res = await fetch("/api/reports", { cache: "no-store" });
+        const params = new URLSearchParams();
+        params.append("dateRange", dateRange);
+        const res = await fetch(`/api/reports?${params.toString()}`, { cache: "no-store" });
 
         if (res.ok) {
 
@@ -136,7 +138,7 @@ function ReportsAnalyticsPageContent() {
 
     loadReports();
 
-  }, []);
+  }, [dateRange]);
 
 
 
@@ -154,15 +156,53 @@ function ReportsAnalyticsPageContent() {
 
     if (exporting) return;
 
+    if (stats.revenueTxData.length === 0 && stats.userGrowthData.length === 0) {
+      triggerToast("No data to export.");
+      return;
+    }
+
     setExporting(true);
 
-    setTimeout(() => {
+    const revenueHeaders = ["Date", "Revenue (CAD)", "Transactions Count"];
+    const revenueRows = stats.revenueTxData.map((item: any) =>
+      [item.date, item.revenue.toFixed(2), item.transactions].map(val => `"${val}"`).join(",")
+    );
 
-      setExporting(false);
+    const growthHeaders = ["Date", "New Users", "Active Users"];
+    const growthRows = stats.userGrowthData.map((item: any) =>
+      [item.date, item.newUsers, item.activeUsers].map(val => `"${val}"`).join(",")
+    );
 
-      triggerToast("Report successfully downloaded as CDNT-analytics-report.csv!");
+    const csvContent = [
+      "REVENUE & TRANSACTIONS DATA",
+      revenueHeaders.join(","),
+      ...revenueRows,
+      "",
+      "USER GROWTH DATA",
+      growthHeaders.join(","),
+      ...growthRows,
+      "",
+      "SUMMARY METRICS",
+      "Total Revenue," + stats.totalRevenue.toFixed(2),
+      "Total Transactions," + stats.totalTransactions,
+      "Active Users," + stats.activeUsers,
+      "Average Transaction," + stats.avgTransaction.toFixed(2),
+      "Resolution Rate," + stats.resolutionRate,
+      "Conversion Rate," + stats.conversionRate
+    ].join("\n");
 
-    }, 1500);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "CDNT-analytics-report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setExporting(false);
+
+    triggerToast("Report successfully downloaded as CDNT-analytics-report.csv!");
 
   };
 

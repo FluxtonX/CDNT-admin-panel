@@ -495,7 +495,43 @@ function TransactionsDashboardContent() {
           </div>
           <button
             onClick={() => {
-              setToast("Transactions ledger report exported.");
+              if (filteredTransactions.length === 0) {
+                setToast("No transactions to export.");
+                window.setTimeout(() => setToast(null), 2500);
+                return;
+              }
+              const headers = ["Transaction ID", "User Name", "User Email", "Type", "Asset", "Crypto Amount", "CAD Amount", "Status", "Risk Score", "Timestamp", "Network", "Transaction Hash", "From Address", "To Address", "Fee (CAD)"];
+              const csvContent = [
+                headers.join(","),
+                ...filteredTransactions.map(tx =>
+                  [
+                    tx.txId,
+                    tx.user.name,
+                    tx.user.email,
+                    tx.type,
+                    tx.cryptoCurrency,
+                    tx.cryptoAmount,
+                    tx.amountCad.toFixed(2),
+                    tx.status,
+                    tx.riskScore,
+                    tx.timestamp,
+                    tx.network,
+                    tx.txHash,
+                    tx.fromAddress || "",
+                    tx.toAddress || "",
+                    tx.feeCad ? tx.feeCad.toFixed(2) : ""
+                  ].map(val => `"${val}"`).join(",")
+                )
+              ].join("\n");
+              const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.setAttribute("href", url);
+              link.setAttribute("download", "transactions-ledger.csv");
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              setToast("Transactions ledger exported successfully.");
               window.setTimeout(() => setToast(null), 2500);
             }}
             className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"

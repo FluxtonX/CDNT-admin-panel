@@ -100,11 +100,40 @@ export default function SecurityLogsAuditTrailPage() {
 
   const handleExport = () => {
     if (exporting) return;
+    if (logs.length === 0) {
+      triggerToast("No security logs to export.");
+      return;
+    }
     setExporting(true);
-    setTimeout(() => {
-      setExporting(false);
-      triggerToast("Security Audit Trail downloaded as audit-trail-report.csv");
-    }, 1200);
+    const headers = ["ID", "Timestamp", "Action", "Category", "Severity", "User", "User ID", "IP Address", "Details", "User Agent", "Performed By Admin"];
+    const csvContent = [
+      headers.join(","),
+      ...logs.map(log =>
+        [
+          log.id,
+          log.timestamp,
+          log.action,
+          log.category,
+          log.severity,
+          log.user,
+          log.userId,
+          log.ipAddress,
+          log.details,
+          log.userAgent,
+          log.performedByAdmin || ""
+        ].map(val => `"${val}"`).join(",")
+      )
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "audit-trail-report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExporting(false);
+    triggerToast("Security Audit Trail downloaded as audit-trail-report.csv");
   };
 
   const selectDateRange = (range: string) => {

@@ -140,7 +140,37 @@ function PortfolioManagementPageContent() {
   };
 
   const handleExport = () => {
-    setToast("Asset allocation report prepared for download.");
+    if (allocations.length === 0) {
+      setToast("No allocation data to export.");
+      window.setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    const headers = ["Asset", "Percentage", "CAD Value", "Color"];
+    const csvContent = [
+      headers.join(","),
+      ...allocations.map(alloc =>
+        [
+          alloc.asset,
+          alloc.percentage.toFixed(2),
+          alloc.valueCad.toFixed(2),
+          alloc.color
+        ].map(val => `"${val}"`).join(",")
+      ),
+      "",
+      "SUMMARY METRICS",
+      "Total AUM (CAD)," + totalAum.toFixed(2),
+      "User Count," + userCount,
+      "Performance Growth (CAD)," + performanceGrowth.toFixed(2)
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "portfolio-allocation-report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setToast("Asset allocation report downloaded successfully.");
     window.setTimeout(() => setToast(null), 2500);
   };
 

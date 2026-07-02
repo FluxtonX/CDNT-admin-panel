@@ -9,21 +9,54 @@ export async function GET(request: Request) {
     const { allowed } = await checkAdminPermission(request, "view-reports");
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabase = createAdminClient();
+    const { searchParams } = new URL(request.url);
+    const dateRange = searchParams.get("dateRange") || "Last 6 Months";
 
-    // 1. Fetch wallet_ledger to calculate total revenue, total transactions, avg transaction
-    const { data: ledger, error: ledgerError } = await supabase
-      .from("wallet_ledger")
-      .select("*");
-    if (ledgerError) throw ledgerError;
+    // Calculate date filter based on range
+    const now = new Date();
+    let startDate: Date;
+    switch (dateRange) {
+      case "Today":
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case "Last 7 Days":
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "Last 30 Days":
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "Last 6 Months":
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        break;
+    }
 
-    const totalTransactions = ledger?.length || 0;
-    
-    // Sum amounts directly from ledger
+    // 1. Fetch deposit_requests and withdrawal_requests for transaction data
+    const { data: deposits, error: depositsError } = await supabase
+      .from("deposit_requests")
+      .select("*")
+      .gte("created_at", startDate.toISOString());
+    if (depositsError) throw depositsError;
+
+    const { data: withdrawals, error: withdrawalsError } = await supabase
+      .from("withdrawal_requests")
+      .select("*")
+      .gte("created_at", startDate.toISOString());
+    if (withdrawalsError) throw withdrawalsError;
+
+    // Calculate totals
+    const totalDeposits = deposits?.length || 0;
+    const totalWithdrawals = withdrawals?.length || 0;
+    const totalTransactions = totalDeposits + totalWithdrawals;
+
     let totalVolume = 0;
-    ledger?.forEach((tx: any) => {
-      totalVolume += Math.abs(Number(tx.amount || 0));
+    deposits?.forEach((d: any) => {
+      totalVolume += Number(d.expected_amount || 0);
     });
-    
+    withdrawals?.forEach((w: any) => {
+      totalVolume += Number(w.amount || 0);
+    });
+
     // Revenue as 1% of total transaction volume
     const totalRevenue = totalVolume * 0.01;
     const avgTransaction = totalTransactions > 0 ? (totalVolume / totalTransactions) : 0;
@@ -44,40 +77,47 @@ export async function GET(request: Request) {
     const resolvedTickets = threads?.filter((t: any) => t.status === "resolved").length || 0;
     const resolutionRate = totalTickets > 0 ? (resolvedTickets / totalTickets) * 100 : 100.0;
 
-    // 4. Fetch real historical data by month for charts (last 6 months)
-    const now = new Date();
+    // 4. Generate month labels for charts based on date range
     const months: string[] = [];
-    const monthIndices: number[] = [];
+    const numMonths = dateRange === "Today" ? 1 : dateRange === "Last 7 Days" ? 1 : dateRange === "Last 30 Days" ? 1 : 6;
     
-    for (let i = 5; i >= 0; i--) {
+    for (let i = numMonths - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push(d.toLocaleString('default', { month: 'short' }));
-      monthIndices.push(d.getMonth());
     }
     
-    // Group ledger transactions by month for revenue/transactions chart
+    // Group transactions by month for revenue/transactions chart
     const monthlyTxData: Record<string, { revenue: number; transactions: number }> = {};
     months.forEach(m => {
       monthlyTxData[m] = { revenue: 0, transactions: 0 };
     });
 
-    ledger?.forEach((tx: any) => {
-      if (tx.created_at) {
-        const txDate = new Date(tx.created_at);
-        const monthIndex = txDate.getMonth();
+    // Process deposits
+    deposits?.forEach((d: any) => {
+      if (d.created_at) {
+        const txDate = new Date(d.created_at);
         const monthName = txDate.toLocaleString('default', { month: 'short' });
-        
-        // Only include if within last 6 months
-        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        if (txDate >= sixMonthsAgo && monthlyTxData[monthName]) {
+        if (monthlyTxData[monthName]) {
           monthlyTxData[monthName].transactions += 1;
-          monthlyTxData[monthName].revenue += Math.abs(Number(tx.amount || 0)) * 0.01;
+          monthlyTxData[monthName].revenue += Number(d.expected_amount || 0) * 0.01;
+        }
+      }
+    });
+
+    // Process withdrawals
+    withdrawals?.forEach((w: any) => {
+      if (w.created_at) {
+        const txDate = new Date(w.created_at);
+        const monthName = txDate.toLocaleString('default', { month: 'short' });
+        if (monthlyTxData[monthName]) {
+          monthlyTxData[monthName].transactions += 1;
+          monthlyTxData[monthName].revenue += Number(w.amount || 0) * 0.01;
         }
       }
     });
 
     const revenueTxData = months.map(month => ({
-      month,
+      date: month,
       revenue: monthlyTxData[month].revenue,
       transactions: monthlyTxData[month].transactions
     }));
@@ -85,38 +125,36 @@ export async function GET(request: Request) {
     // Group user registrations by month for user growth chart
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("created_at");
+      .select("created_at")
+      .gte("created_at", startDate.toISOString());
     if (profilesError) throw profilesError;
 
-    const monthlyUserData: Record<string, { totalUsers: number; verifiedUsers: number }> = {};
+    const monthlyUserData: Record<string, { newUsers: number; activeUsers: number }> = {};
     months.forEach(m => {
-      monthlyUserData[m] = { totalUsers: 0, verifiedUsers: 0 };
+      monthlyUserData[m] = { newUsers: 0, activeUsers: 0 };
     });
 
     profiles?.forEach((profile: any) => {
       if (profile.created_at) {
         const createdDate = new Date(profile.created_at);
         const monthName = createdDate.toLocaleString('default', { month: 'short' });
-        
-        // Only include if within last 6 months
-        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        if (createdDate >= sixMonthsAgo && monthlyUserData[monthName]) {
-          monthlyUserData[monthName].totalUsers += 1;
-          monthlyUserData[monthName].verifiedUsers += 1;
+        if (monthlyUserData[monthName]) {
+          monthlyUserData[monthName].newUsers += 1;
+          monthlyUserData[monthName].activeUsers += 1;
         }
       }
     });
 
     // Calculate cumulative totals for user growth
-    let cumulativeTotal = 0;
-    let cumulativeVerified = 0;
+    let cumulativeNew = 0;
+    let cumulativeActive = 0;
     const userGrowthData = months.map(month => {
-      cumulativeTotal += monthlyUserData[month].totalUsers;
-      cumulativeVerified += monthlyUserData[month].verifiedUsers;
+      cumulativeNew += monthlyUserData[month].newUsers;
+      cumulativeActive += monthlyUserData[month].activeUsers;
       return {
-        month,
-        totalUsers: cumulativeTotal || usersCount || 0,
-        verifiedUsers: cumulativeVerified || Math.floor((usersCount || 0) * 0.8)
+        date: month,
+        newUsers: monthlyUserData[month].newUsers,
+        activeUsers: cumulativeActive || usersCount || 0
       };
     });
 
