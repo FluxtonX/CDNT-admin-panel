@@ -720,10 +720,10 @@ function TransactionsTab({
   const [cadRates, setCadRates] = useState<Record<string, number> | null>(null);
   useEffect(() => { fetchLiveCADRates().then(setCadRates); }, []);
 
-  const getCadValue = (amount: number, currency: string) => {
-    if (!cadRates) return amount * 1.36;
+  const getCryptoValue = (cadAmount: number, currency: string) => {
+    if (!cadRates) return cadAmount / 1.36;
     const sym = (currency || '').toUpperCase().trim();
-    return amount * (cadRates[sym] || cadRates.USDT || 1.36);
+    return cadAmount / (cadRates[sym] || cadRates.USDT || 1.36);
   };
 
   const statusStyle: Record<string, string> = {
@@ -740,30 +740,37 @@ function TransactionsTab({
       <div className="space-y-3">
         {(!user.transactions || user.transactions.length === 0) ? (
           <p className="text-sm text-gray-500 py-4 text-center">No transactions found.</p>
-        ) : user.transactions.map((tx: any, i: number) => (
-          <motion.div
-            key={tx.id || i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
-            className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
-          >
-            <div>
-              <div className="flex items-center gap-2.5 mb-1">
-                <span className="text-sm font-bold text-gray-900">{tx.type || "Transfer"}</span>
-                <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[tx.status || "completed"] || statusStyle.completed)}>
-                  {tx.status || "completed"}
-                </span>
+        ) : user.transactions.map((tx: any, i: number) => {
+          const cadAmount = Number(tx.amount || 0);
+          const cryptoVal = getCryptoValue(cadAmount, tx.currency);
+          // format crypto to 6 decimals, remove trailing zeros
+          const formattedCrypto = cryptoVal.toFixed(6).replace(/\.?0+$/, '');
+          const formattedCad = cadAmount.toLocaleString("en-US", {style:"currency",currency:"CAD"});
+
+          return (
+            <motion.div
+              key={tx.id || i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06 }}
+              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors"
+            >
+              <div>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <span className="text-sm font-bold text-gray-900">{tx.type || "Transfer"}</span>
+                  <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize", statusStyle[tx.status || "completed"] || statusStyle.completed)}>
+                    {tx.status || "completed"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600">{tx.id || tx.transaction_id || "TXN"} • {formatDate(tx.created_at)}</p>
+                <p className="text-xs text-gray-600 mt-0.5">{tx.metadata || ""}</p>
               </div>
-              <p className="text-xs text-gray-600">{tx.id || tx.transaction_id || "TXN"} • {formatDate(tx.created_at)}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{tx.metadata || ""}</p>
-            </div>
-            <div className="text-right shrink-0 ml-6">
-              <p className="text-sm font-bold text-gray-900">{tx.amount} {tx.currency}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{getCadValue(Number(tx.amount || 0), tx.currency).toLocaleString("en-US", {style:"currency",currency:"CAD"})}</p>
-            </div>
-          </motion.div>
-        ))}
+              <div className="text-right shrink-0 ml-6">
+                <p className="text-sm font-bold text-gray-900">{formattedCrypto === "" ? "0" : formattedCrypto} {tx.currency} / {formattedCad}</p>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

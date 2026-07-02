@@ -92,8 +92,8 @@ const riskStyles = {
   "N/A":  "bg-gray-100 text-gray-700",
 };
 
-const formatMillions = (v: number) =>
-  v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${(v / 1_000).toFixed(0)}K`;
+const formatCAD = (v: number) =>
+  `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /* ─── Page ───────────────────────────────────────────────────────── */
 export default function DashboardPage() {
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           link="/dashboard/withdrawals"
         />
         <StatCard2
-          label="Total Deposits" value={stats.loading ? "..." : `$${(stats.totalDepositsAmt / 1000000).toFixed(1)}M`}
+          label="Total Deposits" value={stats.loading ? "..." : `$${stats.totalDepositsAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           badge="+0.0%" badgeType="positive"
           icon={DollarSign} iconBg="#22C55E"
         />
@@ -200,7 +200,7 @@ export default function DashboardPage() {
               </Pie>
               <Tooltip
                 contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 12 }}
-                formatter={(v: any) => [`$${v}M`, ""]}
+                formatter={(v: any) => [`$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, ""]}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                   <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: COIN_COLORS[item.name] || item.color }} />
                   <span className="text-gray-600 text-xs">{item.name}</span>
                 </div>
-                <span className="font-semibold text-gray-900 text-xs">${item.value}M</span>
+                <span className="font-semibold text-gray-900 text-xs">${item.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             ))}
           </div>
@@ -226,10 +226,10 @@ export default function DashboardPage() {
             <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
-              tickFormatter={formatMillions} />
+              tickFormatter={formatCAD} />
             <Tooltip
               contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 12 }}
-              formatter={(v: any) => [formatMillions(Number(v)), ""]}
+              formatter={(v: any) => [formatCAD(Number(v)), ""]}
             />
             <Legend
               wrapperStyle={{ fontSize: 12, paddingTop: 12 }}

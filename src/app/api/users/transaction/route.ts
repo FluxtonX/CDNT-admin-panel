@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,11 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     const reviewedBy = user?.id || null;
 
+    // Fetch live CAD rates to convert crypto amount to CAD
+    const rates = await fetchLiveCADRates([coin]);
+    const cadRate = rates[coin] || rates.USDT || 1.36;
+    const cadAmount = amount * cadRate;
+
     if (txType === "Deposit") {
       const adminRef = `ADMIN-${Date.now()}`;
       // Insert deposit_requests using admin client
@@ -28,7 +34,7 @@ export async function POST(request: Request) {
         asset: coin,
         network: "ADMIN",
         company_address: "ADMIN_MANUAL",
-        expected_amount: amount,
+        expected_amount: cadAmount,
         tx_hash: adminRef,
         status: "completed",
         created_at: txDate,
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
       });
       if (insertErr) throw new Error(insertErr.message);
 
-      // Update user_wallets using admin client
+      // Update user_wallets using admin client (always uses crypto amount)
       const { data: wallet } = await supabase
         .from("user_wallets")
         .select("balance")
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
         if (insertWalletErr) throw new Error(insertWalletErr.message);
       }
 
-      // Insert wallet_ledger using admin client
+      // Insert wallet_ledger using admin client (always uses crypto amount)
       const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
         user_id: userId,
         type: "DEPOSIT",
@@ -80,7 +86,7 @@ export async function POST(request: Request) {
         user_id: userId,
         admin_id: null,
         action: "DEPOSIT_ADDED",
-        details: { coin, amount, date: txDate },
+        details: { coin, amount, cadAmount, date: txDate },
       });
 
       // Insert notification for user
@@ -99,7 +105,7 @@ export async function POST(request: Request) {
       const { error: insertErr } = await supabase.from("withdrawal_requests").insert({
         user_id: userId,
         asset: coin,
-        amount: amount,
+        amount: cadAmount,
         status: "completed",
         method: "ADMIN",
         interac_email: "",
@@ -110,7 +116,7 @@ export async function POST(request: Request) {
       });
       if (insertErr) throw new Error(insertErr.message);
 
-      // Update user_wallets using admin client
+      // Update user_wallets using admin client (always uses crypto amount)
       const { data: wallet } = await supabase
         .from("user_wallets")
         .select("balance")
@@ -136,7 +142,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Wallet not found" }, { status: 400 });
       }
 
-      // Insert wallet_ledger using admin client
+      // Insert wallet_ledger using admin client (always uses crypto amount)
       const { error: ledgerErr } = await supabase.from("wallet_ledger").insert({
         user_id: userId,
         type: "WITHDRAWAL",
@@ -153,7 +159,7 @@ export async function POST(request: Request) {
         user_id: userId,
         admin_id: null,
         action: "WITHDRAWAL_ADDED",
-        details: { coin, amount, date: txDate },
+        details: { coin, amount, cadAmount, date: txDate },
       });
 
       // Insert notification for user

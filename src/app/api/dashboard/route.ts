@@ -52,8 +52,8 @@ export async function GET() {
 
     let totalDepositsAmt = 0;
     (depositReqs || []).forEach(d => {
-      const rate = liveRates[d.asset?.toUpperCase()] || liveRates.USDT || 1.36;
-      totalDepositsAmt += Number(d.expected_amount || 0) * rate;
+      // expected_amount is already stored in CAD
+      totalDepositsAmt += Number(d.expected_amount || 0);
     });
 
     const flaggedTransactions = 0; // Schema missing
@@ -105,7 +105,7 @@ export async function GET() {
         const cadValue = bal * rate;
         return {
           name: coin,
-          value: totalAssetVal ? Number((cadValue / 1000000).toFixed(2)) : 0,
+          value: totalAssetVal ? Number(cadValue.toFixed(2)) : 0,
           color: "#1650AB" // Will be overridden with dynamic colors in UI
         };
       })
@@ -118,8 +118,8 @@ export async function GET() {
         const date = new Date(d.created_at);
         const m = `${months[date.getMonth()]} ${date.getFullYear()}`;
         if (!depWithMap[m]) depWithMap[m] = { deposits: 0, withdrawals: 0 };
-        const rate = liveRates[d.asset?.toUpperCase()] || liveRates.USDT || 1.36;
-        depWithMap[m].deposits += Number(d.expected_amount || 0) * rate;
+        // expected_amount is already stored in CAD
+        depWithMap[m].deposits += Number(d.expected_amount || 0);
       }
     });
 
