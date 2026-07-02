@@ -1,6 +1,11 @@
 "use client";
 
 import { redirect } from 'next/navigation';
+
+export default function AdminRolesPage() {
+  redirect('/dashboard')
+}
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RequirePermission } from "@/components/layout/RequirePermission";
