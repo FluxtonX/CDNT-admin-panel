@@ -81,6 +81,7 @@ function WalletManagementPageContent() {
         label: "Platform Wallets",
         value: `$${totalSum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         note: `${wallets.length} ${wallets.length === 1 ? "wallet" : "wallets"}`,
+        noteTone: "text-gray-600",
         icon: (
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-50 text-green-600">
             <Coins className="h-5.5 w-5.5" />
@@ -206,7 +207,7 @@ function WalletManagementPageContent() {
                 >
                   {Array.from({ length: 4 }).map((_, idx) => (
                     <div key={idx} className="grid grid-cols-[1fr_1.5fr_3fr_1.5fr_1.5fr_1fr_1.5fr] gap-4 items-center px-5 py-4.5">
-                      <div className="h-4 bg-gray-100 rounded-lg w-10 animate-pulse"/>
+                      <div className="h-4 bg-gray-100 rounded-lg w-10 animate-pulse" />
                       <div className="h-4 bg-gray-100 rounded-lg w-20 animate-pulse" />
                       <div className="h-4 bg-gray-100 rounded-lg w-48 animate-pulse" />
                       <div className="h-4 bg-gray-100 rounded-lg w-16 animate-pulse" />
@@ -248,10 +249,10 @@ function WalletManagementPageContent() {
                         </div>
                         <span className="font-bold text-gray-900 text-sm">{wallet.crypto}</span>
                       </div>
-                      
+
                       {/* Network */}
                       <div className="text-xs font-semibold text-gray-600">{wallet.network}</div>
-                      
+
                       {/* Address */}
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs text-gray-600 tracking-tight truncate max-w-[200px]" title={wallet.address}>
@@ -265,16 +266,16 @@ function WalletManagementPageContent() {
                           {copiedAddress === wallet.address ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
                         </button>
                       </div>
-                      
+
                       {/* Balance Crypto */}
                       <div className="font-extrabold text-gray-900 text-xs font-mono">{wallet.balance_crypto}</div>
-                      
+
                       {/* Balance CAD */}
                       <div className="font-extrabold text-gray-900 text-xs font-mono">${wallet.balance_cad.toLocaleString()}</div>
-                      
+
                       {/* Status */}
                       <div><StatusBadge status={wallet.status} /></div>
-                      
+
                       {/* Last Activity */}
                       <div className="text-xs font-semibold text-gray-600 font-mono">{wallet.last_activity}</div>
                     </div>
