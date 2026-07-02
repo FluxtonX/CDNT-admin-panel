@@ -11,75 +11,14 @@ export async function GET(request: Request) {
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabase = createAdminClient();
 
-    // Try to fetch from platform_wallets table first
-    const { data: platformWallets, error } = await supabase
-      .from("platform_wallets")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    // If platform_wallets exists and has data, use it
-    if (!error && platformWallets && platformWallets.length > 0) {
-      const currencySymbols = [...new Set(platformWallets.map(w => w.crypto?.toUpperCase()).filter(Boolean))];
-      const liveRates = await fetchLiveCADRates(currencySymbols);
-
-      const { data: ledger } = await supabase
-        .from("wallet_ledger")
-        .select("wallet_id, created_at")
-        .order("created_at", { ascending: false });
-
-      const lastActivities: Record<string, string> = {};
-      platformWallets.forEach(w => {
-        lastActivities[w.wallet_id] = "No activity";
-      });
-
-      if (ledger) {
-        const formatTimeAgo = (dateStr: string) => {
-          const diffMs = new Date().getTime() - new Date(dateStr).getTime();
-          const diffMins = Math.floor(diffMs / 60000);
-          if (diffMins < 60) return diffMins <= 1 ? "Just now" : `${diffMins} mins ago`;
-          const diffHours = Math.floor(diffMins / 60);
-          if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`;
-          return `${Math.floor(diffHours / 24)} day${Math.floor(diffHours / 24) > 1 ? 's' : ''} ago`;
-        };
-
-        platformWallets.forEach(w => {
-          const latest = ledger.find(tx => tx.wallet_id === w.wallet_id);
-          if (latest) {
-            lastActivities[w.wallet_id] = formatTimeAgo(latest.created_at);
-          }
-        });
-      }
-
-      const wallets = platformWallets.map(w => {
-        const crypto = w.crypto?.toUpperCase() || "BTC";
-        const balanceCrypto = Number(w.balance_crypto || 0);
-        const rate = liveRates[crypto] || 1;
-        const balanceCad = balanceCrypto * rate;
-
-        return {
-          wallet_id: w.wallet_id,
-          type: w.type === "hot" ? "Hot" : "Cold",
-          crypto: crypto,
-          address: w.address || "N/A",
-          balance_crypto: `${balanceCrypto.toFixed(crypto === 'USDT' || crypto === 'USDC' ? 2 : 4)} ${crypto}`,
-          balance_cad: balanceCad,
-          status: w.status || "Active",
-          last_activity: lastActivities[w.wallet_id],
-          network: w.network || `${crypto} Mainnet`,
-          transactions: []
-        };
-      });
-
-      return NextResponse.json(wallets);
-    }
-
-    // Fallback: Use user_wallets to generate synthetic wallets
-    const { data: userWallets, error: userError } = await supabase
+    // Fetch from user_wallets table
+    const { data: userWallets, error } = await supabase
       .from("user_wallets")
       .select("*");
 
-    if (userError) throw userError;
+    if (error) throw error;
 
+    // Group by currency and sum balances
     const currencyBalances: Record<string, number> = {};
     (userWallets || []).forEach(w => {
       const currency = w.currency?.toUpperCase();
@@ -92,6 +31,7 @@ export async function GET(request: Request) {
     const currencySymbols = Object.keys(currencyBalances);
     const liveRates = await fetchLiveCADRates(currencySymbols);
 
+    // Get last activity from wallet_ledger
     const { data: ledger } = await supabase
       .from("wallet_ledger")
       .select("currency, created_at")
@@ -120,45 +60,41 @@ export async function GET(request: Request) {
       });
     }
 
-    const wallets: any[] = [];
-    currencySymbols.forEach(coin => {
+    // Derive network from currency
+    const getNetwork = (currency: string) => {
+      switch (currency.toUpperCase()) {
+        case "BTC":
+          return "Bitcoin Network";
+        case "ETH":
+          return "ERC-20";
+        case "USDT":
+          return "TRC-20/ERC-20";
+        case "USDC":
+          return "ERC-20";
+        default:
+          return `${currency} Network`;
+      }
+    };
+
+    const wallets = currencySymbols.map(coin => {
       const totalBal = currencyBalances[coin];
       const rate = liveRates[coin] || 1;
       const totalCad = totalBal * rate;
 
-      if (totalBal > 0) {
-        wallets.push({
-          wallet_id: `WALLET-HOT-${coin}`,
-          type: "Hot",
-          crypto: coin,
-          address: `${coin.toLowerCase().slice(0, 2)}...hot`,
-          balance_crypto: `${(totalBal * 0.2).toFixed(coin === 'USDT' || coin === 'USDC' ? 2 : 4)} ${coin}`,
-          balance_cad: totalCad * 0.2,
-          status: "Active",
-          last_activity: lastActivities[coin],
-          network: `${coin} Mainnet`,
-          transactions: []
-        });
-
-        wallets.push({
-          wallet_id: `WALLET-COLD-${coin}`,
-          type: "Cold",
-          crypto: coin,
-          address: `${coin.toLowerCase().slice(0, 2)}...cold`,
-          balance_crypto: `${(totalBal * 0.8).toFixed(coin === 'USDT' || coin === 'USDC' ? 2 : 4)} ${coin}`,
-          balance_cad: totalCad * 0.8,
-          status: "Active",
-          last_activity: lastActivities[coin],
-          network: `${coin} Cold Vault`,
-          transactions: []
-        });
-      }
+      return {
+        crypto: coin,
+        network: getNetwork(coin),
+        address: "Aggregated User Wallets",
+        balance_crypto: `${totalBal.toFixed(coin === 'USDT' || coin === 'USDC' ? 2 : 4)} ${coin}`,
+        balance_cad: totalCad,
+        status: "Active",
+        last_activity: lastActivities[coin],
+      };
     });
 
-    const activeWallets = wallets.filter(w => w.balance_cad > 0);
-    return NextResponse.json(activeWallets.length > 0 ? activeWallets : wallets);
+    return NextResponse.json(wallets);
   } catch (error: any) {
-    console.error("Error fetching platform wallets:", error);
+    console.error("Error fetching user wallets:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

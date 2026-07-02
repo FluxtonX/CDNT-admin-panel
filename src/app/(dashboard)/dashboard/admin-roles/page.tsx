@@ -226,7 +226,7 @@ function AdminRolesPermissionsPageContent() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: targetRole.id,
+          id: targetRole!.id,
           name: formName.trim(),
           description: formDescription.trim(),
           isActive: formIsActive,
@@ -240,7 +240,7 @@ function AdminRolesPermissionsPageContent() {
       }
 
       setRoles((current) =>
-        current.map((r) => (r.id === targetRole.id ? { ...r, ...data.role } : r))
+        current.map((r) => (r.id === targetRole!.id ? { ...r, ...data.role } : r))
       );
       setIsEditModalOpen(false);
       showToast(`Role "${formName}" updated successfully`);
@@ -254,7 +254,7 @@ function AdminRolesPermissionsPageContent() {
     if (!targetRole) return;
 
     try {
-      const res = await fetch(`/api/roles?id=${targetRole.id}`, {
+      const res = await fetch(`/api/roles?id=${targetRole!.id}`, {
         method: "DELETE",
       });
 
@@ -263,12 +263,12 @@ function AdminRolesPermissionsPageContent() {
         throw new Error(data.error || "Failed to delete role");
       }
 
-      setRoles((current) => current.filter((r) => r.id !== targetRole.id));
-      if (selectedRoleId === targetRole.id) {
+      setRoles((current) => current.filter((r) => r.id !== targetRole!.id));
+      if (selectedRoleId === targetRole!.id) {
         setSelectedRoleId(null);
       }
       setIsDeleteModalOpen(false);
-      showToast(`Role "${targetRole.name}" deleted successfully`);
+      showToast(`Role "${targetRole!.name}" deleted successfully`);
       setTargetRole(null);
     } catch (err: any) {
       showToast(err.message, "error");
