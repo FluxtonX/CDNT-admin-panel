@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     const reviewedBy = user?.id || null;
 
     if (txType === "Deposit") {
+      const adminRef = `ADMIN-${Date.now()}`;
       // Insert deposit_requests using admin client
       const { error: insertErr } = await supabase.from("deposit_requests").insert({
         user_id: userId,
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
         status: "completed",
         created_at: txDate,
         reviewed_at: new Date().toISOString(),
-        reviewed_by: `ADMIN-${adminRef}`,
+        reviewed_by: reviewedBy,
         admin_note: "Manual admin transaction",
       });
       if (insertErr) throw new Error(insertErr.message);
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
         link: "/transactions"
       });
     } else {
+      const adminRef = `ADMIN-${Date.now()}`;
       // Insert withdrawal_requests using admin client
       const { error: insertErr } = await supabase.from("withdrawal_requests").insert({
         user_id: userId,
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
         interac_email: "",
         created_at: txDate,
         reviewed_at: new Date().toISOString(),
-        reviewed_by: `ADMIN-${adminRef}`,
+        reviewed_by: reviewedBy,
         admin_note: "Manual admin transaction",
       });
       if (insertErr) throw new Error(insertErr.message);
