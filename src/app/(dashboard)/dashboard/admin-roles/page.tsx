@@ -429,8 +429,8 @@ function AdminRolesPermissionsPageContent() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold bg-white border-gray-200 text-gray-800"
           >
-            <span className={cn("h-2 w-2 rounded-full", toast.type === "success" ? "bg-green-500" : "bg-red-500")} />
-            {toast.message}
+            <span className={cn("h-2 w-2 rounded-full", toast?.type === "success" ? "bg-green-500" : "bg-red-500")} />
+            {toast?.message}
           </motion.div>
         )}
       </AnimatePresence>
