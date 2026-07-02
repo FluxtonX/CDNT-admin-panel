@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Bell, ChevronDown, Menu, LogOut, Info, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 
 // Types for our notification data
 type Notification = {
@@ -19,8 +20,22 @@ type Notification = {
 export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Ctrl+K shortcut to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Fetch admin notifications
   const { data: notificationsData } = useQuery<{ notifications: Notification[] }>({
@@ -80,7 +95,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-4 px-5 py-3 bg-white border-b border-gray-200 shrink-0">
+    <>
+      <GlobalSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <header className="sticky top-0 z-20 flex items-center gap-4 px-5 py-3 bg-white border-b border-gray-200 shrink-0">
       {/* Menu toggle for mobile screens */}
       <button
         onClick={onMenuToggle}
@@ -97,8 +114,13 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
           <input
             type="text"
             placeholder="Search users, transactions, requests..."
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700 placeholder:text-gray-500 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all"
+            readOnly
+            onClick={() => setSearchOpen(true)}
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700 placeholder:text-gray-500 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all cursor-pointer"
           />
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-mono font-semibold">
+            ⌘K
+          </kbd>
         </div>
       </div>
 
@@ -245,5 +267,6 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
         </div>
       </div>
     </header>
+    </>
   );
 }

@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, Users, ShieldCheck, ArrowDownToLine,
   ArrowLeftRight, Wallet, PieChart, Banknote, Bell,
-  MessageCircle, BarChart3, UserCog, ShieldAlert, Settings,
+  MessageCircle, BarChart3, ShieldAlert, Settings,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,6 @@ const NAV_ITEMS = [
   { id: "notifications", label: "Notifications",        href: "/dashboard/notifications", icon: Bell },
   { id: "live-chat",     label: "Live Chat",            href: "/dashboard/live-chat",     icon: MessageCircle },
   { id: "reports",       label: "Reports & Analytics",  href: "/dashboard/reports",       icon: BarChart3 },
-  { id: "admin-roles",   label: "Admin Roles",          href: "/dashboard/admin-roles",   icon: UserCog },
   { id: "security",      label: "Security Logs",        href: "/dashboard/security",      icon: ShieldAlert },
   { id: "settings",      label: "Settings",             href: "/dashboard/settings",      icon: Settings },
 ];

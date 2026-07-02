@@ -1,5 +1,6 @@
 "use client";
 
+import { redirect } from 'next/navigation';
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RequirePermission } from "@/components/layout/RequirePermission";
@@ -74,6 +75,8 @@ export default function AdminRolesPermissionsPage() {
 }
 
 function AdminRolesPermissionsPageContent() {
+  redirect('/dashboard');
+
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);
@@ -212,7 +215,7 @@ function AdminRolesPermissionsPageContent() {
   // Edit Role Submit
   const handleEditRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetRole) return;
+    if (!targetRole?.id) return;
     if (!formName.trim()) {
       showToast("Role name is required", "error");
       return;
