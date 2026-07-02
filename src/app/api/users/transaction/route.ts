@@ -17,7 +17,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const adminRef = `ADMIN-${Date.now()}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const reviewedBy = user?.id || null;
 
     if (txType === "Deposit") {
       // Insert deposit_requests using admin client
