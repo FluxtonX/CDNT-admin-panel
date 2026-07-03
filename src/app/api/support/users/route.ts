@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/support/users
- * Returns a minimal list of { id, email } for all auth users.
+ * Returns a minimal list of { id, email, full_name } for all auth users.
  * Used by the live-chat page to display user emails alongside their profile names.
  */
 export async function GET(request: Request) {
@@ -18,10 +18,19 @@ export async function GET(request: Request) {
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) throw error;
 
-    const mapped = users.map((u) => ({
-      id: u.id,
-      email: u.email || "",
-    }));
+    const { data: kycData } = await supabaseAdmin.from("kyc_submissions").select("user_id, full_name");
+    const { data: profiles } = await supabaseAdmin.from("profiles").select("id, full_name");
+
+    const mapped = users.map((u) => {
+      const kyc = kycData?.find((k) => k.user_id === u.id)?.full_name;
+      const profile = profiles?.find((p) => p.id === u.id)?.full_name;
+      
+      return {
+        id: u.id,
+        email: u.email || "",
+        full_name: kyc || profile || u.email || null,
+      };
+    });
 
     return NextResponse.json(mapped);
   } catch (err) {

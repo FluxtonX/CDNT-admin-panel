@@ -90,33 +90,25 @@ function LiveChatSupportPageContent() {
         // Fetch threads
         const { data, error } = await supabase
           .from("support_threads")
-          .select(`
-            id,
-            status,
-            unread_count_admin,
-            unread_count_user,
-            last_message_at,
-            user_id,
-            is_ticket,
-            category,
-            ticket_id,
-            profiles:user_id (
-              id,
-              full_name
-            )
-          `)
+          .select("id, status, unread_count_admin, unread_count_user, last_message_at, user_id, is_ticket, category, ticket_id")
           .order("last_message_at", { ascending: false });
 
-        // Fetch auth users to get emails (profiles may not store email)
-        let authUsersMap: Record<string, string> = {};
+        // Fetch auth users (with resolved full names from kyc/profiles/email)
+        let authUsersMap: Record<string, { email: string; fullName: string }> = {};
         try {
           const res = await fetch("/api/support/users");
           if (res.ok) {
             const usersData = await res.json();
-            authUsersMap = usersData.reduce((acc: Record<string, string>, u: { id: string; email: string }) => {
-              acc[u.id] = u.email;
-              return acc;
-            }, {});
+            authUsersMap = usersData.reduce(
+              (acc: Record<string, { email: string; fullName: string }>, u: { id: string; email: string; full_name: string | null }) => {
+                acc[u.id] = {
+                  email: u.email,
+                  fullName: u.full_name || u.email?.split("@")[0] || "Unknown User",
+                };
+                return acc;
+              },
+              {}
+            );
           }
         } catch { /* silently fallback */ }
 
@@ -124,11 +116,11 @@ function LiveChatSupportPageContent() {
 
         if (data) {
           const mappedThreads: ChatThread[] = data.map((t: any) => {
-            const profile = t.profiles;
+            const authEntry = authUsersMap[t.user_id];
             const adminUser: AdminUser = {
-              id: profile?.id || t.user_id,
-              name: profile?.full_name || authUsersMap[t.user_id]?.split("@")[0] || "User",
-              email: authUsersMap[t.user_id] || "N/A",
+              id: t.user_id,
+              name: authEntry?.fullName || "Unknown User",
+              email: authEntry?.email || "N/A",
               phone: "N/A",
               kyc: "Not Started",
               account: "Active",
@@ -297,60 +289,54 @@ function LiveChatSupportPageContent() {
             return;
           }
 
-          // Fetch profiles detail for join
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id, full_name")
-            .eq("id", updatedRow.user_id)
-            .single();
-
-          const adminUser: AdminUser = {
-            id: profile?.id || updatedRow.user_id,
-            name: profile?.full_name || "User",
-            email: "N/A",
-            phone: "N/A",
-            kyc: "Not Started",
-            account: "Active",
-            balance: 0,
-            joinedDate: "",
-            risk: "Low Risk",
-            dateOfBirth: "",
-            street: "",
-            city: "",
-            postalCode: "",
-            country: "",
-            lastLogin: "",
-            twoFactor: false,
-            lastIp: "",
-          };
-
-          const mappedThread: ChatThread = {
-            threadId: updatedRow.id,
-            user: adminUser,
-            status: updatedRow.status as ChatStatus,
-            unreadCount: updatedRow.id === activeThreadId ? 0 : updatedRow.unread_count_admin,
-            unreadCountUser: updatedRow.unread_count_user,
-            lastMessageTime: new Date(updatedRow.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            messages: [],
-            lastMessageAtISO: updatedRow.last_message_at,
-          };
-
+          // For INSERT or UPDATE: preserve existing user name from current thread state
+          // to avoid reverting to "User" when no kyc lookup is done in the subscription.
           setThreads((current) => {
             const index = current.findIndex((t) => t.threadId === updatedRow.id);
-            if (index !== -1) {
-              const existingMessages = current[index].messages;
-              const updated = {
-                ...mappedThread,
-                messages: existingMessages,
-              };
+            const existingThread = index !== -1 ? current[index] : null;
 
-              const nextList = [...current];
-              nextList[index] = updated;
+            // Re-use the user object from the existing thread if available,
+            // so the resolved name (kyc/profile) is never lost on update.
+            const preservedUser: AdminUser = existingThread?.user ?? {
+              id: updatedRow.user_id,
+              name: "Unknown User",
+              email: "N/A",
+              phone: "N/A",
+              kyc: "Not Started",
+              account: "Active",
+              balance: 0,
+              joinedDate: "",
+              risk: "Low Risk",
+              dateOfBirth: "",
+              street: "",
+              city: "",
+              postalCode: "",
+              country: "",
+              lastLogin: "",
+              twoFactor: false,
+              lastIp: "",
+            };
 
-              return nextList.sort((a, b) => new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime());
-            } else {
-              return [mappedThread, ...current].sort((a, b) => new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime());
-            }
+            const mappedThread: ChatThread = {
+              threadId: updatedRow.id,
+              user: preservedUser,
+              status: updatedRow.status as ChatStatus,
+              unreadCount: updatedRow.id === activeThreadId ? 0 : updatedRow.unread_count_admin,
+              unreadCountUser: updatedRow.unread_count_user,
+              lastMessageTime: new Date(updatedRow.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              messages: existingThread?.messages ?? [],
+              lastMessageAtISO: updatedRow.last_message_at,
+              is_ticket: updatedRow.is_ticket,
+              category: updatedRow.category,
+              ticket_id: updatedRow.ticket_id,
+            };
+
+            const nextList = index !== -1 ? [...current] : [mappedThread, ...current];
+            if (index !== -1) nextList[index] = mappedThread;
+
+            return nextList.sort((a, b) =>
+              new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime()
+            );
           });
         }
       )
