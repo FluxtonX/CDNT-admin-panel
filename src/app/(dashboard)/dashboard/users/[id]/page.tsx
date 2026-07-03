@@ -14,7 +14,7 @@ import {
   User, Mail, Phone, Calendar, MapPin, Activity,
   Smartphone, Globe, Wallet, BarChart3, FileText,
   MessageCircle, History, Monitor, LogOut, RefreshCw,
-  Eye, Plus, DollarSign, X, Send, Loader2, ChevronRight,
+  Eye, Plus, DollarSign, X, Send, Save, Search, Trash2, Loader2,
 } from "lucide-react";
 import { cn, fetchLiveCADRates, COIN_COLORS } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
@@ -792,6 +792,26 @@ function SupportTab({ user }: { user: any }) {
     closed: "bg-gray-100 text-gray-600 border-gray-200",
   };
 
+  const [deletingThread, setDeletingThread] = useState<string | null>(null);
+
+  const handleDeleteThread = async (threadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this conversation permanently?")) return;
+    
+    setDeletingThread(threadId);
+    try {
+      const res = await fetch(`/api/support/tickets/${threadId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete thread");
+      
+      router.refresh();
+    } catch (err) {
+      console.error("Error deleting support thread:", err);
+      alert("Failed to delete the conversation.");
+    } finally {
+      setDeletingThread(null);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -825,7 +845,17 @@ function SupportTab({ user }: { user: any }) {
                 <p className="text-xs text-gray-600">{chat.last_message_preview || "No messages"}</p>
                 <p className="text-xs text-gray-500 mt-1">Last active: {formatDate(chat.last_message_at)}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 ml-4" />
+              <div className="flex items-center gap-2 ml-4">
+                <button
+                  onClick={(e) => handleDeleteThread(chat.id, e)}
+                  disabled={deletingThread === chat.id}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Delete conversation"
+                >
+                  {deletingThread === chat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </button>
+                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+              </div>
             </motion.div>
           ))}
         </div>

@@ -25,7 +25,7 @@ import { type AdminUser } from "@/lib/data/users";
 import { supabase } from "@/lib/supabase";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 
-type ChatStatus = "Active" | "Waiting" | "Resolved";
+type ChatStatus = "Active" | "Waiting" | "Resolved" | "Closed";
 
 type Message = {
   id: string;
@@ -55,6 +55,7 @@ function StatusIndicator({ status }: { status: ChatStatus }) {
     Active: "bg-green-500",
     Waiting: "bg-amber-500",
     Resolved: "bg-gray-400",
+    Closed: "bg-gray-700",
   };
   return <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", map[status])} />;
 }
@@ -79,6 +80,7 @@ function LiveChatSupportPageContent() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [deletingThread, setDeletingThread] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -417,6 +419,28 @@ function LiveChatSupportPageContent() {
     }
   };
 
+  /* Delete Chat Thread */
+  const handleDeleteThread = async (threadId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent setting as active thread
+    if (!confirm("Are you sure you want to delete this conversation permanently?")) return;
+    
+    setDeletingThread(threadId);
+    try {
+      const res = await fetch(`/api/support/tickets/${threadId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete thread");
+      
+      setThreads((current) => current.filter((t) => t.threadId !== threadId));
+      if (activeThreadId === threadId) {
+        setActiveThreadId("");
+      }
+    } catch (err) {
+      console.error("Error deleting support thread:", err);
+      alert("Failed to delete the conversation.");
+    } finally {
+      setDeletingThread(null);
+    }
+  };
+
   /* Toggle Chat Status override */
   const handleSetStatus = async (status: ChatStatus) => {
     if (!activeThread) return;
@@ -483,9 +507,12 @@ function LiveChatSupportPageContent() {
                   const lastMsg = thread.messages[thread.messages.length - 1];
 
                   return (
-                    <button
+                    <div
                       key={thread.threadId}
                       onClick={() => setActiveThreadId(thread.threadId)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') setActiveThreadId(thread.threadId); }}
                       className={cn(
                         "w-full text-left p-3.5 border rounded-2xl transition-all flex items-start gap-3.5 cursor-pointer",
                         isActive
@@ -525,13 +552,29 @@ function LiveChatSupportPageContent() {
                         </div>
                       </div>
 
-                      {/* Unread badge */}
-                      {thread.unreadCount > 0 && (
-                        <span className="h-5 w-5 rounded-full bg-red-600 text-white font-mono font-black text-[9px] flex items-center justify-center shrink-0 shadow-sm animate-pulse">
-                          {thread.unreadCount}
-                        </span>
-                      )}
-                    </button>
+                      {/* Delete & Unread badges */}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <button
+                          onClick={(e) => handleDeleteThread(thread.threadId, e)}
+                          disabled={deletingThread === thread.threadId}
+                          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete conversation"
+                        >
+                          {deletingThread === thread.threadId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
+                        {thread.unreadCount > 0 && (
+                          <span className="h-5 w-5 rounded-full bg-red-600 text-white font-mono font-black text-[9px] flex items-center justify-center shadow-sm animate-pulse">
+                            {thread.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   );
                 })
               )}
@@ -569,7 +612,7 @@ function LiveChatSupportPageContent() {
 
                   {/* Header Action Status Set */}
                   <div className="flex items-center gap-1.5 border border-gray-200 bg-gray-50 p-1 rounded-xl">
-                    {(["Active", "Waiting", "Resolved"] as ChatStatus[]).map((st) => {
+                    {(["Active", "Waiting", "Resolved", "Closed"] as ChatStatus[]).map((st) => {
                       const active = activeThread.status === st;
                       return (
                         <button
