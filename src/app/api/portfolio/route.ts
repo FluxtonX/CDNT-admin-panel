@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
     const totalUsers = profilesCount || 0;
 
-    // 2. Fetch all user wallets
+    // 2. Fetch all user wallets directly
     const { data: userWallets, error: walletsErr } = await supabaseAdmin
       .from("user_wallets")
       .select("*");
@@ -62,6 +62,7 @@ export async function GET(request: Request) {
       DOGE: { color: "bg-yellow-500", strokeColor: "#eab308" },
       SOL: { color: "bg-purple-500", strokeColor: "#a855f7" },
       ADA: { color: "bg-blue-400", strokeColor: "#60a5fa" },
+      XRP: { color: "bg-gray-800", strokeColor: "#111827" },
     };
 
     const allocations = Object.entries(currencyBalances)

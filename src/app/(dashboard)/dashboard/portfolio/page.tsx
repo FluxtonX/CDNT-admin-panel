@@ -41,9 +41,9 @@ function PortfolioManagementPageContent() {
   const [refreshCount, setRefreshCount] = useState(0);
 
   const [allocations, setAllocations] = useState<AllocationSegment[]>([]);
-  const [totalAum, setTotalAum] = useState(42500);
-  const [userCount, setUserCount] = useState(10234);
-  const [performanceGrowth, setPerformanceGrowth] = useState(3200000);
+  const [totalAum, setTotalAum] = useState(0);
+  const [userCount, setUserCount] = useState(0);
+  const [performanceGrowth, setPerformanceGrowth] = useState(0);
 
   const loadData = async () => {
     setLoading(true);

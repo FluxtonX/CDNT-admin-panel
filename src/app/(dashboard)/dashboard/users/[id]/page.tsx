@@ -15,6 +15,7 @@ import {
   Smartphone, Globe, Wallet, BarChart3, FileText,
   MessageCircle, History, Monitor, LogOut, RefreshCw,
   Eye, Plus, DollarSign, X, Send, Save, Search, Trash2, Loader2,
+  ChevronRight,
 } from "lucide-react";
 import { cn, fetchLiveCADRates, COIN_COLORS } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
