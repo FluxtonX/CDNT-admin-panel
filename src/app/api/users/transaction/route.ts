@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         type: "Success",
         title: "Deposit Processed",
         message: `A deposit of ${amount} ${coin} has been processed and added to your wallet.`,
-        audience: "All",
+        audience: null,
         is_read: false,
         link: "/transactions"
       });
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
         type: "Info",
         title: "Withdrawal Processed",
         message: `A manual withdrawal of ${amount} ${coin} has been processed from your wallet.`,
-        audience: "All",
+        audience: null,
         is_read: false,
         link: "/transactions"
       });
