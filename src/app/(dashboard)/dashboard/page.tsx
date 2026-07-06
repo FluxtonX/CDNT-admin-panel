@@ -112,8 +112,6 @@ export default function DashboardPage() {
     depositsData: (data?.depositsData as any[]) ?? [],
     withdrawalQueue: (data?.withdrawalQueue as any[]) ?? [],
     recentTransactions: (data?.recentTransactions as any[]) ?? [],
-    hotWallets: (data?.hotWallets as any[]) ?? [],
-    coldWallets: (data?.coldWallets as any[]) ?? [],
     loading: isLoading,
   };
 
@@ -308,71 +306,6 @@ export default function DashboardPage() {
                   <p className={cn("text-xs font-medium", tx.positive ? "text-green-600" : "text-red-500")}>
                     {tx.crypto}
                   </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Hot Wallet + Cold Wallet Balance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Hot Wallet */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Wallet className="h-4 w-4 text-orange-500" />
-            <h3 className="text-sm font-semibold text-gray-800">Hot Wallet Balance</h3>
-          </div>
-          <div className="space-y-3">
-            {stats.loading ? (
-               <div className="text-xs text-gray-600">Loading...</div>
-            ) : stats.hotWallets.length === 0 ? (
-               <div className="text-xs text-gray-600">No hot wallets found.</div>
-            ) : stats.hotWallets.map((w) => (
-              <div key={w.coin} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                    style={{ background: COIN_COLORS[w.coin] || "#ccc" }}
-                  >
-                    {w.coin}
-                  </div>
-                  <span className="text-sm font-medium text-gray-700">{w.coin}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{w.amount}</p>
-                  <p className="text-xs text-gray-600">{w.usd}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Cold Wallet */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Wallet className="h-4 w-4 text-blue-600" />
-            <h3 className="text-sm font-semibold text-gray-800">Cold Wallet Balance</h3>
-          </div>
-          <div className="space-y-3">
-            {stats.loading ? (
-               <div className="text-xs text-gray-600">Loading...</div>
-            ) : stats.coldWallets.length === 0 ? (
-               <div className="text-xs text-gray-600">No cold wallets found.</div>
-            ) : stats.coldWallets.map((w) => (
-              <div key={w.coin} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                    style={{ background: COIN_COLORS[w.coin] || "#ccc" }}
-                  >
-                    {w.coin}
-                  </div>
-                  <span className="text-sm font-medium text-gray-700">{w.coin}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{w.amount}</p>
-                  <p className="text-xs text-gray-600">{w.usd}</p>
                 </div>
               </div>
             ))}
