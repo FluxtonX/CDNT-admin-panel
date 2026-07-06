@@ -262,7 +262,7 @@ export async function PATCH(request: Request) {
       type: notifType,
       title: notifTitle,
       message: notifMessage,
-      audience: null,
+      audience: "User",
       is_read: false
     });
 
