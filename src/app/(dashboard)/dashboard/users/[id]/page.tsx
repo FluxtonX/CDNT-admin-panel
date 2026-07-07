@@ -359,6 +359,9 @@ function ManageBalanceModal({
   const [loading, setLoading] = useState(false);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
   const [cadRate, setCadRate] = useState<number>(0);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   // Amount threshold validation to prevent unrealistic large amounts
   const getAmountThreshold = (assetType: string): number => {
@@ -398,6 +401,39 @@ function ManageBalanceModal({
     };
     fetchData();
   }, [user.id, currency]);
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset]);
 
   const handleSubmit = async () => {
     const numericAmount = Number(amount);
@@ -472,15 +508,17 @@ function ManageBalanceModal({
         initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6 space-y-5">
-          <div>
-            <h2 className="text-[17px] font-bold text-gray-900">Manage Balance</h2>
-            <p className="text-sm text-gray-600 mt-0.5">{user.name} • {user.email}</p>
+        <div className="p-4 space-y-3">
+          <div className="cursor-move" onMouseDown={handleMouseDown}>
+            <h2 className="text-[16px] font-bold text-gray-900">Manage Balance</h2>
+            <p className="text-xs text-gray-600 mt-0.5">{user.name} • {user.email}</p>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
             {[
               { id: "adjust", label: "Adjust" },
               { id: "deposit", label: "Deposit" },
@@ -489,7 +527,7 @@ function ManageBalanceModal({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex-1 py-1.5 px-2 rounded-md text-[11px] font-semibold transition-all ${
                   activeTab === tab.id
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -501,62 +539,62 @@ function ManageBalanceModal({
           </div>
 
           {/* Current Balance Display */}
-          <div className="flex flex-col gap-2 p-3 bg-blue-50 rounded-xl">
+          <div className="flex flex-col gap-1.5 p-2.5 bg-blue-50 rounded-lg">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600">Current {currency} Balance</span>
-              <span className="text-sm font-bold text-gray-900">{currentBalance.toFixed(8)} {currency}</span>
+              <span className="text-[11px] font-semibold text-gray-600">Current {currency} Balance</span>
+              <span className="text-xs font-bold text-gray-900">{currentBalance.toFixed(8)} {currency}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600">CAD Value</span>
-              <span className="text-sm font-bold text-gray-900">≈ ${(currentBalance * cadRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD</span>
+              <span className="text-[11px] font-semibold text-gray-600">CAD Value</span>
+              <span className="text-xs font-bold text-gray-900">≈ ${(currentBalance * cadRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD</span>
             </div>
           </div>
 
           {/* Tab Content */}
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Currency</label>
-              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Currency</label>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold text-gray-800">
                 {COIN_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
             {activeTab === "adjust" && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Action</label>
-                <select value={action} onChange={(e) => setAction(e.target.value as "Add" | "Deduct")} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Action</label>
+                <select value={action} onChange={(e) => setAction(e.target.value as "Add" | "Deduct")} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold text-gray-800">
                   <option value="Add">Add</option>
                   <option value="Deduct">Deduct</option>
                 </select>
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</label>
-              <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Amount</label>
+              <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs text-gray-800" />
               {amountError && (
-                <p className="mt-2 text-xs font-semibold text-red-600">{amountError}</p>
+                <p className="mt-1 text-[11px] font-semibold text-red-600">{amountError}</p>
               )}
             </div>
 
             {activeTab === "adjust" && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Reason / Note</label>
-                <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for adjustment..." className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800 resize-none" />
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Reason / Note</label>
+                <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for adjustment..." className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs text-gray-800 resize-none" />
               </div>
             )}
 
             {(activeTab === "deposit" || activeTab === "withdrawal") && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Date</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-4 py-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-800" />
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Date</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs text-gray-800" />
               </div>
             )}
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button onClick={handleSubmit} disabled={loading || amountExceedsThreshold} className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button onClick={handleSubmit} disabled={loading || amountExceedsThreshold} className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
               {loading ? "Processing…" : activeTab === "adjust" ? "Adjust Balance" : activeTab === "deposit" ? "Add Deposit" : "Add Withdrawal"}
             </button>
           </div>
