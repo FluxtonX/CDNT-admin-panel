@@ -144,66 +144,114 @@ export async function PATCH(request: Request) {
     let cryptoAmountToDeduct = 0;
 
     if (status === "approved" || status === "completed") {
-      // 2. Fetch live CAD rates
-      const rates = await fetchLiveCADRates();
-      
-      // 3. Convert CAD withdrawal amount to that crypto using live rate
-      // fetchLiveCADRates returns keys as uppercase coin symbols: BTC, ETH, USDT, etc.
-      const cadRate = Number(rates[cryptoCurrency]) || Number(rates["USDT"]) || 1.36;
+      // Check if withdrawal is in CAD - if so, deduct directly from CAD wallet
+      if (cryptoCurrency === "CAD") {
+        // 2. Fetch user CAD balance from user_wallets
+        const { data: userWallet, error: walletQueryErr } = await supabaseAdmin
+          .from("user_wallets")
+          .select("balance")
+          .eq("user_id", wdr.user_id)
+          .eq("currency", "CAD")
+          .maybeSingle();
 
-      let amountToDeduct = wdr.amount / cadRate;
-      cryptoAmountToDeduct = amountToDeduct;
+        if (walletQueryErr) {
+          console.error("Error fetching user CAD wallet:", walletQueryErr);
+        }
 
-      // 4. Fetch user balance for that specific currency from user_wallets
-      const { data: userWallet, error: walletQueryErr } = await supabaseAdmin
-        .from("user_wallets")
-        .select("balance")
-        .eq("user_id", wdr.user_id)
-        .eq("currency", cryptoCurrency)
-        .maybeSingle();
-
-      if (walletQueryErr) {
-        console.error("Error fetching user wallet:", walletQueryErr);
-      }
-
-      const currentBalance = userWallet ? Number(userWallet.balance) : 0;
-      let newBalance = currentBalance - amountToDeduct;
-
-      // Block if insufficient funds in the specific crypto wallet, with a 5% slippage tolerance
-      if (newBalance < 0) {
-        const diff = amountToDeduct - currentBalance;
-        if (currentBalance > 0 && diff <= currentBalance * 0.05) {
-          // If the difference is minor (<= 5%), clamp to current balance to allow the withdrawal
-          newBalance = 0;
-          amountToDeduct = currentBalance;
-          cryptoAmountToDeduct = currentBalance;
-        } else {
+        const currentBalance = userWallet ? Number(userWallet.balance) : 0;
+        const amountToDeduct = wdr.amount;
+        
+        // Block if insufficient CAD funds
+        if (currentBalance < amountToDeduct) {
           return NextResponse.json({ 
-            error: `Insufficient balance due to price change: User has ${currentBalance.toFixed(6)} ${cryptoCurrency}, but this withdrawal now requires ${amountToDeduct.toFixed(6)} ${cryptoCurrency}. Please reject and ask user to re-request.` 
+            error: `Insufficient CAD balance: User has $${currentBalance.toFixed(2)} CAD, but withdrawal request is for $${amountToDeduct.toFixed(2)} CAD.` 
           }, { status: 400 });
         }
+
+        // 3. Deduct from CAD wallet
+        const newBalance = currentBalance - amountToDeduct;
+        const { error: walletErr } = await supabaseAdmin
+          .from("user_wallets")
+          .update({ balance: newBalance, updated_at: new Date().toISOString() })
+          .eq("user_id", wdr.user_id)
+          .eq("currency", "CAD");
+        if (walletErr) throw walletErr;
+
+        // 4. wallet_ledger entry for CAD withdrawal
+        const { error: ledgerErr } = await supabaseAdmin
+          .from("wallet_ledger")
+          .insert({
+            user_id: wdr.user_id,
+            type: "WITHDRAWAL",
+            provider: "INTERAC",
+            currency: "CAD",
+            amount: amountToDeduct,
+            status: "COMPLETED",
+          });
+        if (ledgerErr) throw ledgerErr;
+      } else {
+        // Original logic for crypto withdrawals
+        // 2. Fetch live CAD rates
+        const rates = await fetchLiveCADRates();
+        
+        // 3. Convert CAD withdrawal amount to that crypto using live rate
+        // fetchLiveCADRates returns keys as uppercase coin symbols: BTC, ETH, USDT, etc.
+        const cadRate = Number(rates[cryptoCurrency]) || Number(rates["USDT"]) || 1.36;
+
+        let amountToDeduct = wdr.amount / cadRate;
+        cryptoAmountToDeduct = amountToDeduct;
+
+        // 4. Fetch user balance for that specific currency from user_wallets
+        const { data: userWallet, error: walletQueryErr } = await supabaseAdmin
+          .from("user_wallets")
+          .select("balance")
+          .eq("user_id", wdr.user_id)
+          .eq("currency", cryptoCurrency)
+          .maybeSingle();
+
+        if (walletQueryErr) {
+          console.error("Error fetching user wallet:", walletQueryErr);
+        }
+
+        const currentBalance = userWallet ? Number(userWallet.balance) : 0;
+        let newBalance = currentBalance - amountToDeduct;
+
+        // Block if insufficient funds in the specific crypto wallet, with a 5% slippage tolerance
+        if (newBalance < 0) {
+          const diff = amountToDeduct - currentBalance;
+          if (currentBalance > 0 && diff <= currentBalance * 0.05) {
+            // If the difference is minor (<= 5%), clamp to current balance to allow the withdrawal
+            newBalance = 0;
+            amountToDeduct = currentBalance;
+            cryptoAmountToDeduct = currentBalance;
+          } else {
+            return NextResponse.json({ 
+              error: `Insufficient balance due to price change: User has ${currentBalance.toFixed(6)} ${cryptoCurrency}, but this withdrawal now requires ${amountToDeduct.toFixed(6)} ${cryptoCurrency}. Please reject and ask user to re-request.` 
+            }, { status: 400 });
+          }
+        }
+
+        // 5. Deduct from the correct currency wallet
+        const { error: walletErr } = await supabaseAdmin
+          .from("user_wallets")
+          .update({ balance: newBalance, updated_at: new Date().toISOString() })
+          .eq("user_id", wdr.user_id)
+          .eq("currency", cryptoCurrency);
+        if (walletErr) throw walletErr;
+
+        // 6. wallet_ledger entry should also use the correct currency
+        const { error: ledgerErr } = await supabaseAdmin
+          .from("wallet_ledger")
+          .insert({
+            user_id: wdr.user_id,
+            type: "WITHDRAWAL",
+            provider: "INTERAC",
+            currency: cryptoCurrency,
+            amount: amountToDeduct,
+            status: "COMPLETED",
+          });
+        if (ledgerErr) throw ledgerErr;
       }
-
-      // 5. Deduct from the correct currency wallet
-      const { error: walletErr } = await supabaseAdmin
-        .from("user_wallets")
-        .update({ balance: newBalance })
-        .eq("user_id", wdr.user_id)
-        .eq("currency", cryptoCurrency);
-      if (walletErr) throw walletErr;
-
-      // 6. wallet_ledger entry should also use the correct currency
-      const { error: ledgerErr } = await supabaseAdmin
-        .from("wallet_ledger")
-        .insert({
-          user_id: wdr.user_id,
-          type: "WITHDRAWAL",
-          provider: "INTERAC",
-          currency: cryptoCurrency,
-          amount: amountToDeduct,
-          status: "COMPLETED",
-        });
-      if (ledgerErr) throw ledgerErr;
     }
 
     const updateData: any = { status };

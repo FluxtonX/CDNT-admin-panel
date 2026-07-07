@@ -46,8 +46,10 @@ export async function GET(request: Request) {
       });
     }
 
-    // Calculate total AUM in CAD
+    // Calculate total AUM in CAD (CAD doesn't need conversion)
     const totalAum = Object.entries(currencyBalances).reduce((sum, [coin, bal]) => {
+      // If CAD, use balance directly (no conversion needed)
+      if (coin === 'CAD') return sum + bal;
       const rate = liveRates[coin] || 1;
       return sum + (bal * rate);
     }, 0);
@@ -58,6 +60,7 @@ export async function GET(request: Request) {
       ETH: { color: "bg-blue-600", strokeColor: "#2563eb" },
       USDT: { color: "bg-emerald-500", strokeColor: "#10b981" },
       USDC: { color: "bg-emerald-500", strokeColor: "#10b981" },
+      CAD: { color: "bg-red-500", strokeColor: "#ef4444" },
       LTC: { color: "bg-gray-500", strokeColor: "#6b7280" },
       DOGE: { color: "bg-yellow-500", strokeColor: "#eab308" },
       SOL: { color: "bg-purple-500", strokeColor: "#a855f7" },
@@ -68,8 +71,9 @@ export async function GET(request: Request) {
     const allocations = Object.entries(currencyBalances)
       .filter(([_, bal]) => bal > 0)
       .map(([coin, bal]) => {
-        const rate = liveRates[coin] || 1;
-        const cadValue = bal * rate;
+        // If CAD, use balance directly (no conversion needed)
+        const isCAD = coin === 'CAD';
+        const cadValue = isCAD ? bal : bal * (liveRates[coin] || 1);
         const colors = colorMap[coin] || { color: "bg-gray-400", strokeColor: "#9ca3af" };
         return {
           asset: coin,
@@ -93,7 +97,10 @@ export async function GET(request: Request) {
     let performanceGrowth = 0;
     if (!ledgerErr && ledger) {
       performanceGrowth = ledger.reduce((acc: number, item: any) => {
-        const rate = liveRates[item.currency?.toUpperCase()] || 1;
+        const currency = item.currency?.toUpperCase();
+        // If CAD, use amount directly (no conversion needed)
+        if (currency === 'CAD') return acc + Number(item.amount);
+        const rate = liveRates[currency] || 1;
         return acc + (Number(item.amount) * rate);
       }, 0);
     }

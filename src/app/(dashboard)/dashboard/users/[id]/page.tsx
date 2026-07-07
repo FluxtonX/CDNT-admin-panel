@@ -946,13 +946,14 @@ function PortfolioTab({ user }: { user: any }) {
 
   const rawAssets = activeCurrencies.map((currency: string) => {
     const w = userWallets.find((x: any) => x.currency === currency) || { balance: 0 };
-    const rate = rates?.[currency?.toUpperCase()] || rates?.USDT || 1.36;
-    const cadValue = Number(w.balance) * rate;
+    // If CAD, use balance directly (no conversion needed)
+    const isCAD = currency?.toUpperCase() === 'CAD';
+    const cadValue = isCAD ? Number(w.balance) : Number(w.balance) * (rates?.[currency?.toUpperCase()] || rates?.USDT || 1.36);
     
     return {
       coin: currency,
       name: currency,
-      balance: `${Number(w.balance).toLocaleString(undefined, { maximumFractionDigits: 8 })} ${currency}`,
+      balance: `${Number(w.balance).toLocaleString(undefined, { maximumFractionDigits: isCAD ? 2 : 8 })} ${currency}`,
       usd: `$${cadValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       rawCad: cadValue,
       color: COIN_COLORS[currency?.toUpperCase()] || "#0A3D91",
