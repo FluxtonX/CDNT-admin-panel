@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useWithdrawals, useUpdateWithdrawal } from "@/hooks/useAdminQueries";
+import { useWithdrawals, useUpdateWithdrawal, useDashboardMetrics } from "@/hooks/useAdminQueries";
 import { useRouter } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
@@ -119,6 +119,7 @@ export default function WithdrawalRequestsPage() {
 function WithdrawalRequestsPageContent() {
   const router = useRouter();
   const { data: withdrawalsData = [], isLoading: loading } = useWithdrawals();
+  const { data: metrics } = useDashboardMetrics();
   const updateWithdrawal = useUpdateWithdrawal();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("Pending");
@@ -133,35 +134,48 @@ function WithdrawalRequestsPageContent() {
   const [currentNote, setCurrentNote] = useState("");
 
   const requests = useMemo(() => {
-    const list: WithdrawalRequest[] = (withdrawalsData || []).map((w: any) => ({
-      requestId: `WD-${w.id.slice(0, 8).toUpperCase()}`,
-      realId: w.id,
-      user: {
-        id: w.user_id,
-        name: w.user?.name || "Unknown User",
-        email: w.user?.email || "N/A",
-        avatar: "",
-        role: "viewer",
-        status: "active",
-        joinedAt: "",
-        lastActive: "",
-        balance: 0,
-      },
-      amount: Number(w.amount),
-      cryptoAmount: `${w.amount} CAD`,
-      cryptoCurrency: "CAD",
-      riskScore: "medium risk" as const,
-      kycStatus: w.kycStatus || "not started",
-      requestDate: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
-      status: w.status === "completed" ? "Completed" : w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : w.status === "failed" ? "Failed" : "Pending",
-      interacRecipient: w.interac_email,
-      previousWithdrawals: 0,
-      currentBalance: Number(w.amount),
-    }));
+    const cadRates = (metrics?.cadRates as Record<string, number>) || {};
+    const cadRateForAsset = (asset: string) => {
+      const sym = (asset || "USDT").toUpperCase();
+      if (sym === "CAD") return 1;
+      return cadRates[sym] || cadRates["USDT"] || 1.36;
+    };
+
+    const list: WithdrawalRequest[] = (withdrawalsData || []).map((w: any) => {
+      const asset = w.asset || (w.method === "interac" ? "CAD" : "USD");
+      const rate = cadRateForAsset(asset);
+      const isCAD = asset.toUpperCase() === "CAD";
+      
+      return {
+        requestId: `WD-${w.id.slice(0, 8).toUpperCase()}`,
+        realId: w.id,
+        user: {
+          id: w.user_id,
+          name: w.user?.name || "Unknown User",
+          email: w.user?.email || "N/A",
+          avatar: "",
+          role: "viewer",
+          status: "active",
+          joinedAt: "",
+          lastActive: "",
+          balance: 0,
+        },
+        amount: Number(w.amount) * rate,
+        cryptoAmount: `${w.amount} ${asset}`,
+        cryptoCurrency: asset,
+        riskScore: "medium risk" as const,
+        kycStatus: w.kycStatus || "not started",
+        requestDate: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
+        status: w.status === "completed" ? "Completed" : w.status === "approved" ? "Approved" : w.status === "rejected" ? "Rejected" : w.status === "failed" ? "Failed" : "Pending",
+        interacRecipient: w.interac_email,
+        previousWithdrawals: 0,
+        currentBalance: Number(w.amount),
+      };
+    });
 
     list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
     return list;
-  }, [withdrawalsData]);
+  }, [withdrawalsData, metrics]);
 
   const counts = useMemo(() => {
     return {
