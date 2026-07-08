@@ -315,9 +315,9 @@ function TransactionsDashboardContent() {
           balance: 0,
         },
         type: "Withdrawal",
-        amountCad: Number(w.amount) || 0,
-        cryptoAmount: `${w.amount} CAD`,
-        cryptoCurrency: "CAD",
+        amountCad: (Number(w.amount) || 0) * cadRateForAsset(w.asset),
+        cryptoAmount: `${w.amount} ${w.asset || "CAD"}`,
+        cryptoCurrency: w.asset || "CAD",
         status: w.status === "completed" ? "Completed" : w.status === "rejected" ? "Failed" : "Pending",
         riskScore: "Medium Risk",
         timestamp: new Date(w.created_at).toISOString().replace("T", " ").slice(0, 19),
@@ -500,7 +500,7 @@ function TransactionsDashboardContent() {
                 window.setTimeout(() => setToast(null), 2500);
                 return;
               }
-              const headers = ["Transaction ID", "User Name", "User Email", "Type", "Asset", "Crypto Amount", "CAD Amount", "Status", "Risk Score", "Timestamp", "Network", "Transaction Hash", "From Address", "To Address", "Fee (CAD)"];
+              const headers = ["Transaction ID", "User Name", "User Email", "Type", "Asset", "Crypto Amount", "CAD Value", "Status", "Risk Score", "Timestamp", "Network", "Transaction Hash", "From Address", "To Address", "Fee (CAD)"];
               const csvContent = [
                 headers.join(","),
                 ...filteredTransactions.map(tx =>
@@ -630,8 +630,8 @@ function TransactionsDashboardContent() {
           {/* Table Container */}
           <div className="overflow-x-auto">
             {/* Header row */}
-            <div className="grid min-w-[1150px] grid-cols-[1.1fr_1.8fr_1fr_1.4fr_1.1fr_1.1fr_1.6fr_120px] gap-4 bg-gray-50 px-5 py-3 border-b border-gray-200/80">
-              {["Transaction", "User", "Type", "Amount", "Status", "Risk", "Timestamp", "Actions"].map((heading) => (
+            <div className="grid min-w-[1250px] grid-cols-[1.1fr_1.8fr_1fr_1.2fr_1.2fr_1.1fr_1.1fr_1.6fr_120px] gap-4 bg-gray-50 px-5 py-3 border-b border-gray-200/80">
+              {["Transaction", "User", "Type", "Crypto Amount", "CAD Value", "Status", "Risk", "Timestamp", "Actions"].map((heading) => (
                 <span key={heading} className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 font-mono">{heading}</span>
               ))}
             </div>
@@ -647,7 +647,7 @@ function TransactionsDashboardContent() {
                   className="min-w-[1150px] divide-y divide-gray-100 bg-white"
                 >
                   {Array.from({ length: 4 }).map((_, idx) => (
-                    <div key={idx} className="grid grid-cols-[1.1fr_1.8fr_1fr_1.4fr_1.1fr_1.1fr_1.6fr_120px] gap-4 items-center px-5 py-4.5">
+                    <div key={idx} className="grid grid-cols-[1.1fr_1.8fr_1fr_1.2fr_1.2fr_1.1fr_1.1fr_1.6fr_120px] gap-4 items-center px-5 py-4.5">
                       <div className="h-4 bg-gray-100 rounded-lg w-16 animate-pulse" />
                       <div className="space-y-1.5">
                         <div className="h-4 bg-gray-100 rounded-lg w-28 animate-pulse" />
@@ -656,7 +656,9 @@ function TransactionsDashboardContent() {
                       <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
                       <div className="space-y-1.5">
                         <div className="h-4 bg-gray-100 rounded-lg w-20 animate-pulse" />
-                        <div className="h-3 bg-gray-100 rounded-lg w-12 animate-pulse" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="h-4 bg-gray-100 rounded-lg w-20 animate-pulse" />
                       </div>
                       <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
                       <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse" />
@@ -666,20 +668,20 @@ function TransactionsDashboardContent() {
                   ))}
                 </motion.div>
               ) : filteredTransactions.length === 0 ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="min-w-[1150px] py-16 text-center text-sm font-medium text-gray-600 bg-white"
-                >
-                  No transactions found.
-                </motion.div>
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="min-w-[1250px] py-16 text-center text-sm font-medium text-gray-600 bg-white"
+                  >
+                    No transactions found.
+                  </motion.div>
               ) : (
                 <motion.div key={`${activeTab}-${search}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   {filteredTransactions.map((tx) => (
                     <div
                       key={tx.txId}
-                      className="grid min-w-[1150px] grid-cols-[1.1fr_1.8fr_1fr_1.4fr_1.1fr_1.1fr_1.6fr_120px] items-center gap-4 border-b border-gray-100 bg-white px-5 py-4 transition-colors hover:bg-blue-50/20"
+                      className="grid min-w-[1250px] grid-cols-[1.1fr_1.8fr_1fr_1.2fr_1.2fr_1.1fr_1.1fr_1.6fr_120px] items-center gap-4 border-b border-gray-100 bg-white px-5 py-4 transition-colors hover:bg-blue-50/20"
                     >
                       {/* TRANSACTION ID */}
                       <div>
@@ -700,12 +702,16 @@ function TransactionsDashboardContent() {
                         <TypeBadge type={tx.type} />
                       </div>
 
-                      {/* AMOUNT */}
+                      {/* CRYPTO AMOUNT */}
                       <div>
-                        <p className="font-extrabold text-gray-900 text-sm">${tx.amountCad.toLocaleString()}</p>
-                        <p className="text-[10px] text-gray-600 font-extrabold uppercase font-mono tracking-wider">
+                        <p className="font-extrabold text-gray-900 text-sm uppercase font-mono tracking-wider">
                           {tx.cryptoAmount}
                         </p>
+                      </div>
+
+                      {/* CAD VALUE */}
+                      <div>
+                        <p className="font-extrabold text-gray-900 text-sm">${tx.amountCad.toLocaleString()}</p>
                       </div>
 
                       {/* STATUS */}

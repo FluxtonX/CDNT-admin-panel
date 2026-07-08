@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         asset: coin,
         network: "ADMIN",
         company_address: "ADMIN_MANUAL",
-        expected_amount: cadAmount,
+        expected_amount: amount,
         tx_hash: adminRef,
         status: "completed",
         created_at: txDate,
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       const { error: insertErr } = await supabase.from("withdrawal_requests").insert({
         user_id: userId,
         asset: coin,
-        amount: cadAmount,
+        amount: amount,
         status: "completed",
         method: "ADMIN",
         interac_email: "",
