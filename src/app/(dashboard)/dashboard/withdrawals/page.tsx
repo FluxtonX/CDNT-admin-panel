@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useWithdrawals, useUpdateWithdrawal, useDashboardMetrics } from "@/hooks/useAdminQueries";
+import { useMemo, useState, useEffect } from "react";
+import { useWithdrawals, useUpdateWithdrawal } from "@/hooks/useAdminQueries";
+import { fetchLiveCADRates } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { AnimatePresence, motion } from "framer-motion";
@@ -119,8 +120,13 @@ export default function WithdrawalRequestsPage() {
 function WithdrawalRequestsPageContent() {
   const router = useRouter();
   const { data: withdrawalsData = [], isLoading: loading } = useWithdrawals();
-  const { data: metrics } = useDashboardMetrics();
   const updateWithdrawal = useUpdateWithdrawal();
+
+  // Live CAD rates — same source as the Transactions page
+  const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    fetchLiveCADRates().then(setLiveRates);
+  }, []);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("Pending");
   const [toast, setToast] = useState<string | null>(null);
@@ -134,18 +140,17 @@ function WithdrawalRequestsPageContent() {
   const [currentNote, setCurrentNote] = useState("");
 
   const requests = useMemo(() => {
-    const cadRates = (metrics?.cadRates as Record<string, number>) || {};
-    const cadRateForAsset = (asset: string) => {
+    // Use the same live rates as the Transactions page
+    const cadRateForAsset = (asset: string): number => {
       const sym = (asset || "USDT").toUpperCase();
       if (sym === "CAD") return 1;
-      return cadRates[sym] || cadRates["USDT"] || 1.36;
+      return Number(liveRates?.[sym]) || Number(liveRates?.["USDT"]) || 1.36;
     };
 
     const list: WithdrawalRequest[] = (withdrawalsData || []).map((w: any) => {
       const asset = w.asset || (w.method === "interac" ? "CAD" : "USD");
       const rate = cadRateForAsset(asset);
-      const isCAD = asset.toUpperCase() === "CAD";
-      
+
       return {
         requestId: `WD-${w.id.slice(0, 8).toUpperCase()}`,
         realId: w.id,
@@ -175,7 +180,7 @@ function WithdrawalRequestsPageContent() {
 
     list.sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
     return list;
-  }, [withdrawalsData, metrics]);
+  }, [withdrawalsData, liveRates]);
 
   const counts = useMemo(() => {
     return {
