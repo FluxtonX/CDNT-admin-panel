@@ -436,6 +436,7 @@ function KycVerificationPageContent() {
                   dateOfBirth: item.date_of_birth,
                   street: item.street_address,
                   city: item.city,
+                  gender: item.gender || "Male",
                 },
                 documentType: "Government ID",
                 documents: ["verified", "verified", "verified"],
@@ -834,6 +835,7 @@ function KycVerificationPageContent() {
                         { label: "Full Name", value: selectedRequest.user.name, icon: User },
                         { label: "Email", value: selectedRequest.user.email, icon: Mail },
                         { label: "Phone", value: selectedRequest.user.phone, icon: Phone },
+                        { label: "Gender", value: selectedRequest.user.gender, icon: User },
                         { label: "Country", value: selectedRequest.user.country, icon: MapPin },
                       ].map((field, idx) => {
                         const Icon = field.icon;

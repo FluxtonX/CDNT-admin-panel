@@ -67,6 +67,7 @@ export const NAV_PERMISSION_MAP: Record<string, AdminPermission[]> = {
   "admin-roles": ["manage-roles"],
   security: [],                                         // unrestricted
   settings: ["edit-settings"],
+  "content-management": ["edit-settings"],
 };
 
 /* ─── Page Path → Permissions ────────────────────────────────────── */
@@ -85,6 +86,7 @@ export const PAGE_PERMISSION_MAP: Record<string, AdminPermission[]> = {
   "/dashboard/wallets": ["manage-wallets", "view-wallets"],
   "/dashboard/portfolio": ["manage-wallets", "view-wallets"],
   "/dashboard/settings": ["edit-settings"],
+  "/dashboard/content-management": ["edit-settings"],
   "/dashboard/admin-roles": ["manage-roles"],
   "/dashboard/reports": ["view-reports"],
   "/dashboard/live-chat": ["respond-chat", "manage-tickets"],
