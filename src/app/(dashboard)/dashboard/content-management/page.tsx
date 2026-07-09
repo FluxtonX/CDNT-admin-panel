@@ -43,7 +43,11 @@ type CategoryId =
   | "kyc"
   | "settings"
   | "support"
-  | "landing";
+  | "landing"
+  | "about"
+  | "pricing"
+  | "security"
+  | "help";
 
 const CATEGORIES: { id: CategoryId; label: string; icon: React.ElementType; badge?: string }[] = [
   { id: "global",    label: "Global / Announcement", icon: Megaphone,       badge: "Banner" },
@@ -56,8 +60,11 @@ const CATEGORIES: { id: CategoryId; label: string; icon: React.ElementType; badg
   { id: "settings",  label: "Settings",               icon: Settings },
   { id: "support",   label: "Support",                icon: HeadphonesIcon },
   { id: "landing",   label: "Landing Page",           icon: Globe },
+  { id: "about",     label: "About Page",             icon: Globe },
+  { id: "pricing",   label: "Pricing Page",           icon: Globe },
+  { id: "security",  label: "Security Page",          icon: Globe },
+  { id: "help",      label: "Help Page",              icon: Globe },
 ];
-
 /* ─── Types ──────────────────────────────────────────────────────── */
 
 type ListItem = { id: string; value: string };
@@ -441,16 +448,90 @@ function GlobalPanel() {
 }
 
 function DashboardPanel() {
-  const [emptyWallets, setEmptyWallets] = useState("Make a deposit to get started");
-  const [emptyAssets, setEmptyAssets] = useState("Deposit to see your allocation");
+  // Top Header Area
+  const [portfolioLabel, setPortfolioLabel] = useState("Total Portfolio Value");
+  const [timeframeLabel, setTimeframeLabel] = useState("this month");
+  const [cadBalanceLabel, setCadBalanceLabel] = useState("CAD Balance");
+  const [depositBtn, setDepositBtn] = useState("Deposit");
+  const [withdrawBtn, setWithdrawBtn] = useState("Withdraw");
+
+  // Performance Chart
+  const [perfTitle, setPerfTitle] = useState("Portfolio Performance");
+  const [dateFrom, setDateFrom] = useState("From date");
+  const [dateTo, setDateTo] = useState("To date");
+  const [tooltipCad, setTooltipCad] = useState("CAD Value");
+
+  // Asset Allocation
+  const [allocTitle, setAllocTitle] = useState("Asset Allocation");
+  const [emptyAssetsTitle, setEmptyAssetsTitle] = useState("No assets yet");
+  const [emptyAssetsSub, setEmptyAssetsSub] = useState("Deposit to see your allocation");
+
+  // Wallets Grid
+  const [emptyWalletsTitle, setEmptyWalletsTitle] = useState("No wallets yet");
+  const [emptyWalletsSub, setEmptyWalletsSub] = useState("Make a deposit to get started");
+
+  // Recent Transactions
+  const [txTitle, setTxTitle] = useState("Recent Transactions");
+  const [txViewAll, setTxViewAll] = useState("View All");
+  const [txLoading, setTxLoading] = useState("Loading transactions...");
   const [emptyTx, setEmptyTx] = useState("No recent transactions");
+  const [txDetailsBtn, setTxDetailsBtn] = useState("View Details");
+
+  // Transaction Details Modal
+  const [modalTitle, setModalTitle] = useState("Transaction Details");
+  const [modalAmount, setModalAmount] = useState("Amount");
+  const [modalBalBefore, setModalBalBefore] = useState("Total Balance Before");
+  const [modalNewBal, setModalNewBal] = useState("Available Balance");
+  const [modalStatus, setModalStatus] = useState("Status");
+  const [modalReason, setModalReason] = useState("Rejection Reason");
 
   return (
     <div className="space-y-6">
-      <ContentCard title="Empty State Messages" icon={<LayoutDashboard className="h-4 w-4" />}>
-        <TextField label="No wallets — sub-text" value={emptyWallets} onChange={setEmptyWallets} updatedAt="Jul 1, 2026 at 11:30 AM" />
-        <TextField label="No assets in allocation chart" value={emptyAssets} onChange={setEmptyAssets} updatedAt="Jul 1, 2026 at 11:30 AM" />
-        <TextField label="No recent transactions" value={emptyTx} onChange={setEmptyTx} updatedAt="Jul 1, 2026 at 11:30 AM" />
+      <ContentCard title="Top Header Area" icon={<LayoutDashboard className="h-4 w-4" />}>
+        <TextField label="Portfolio Label" value={portfolioLabel} onChange={setPortfolioLabel} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Timeframe Label" value={timeframeLabel} onChange={setTimeframeLabel} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="CAD Balance Label" value={cadBalanceLabel} onChange={setCadBalanceLabel} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <div className="grid grid-cols-2 gap-4">
+          <TextField label="Deposit Button" value={depositBtn} onChange={setDepositBtn} updatedAt="Jul 9, 2026 at 10:30 AM" />
+          <TextField label="Withdraw Button" value={withdrawBtn} onChange={setWithdrawBtn} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        </div>
+      </ContentCard>
+
+      <ContentCard title="Performance Chart" icon={<LayoutDashboard className="h-4 w-4" />}>
+        <TextField label="Section Title" value={perfTitle} onChange={setPerfTitle} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <div className="grid grid-cols-2 gap-4">
+          <TextField label="'From date' Placeholder" value={dateFrom} onChange={setDateFrom} updatedAt="Jul 9, 2026 at 10:30 AM" />
+          <TextField label="'To date' Placeholder" value={dateTo} onChange={setDateTo} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        </div>
+        <TextField label="Tooltip Value Label" value={tooltipCad} onChange={setTooltipCad} updatedAt="Jul 9, 2026 at 10:30 AM" />
+      </ContentCard>
+
+      <ContentCard title="Asset Allocation" icon={<LayoutDashboard className="h-4 w-4" />}>
+        <TextField label="Section Title" value={allocTitle} onChange={setAllocTitle} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Empty State Title" value={emptyAssetsTitle} onChange={setEmptyAssetsTitle} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Empty State Sub-text" value={emptyAssetsSub} onChange={setEmptyAssetsSub} updatedAt="Jul 9, 2026 at 10:30 AM" />
+      </ContentCard>
+
+      <ContentCard title="Wallets Grid" icon={<LayoutDashboard className="h-4 w-4" />}>
+        <TextField label="Empty State Title" value={emptyWalletsTitle} onChange={setEmptyWalletsTitle} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Empty State Sub-text" value={emptyWalletsSub} onChange={setEmptyWalletsSub} updatedAt="Jul 9, 2026 at 10:30 AM" />
+      </ContentCard>
+
+      <ContentCard title="Recent Transactions" icon={<LayoutDashboard className="h-4 w-4" />}>
+        <TextField label="Section Title" value={txTitle} onChange={setTxTitle} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="'View All' Link" value={txViewAll} onChange={setTxViewAll} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Loading State" value={txLoading} onChange={setTxLoading} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Empty State Text" value={emptyTx} onChange={setEmptyTx} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="'View Details' Button" value={txDetailsBtn} onChange={setTxDetailsBtn} updatedAt="Jul 9, 2026 at 10:30 AM" />
+      </ContentCard>
+
+      <ContentCard title="Transaction Details Modal" icon={<LayoutDashboard className="h-4 w-4" />}>
+        <TextField label="Modal Title" value={modalTitle} onChange={setModalTitle} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Amount Label" value={modalAmount} onChange={setModalAmount} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Balance Before Label (Prefix)" value={modalBalBefore} onChange={setModalBalBefore} helper="e.g. 'Total Balance Before [type]'" updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="New Balance Label" value={modalNewBal} onChange={setModalNewBal} helper="e.g. '[Remaining/New] Available Balance'" updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Status Label" value={modalStatus} onChange={setModalStatus} updatedAt="Jul 9, 2026 at 10:30 AM" />
+        <TextField label="Rejection Reason Label" value={modalReason} onChange={setModalReason} updatedAt="Jul 9, 2026 at 10:30 AM" />
       </ContentCard>
     </div>
   );
@@ -732,6 +813,9 @@ function LandingPanel() {
   const [featHeading, setFeatHeading] = useState("Everything a modern Canadian needs from a bank.");
   const [featSub, setFeatSub] = useState("We've rebuilt banking from the ground up to support both your traditional financial needs and your digital asset investments.");
   const [featBtn, setFeatBtn] = useState("Explore all features");
+  const [feat8Title, setFeat8Title] = useState("And much more");
+  const [feat8Desc, setFeat8Desc] = useState("Discover the full power of CDNT.");
+  const [feat8Btn, setFeat8Btn] = useState("Get Started");
   const [featList, setFeatList] = useState<ComplexListItem[]>(makeComplexList([
     { title: "Crypto + Fiat Wallet", description: "Hold CAD and digital assets side by side in one unified interface." },
     { title: "Instant e-Transfer", description: "Send and receive Interac e-Transfers in seconds, free of charge." },
@@ -801,6 +885,15 @@ function LandingPanel() {
         <TextField label="Section Subheading" value={featSub} onChange={setFeatSub} multiline rows={2} updatedAt="Jul 9, 2026 at 10:00 AM" />
         <TextField label="CTA Button Label" value={featBtn} onChange={setFeatBtn} updatedAt="Jul 9, 2026 at 10:00 AM" />
         <ComplexListEditor label="Feature Cards (Title & Description)" items={featList} onChange={setFeatList} updatedAt="Jul 9, 2026 at 10:00 AM" />
+        
+        <div className="pt-4 border-t border-gray-100 mt-4">
+          <FieldLabel>8th CTA Card (In Grid)</FieldLabel>
+          <div className="space-y-4">
+            <TextField label="Card Title" value={feat8Title} onChange={setFeat8Title} updatedAt="Jul 9, 2026 at 10:30 AM" />
+            <TextField label="Card Description" value={feat8Desc} onChange={setFeat8Desc} updatedAt="Jul 9, 2026 at 10:30 AM" />
+            <TextField label="Button Label" value={feat8Btn} onChange={setFeat8Btn} updatedAt="Jul 9, 2026 at 10:30 AM" />
+          </div>
+        </div>
       </ContentCard>
 
       <ContentCard title="3. Digital Assets Section" icon={<Globe className="h-4 w-4" />}>
@@ -841,6 +934,181 @@ function LandingPanel() {
   );
 }
 
+function AboutPanel() {
+  const [headerTitle, setHeaderTitle] = useState("About Canadian National Trust Bank");
+  const [headerSub, setHeaderSub] = useState("We're building the future of banking in Canada...");
+  const [missionTitle, setMissionTitle] = useState("Our Mission");
+  const [missionText, setMissionText] = useState("To democratize access to cryptocurrency...");
+  const [visionTitle, setVisionTitle] = useState("Our Vision");
+  const [visionText, setVisionText] = useState("To become Canada's most trusted digital banking...");
+  const [whyTitle, setWhyTitle] = useState("Why Choose Canadian National Trust Bank");
+  const [whySub, setWhySub] = useState("Built with trust, security, and simplicity at the core");
+  const [secBullets, setSecBullets] = useState<ListItem[]>(makeList(["Multi-signature cold storage", "Two-factor authentication", "Real-time fraud detection", "Insurance up to $250,000"]));
+  const [custBullets, setCustBullets] = useState<ListItem[]>(makeList(["24/7 customer support", "No hidden fees", "Transparent pricing", "Educational resources"]));
+  const [compBullets, setCompBullets] = useState<ListItem[]>(makeList(["FINTRAC registered MSB", "KYC/AML compliant", "Regular security audits", "Canadian regulated"]));
+  const [stats, setStats] = useState<ListItem[]>(makeList(["100,000+ / Active Users", "$2.50B+ / Assets Protected", "99.9% / Uptime SLA", "24/7 / Customer Support"]));
+  const [ctaTitle, setCtaTitle] = useState("Ready to Get Started?");
+  const [ctaSub, setCtaSub] = useState("Join thousands of Canadians who trust Canadian National Trust Bank...");
+  const [ctaBtn, setCtaBtn] = useState("Open Your Account Today");
+
+  return (
+    <div className="space-y-6">
+      <ContentCard title="Header Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Title" value={headerTitle} onChange={setHeaderTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subtitle" value={headerSub} onChange={setHeaderSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Mission & Vision" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Mission Statement" value={missionText} onChange={setMissionText} multiline rows={3} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Vision Statement" value={visionText} onChange={setVisionText} multiline rows={3} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Why Choose Us" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={whyTitle} onChange={setWhyTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Section Subtitle" value={whySub} onChange={setWhySub} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ListEditor label="Security Bullets" items={secBullets} onChange={setSecBullets} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ListEditor label="Customer First Bullets" items={custBullets} onChange={setCustBullets} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ListEditor label="Compliance Bullets" items={compBullets} onChange={setCompBullets} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Stats Section" icon={<Globe className="h-4 w-4" />}>
+        <ListEditor label="Stats (Format: Value / Label)" items={stats} onChange={setStats} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="CTA Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Heading" value={ctaTitle} onChange={setCtaTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subheading" value={ctaSub} onChange={setCtaSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Button Label" value={ctaBtn} onChange={setCtaBtn} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+    </div>
+  );
+}
+
+function PricingPanel() {
+  const [headerTitle, setHeaderTitle] = useState("Simple, Transparent Pricing");
+  const [headerSub, setHeaderSub] = useState("No hidden fees. No surprises. Just straightforward pricing designed for Canadians.");
+  const [incTitle, setIncTitle] = useState("Included With Every Account");
+  const [incSub, setIncSub] = useState("Everything you need to manage your crypto, at no extra cost.");
+  const [incFeat, setIncFeat] = useState<ListItem[]>(makeList(["Bank-grade security & encryption", "Two-factor authentication", "Multi-signature cold storage"]));
+  const [faqTitle, setFaqTitle] = useState("Pricing FAQs");
+  const [faqs, setFaqs] = useState<ComplexListItem[]>(makeComplexList([
+    { title: "Are there any monthly or annual fees?", description: "Canadian National Trust Bank does not charge any monthly, annual, or account maintenance fees..." },
+    { title: "Can I withdraw to my bank account for free?", description: "Interac e-Transfer withdrawals cost a flat $2.50 CAD per transaction..." }
+  ]));
+  const [ctaTitle, setCtaTitle] = useState("Ready to Started?");
+  const [ctaSub, setCtaSub] = useState("Open your account today. No hidden fees, no surprises.");
+  const [ctaBtn, setCtaBtn] = useState("Create Free Account");
+
+  return (
+    <div className="space-y-6">
+      <ContentCard title="Header Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Title" value={headerTitle} onChange={setHeaderTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subtitle" value={headerSub} onChange={setHeaderSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Included Features" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={incTitle} onChange={setIncTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Section Subtitle" value={incSub} onChange={setIncSub} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ListEditor label="Feature List" items={incFeat} onChange={setIncFeat} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="FAQs" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={faqTitle} onChange={setFaqTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ComplexListEditor label="Q&A List" items={faqs} onChange={setFaqs} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="CTA Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Heading" value={ctaTitle} onChange={setCtaTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subheading" value={ctaSub} onChange={setCtaSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Button Label" value={ctaBtn} onChange={setCtaBtn} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+    </div>
+  );
+}
+
+function SecurityPanel() {
+  const [headerTitle, setHeaderTitle] = useState("Your Security is Our Priority");
+  const [headerSub, setHeaderSub] = useState("We employ bank-grade security measures to protect your funds...");
+  const [badges, setBadges] = useState<ListItem[]>(makeList(["FINTRAC Registered", "256-bit Encryption", "Cold Storage", "$250K Insurance"]));
+  const [archTitle, setArchTitle] = useState("Multi-Layer Security Architecture");
+  const [archSub, setArchSub] = useState("Every layer designed to protect your assets");
+  const [authTitle, setAuthTitle] = useState("Two-Factor Authentication (2FA)");
+  const [authDesc, setAuthDesc] = useState("Add an extra layer of security to your account with mandatory two-factor authentication...");
+  const [authBullets, setAuthBullets] = useState<ListItem[]>(makeList(["Authenticator app support", "Hardware security key support", "Required for all withdrawals", "Backup codes for recovery"]));
+  const [compTitle, setCompTitle] = useState("Regulatory Compliance");
+  const [compSub, setCompSub] = useState("Fully compliant with Canadian financial regulations");
+  const [compCards, setCompCards] = useState<ComplexListItem[]>(makeComplexList([
+    { title: "FINTRAC Registration", description: "Registered as a Money Services Business (MSB)..." },
+    { title: "KYC/AML Compliance", description: "Strict Know Your Customer and Anti-Money Laundering procedures..." },
+    { title: "Regular Audits", description: "Independent third-party security audits to maintain integrity..." }
+  ]));
+  const [ctaTitle, setCtaTitle] = useState("Your Security, Our Promise");
+  const [ctaSub, setCtaSub] = useState("Experience the peace of mind that comes with bank-grade security.");
+  const [ctaBtn, setCtaBtn] = useState("Open Secure Account");
+
+  return (
+    <div className="space-y-6">
+      <ContentCard title="Header Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Title" value={headerTitle} onChange={setHeaderTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subtitle" value={headerSub} onChange={setHeaderSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Four Badges" icon={<Globe className="h-4 w-4" />}>
+        <ListEditor label="Badge Titles" items={badges} onChange={setBadges} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Architecture Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={archTitle} onChange={setArchTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Section Subtitle" value={archSub} onChange={setArchSub} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Two-Factor Auth Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={authTitle} onChange={setAuthTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Description" value={authDesc} onChange={setAuthDesc} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ListEditor label="Bullet Points" items={authBullets} onChange={setAuthBullets} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Regulatory Compliance" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={compTitle} onChange={setCompTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Section Subtitle" value={compSub} onChange={setCompSub} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ComplexListEditor label="Compliance Cards" items={compCards} onChange={setCompCards} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="CTA Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Heading" value={ctaTitle} onChange={setCtaTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subheading" value={ctaSub} onChange={setCtaSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Button Label" value={ctaBtn} onChange={setCtaBtn} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+    </div>
+  );
+}
+
+function HelpPanel() {
+  const [headerTitle, setHeaderTitle] = useState("How Can We Help?");
+  const [headerSub, setHeaderSub] = useState("Search our knowledge base or browse categories below");
+  const [searchPlace, setSearchPlace] = useState("Search for help articles...");
+  const [faqTitle, setFaqTitle] = useState("Frequently Asked Questions");
+  const [faqSub, setFaqSub] = useState("Quick answers to common questions");
+  const [faqs, setFaqs] = useState<ListItem[]>(makeList(["How long does KYC verification take?", "What are the withdrawal fees?", "Is my cryptocurrency insured?"]));
+  const [helpTitle, setHelpTitle] = useState("Still Need Help?");
+  const [helpSub, setHelpSub] = useState("Our support team is here for you");
+  const [btnChat, setBtnChat] = useState("Start Chat");
+  const [btnEmail, setBtnEmail] = useState("Email Us");
+  const [btnPhone, setBtnPhone] = useState("Premium Feature");
+
+  return (
+    <div className="space-y-6">
+      <ContentCard title="Header Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Title" value={headerTitle} onChange={setHeaderTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Subtitle" value={headerSub} onChange={setHeaderSub} multiline rows={2} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Search Input Placeholder" value={searchPlace} onChange={setSearchPlace} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="FAQs (Quick Answers)" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={faqTitle} onChange={setFaqTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Section Subtitle" value={faqSub} onChange={setFaqSub} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <ListEditor label="Question List" items={faqs} onChange={setFaqs} updatedAt="Jul 9, 2026 at 11:00 AM" />
+      </ContentCard>
+      <ContentCard title="Still Need Help Section" icon={<Globe className="h-4 w-4" />}>
+        <TextField label="Section Title" value={helpTitle} onChange={setHelpTitle} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <TextField label="Section Subtitle" value={helpSub} onChange={setHelpSub} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+          <TextField label="Live Chat Button" value={btnChat} onChange={setBtnChat} updatedAt="Jul 9, 2026 at 11:00 AM" />
+          <TextField label="Email Button" value={btnEmail} onChange={setBtnEmail} updatedAt="Jul 9, 2026 at 11:00 AM" />
+          <TextField label="Phone Button" value={btnPhone} onChange={setBtnPhone} updatedAt="Jul 9, 2026 at 11:00 AM" />
+        </div>
+      </ContentCard>
+    </div>
+  );
+}
+
 /* ─── Panel Router ───────────────────────────────────────────────── */
 
 function PanelForCategory({ id }: { id: CategoryId }) {
@@ -855,6 +1123,10 @@ function PanelForCategory({ id }: { id: CategoryId }) {
     case "settings":  return <SettingsPanel />;
     case "support":   return <SupportPanel />;
     case "landing":   return <LandingPanel />;
+    case "about":     return <AboutPanel />;
+    case "pricing":   return <PricingPanel />;
+    case "security":  return <SecurityPanel />;
+    case "help":      return <HelpPanel />;
     default:          return null;
   }
 }
