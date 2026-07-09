@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Megaphone,
@@ -26,6 +26,7 @@ import {
   Clock,
   Globe,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 
@@ -295,12 +296,27 @@ function ContentCard({
   title,
   icon,
   children,
+  onSave,
 }: {
   title: string;
   icon?: React.ReactNode;
   children: React.ReactNode;
+  onSave?: () => Promise<void> | void;
 }) {
   const [saved, setSaved] = useState(false);
+  
+  const handleSave = async () => {
+    if (onSave) {
+      try {
+        await onSave();
+      } catch (err) {
+        console.error("Save failed:", err);
+      }
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2.5">
@@ -309,7 +325,7 @@ function ContentCard({
       </div>
       <div className="px-5 py-5 space-y-5">
         {children}
-        <SaveRow onSave={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }} saved={saved} />
+        <SaveRow onSave={handleSave} saved={saved} />
       </div>
     </div>
   );
@@ -328,6 +344,18 @@ const BANNER_COLORS = [
 
 /* ─── Category Panels ────────────────────────────────────────────── */
 
+async function updateContentKey(key: string, value: any, type: string, category: string, label: string) {
+  const { error } = await supabase.from("site_content").upsert({
+    key,
+    value,
+    type,
+    category,
+    label,
+    updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+}
+
 function GlobalPanel() {
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [bannerText, setBannerText] = useState("Welcome to NorthUnion — your trusted digital asset platform.");
@@ -336,8 +364,55 @@ function GlobalPanel() {
   const [bannerSaved, setBannerSaved] = useState(false);
   const [headerTagline, setHeaderTagline] = useState("Here's what's happening with your portfolio today");
   const [frozenMsg, setFrozenMsg] = useState("Your account has been temporarily restricted. Please contact support.");
+  const [loading, setLoading] = useState(true);
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data, error } = await supabase
+          .from("site_content")
+          .select("key, value")
+          .eq("category", "global");
+        if (!error && data) {
+          data.forEach((row) => {
+            if (row.key === "global.banner.enabled") setBannerEnabled(row.value);
+            if (row.key === "global.banner.text") setBannerText(row.value);
+            if (row.key === "global.banner.url") setBannerUrl(row.value);
+            if (row.key === "global.banner.color") setBannerColor(row.value);
+            if (row.key === "global.header_tagline") setHeaderTagline(row.value);
+            if (row.key === "global.account_frozen_message") setFrozenMsg(row.value);
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching global content:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const saveBanner = async () => {
+    await updateContentKey("global.banner.enabled", bannerEnabled, "boolean", "global", "Banner Enabled");
+    await updateContentKey("global.banner.text", bannerText, "text", "global", "Banner Message");
+    await updateContentKey("global.banner.url", bannerUrl, "text", "global", "Link URL");
+    await updateContentKey("global.banner.color", bannerColor, "text", "global", "Color Theme");
+  };
+
+  const saveTagline = async () => {
+    await updateContentKey("global.header_tagline", headerTagline, "text", "global", "Header Tagline");
+  };
+
+  const saveFrozenMsg = async () => {
+    await updateContentKey("global.account_frozen_message", frozenMsg, "text_multiline", "global", "Account Frozen Message");
+  };
 
   const selectedBg = BANNER_COLORS.find((c) => c.id === bannerColor)?.bg ?? "#1650AB";
+
+  if (loading) {
+    return <div className="text-sm text-gray-500 py-4">Loading Settings...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -383,7 +458,6 @@ function GlobalPanel() {
             value={bannerText}
             onChange={setBannerText}
             placeholder="Enter announcement text..."
-            updatedAt="Jul 9, 2026 at 10:00 AM"
           />
 
           <div>
@@ -418,29 +492,35 @@ function GlobalPanel() {
           </div>
 
           <SaveRow
-            onSave={() => { setBannerSaved(true); setTimeout(() => setBannerSaved(false), 2000); }}
+            onSave={async () => {
+              try {
+                await saveBanner();
+                setBannerSaved(true);
+                setTimeout(() => setBannerSaved(false), 2000);
+              } catch (err) {
+                console.error("Save failed:", err);
+              }
+            }}
             saved={bannerSaved}
           />
         </div>
       </div>
 
-      <ContentCard title="Header Tagline" icon={<LayoutDashboard className="h-4 w-4" />}>
+      <ContentCard title="Header Tagline" icon={<LayoutDashboard className="h-4 w-4" />} onSave={saveTagline}>
         <TextField
           label="Text shown in the dashboard top header bar"
           value={headerTagline}
           onChange={setHeaderTagline}
-          updatedAt="Jul 5, 2026 at 2:15 PM"
         />
       </ContentCard>
 
-      <ContentCard title="Account Frozen Message" icon={<AlertTriangle className="h-4 w-4" />}>
+      <ContentCard title="Account Frozen Message" icon={<AlertTriangle className="h-4 w-4" />} onSave={saveFrozenMsg}>
         <TextField
           label="Message shown to users whose account is frozen"
           value={frozenMsg}
           onChange={setFrozenMsg}
           multiline
           rows={2}
-          updatedAt="Jun 28, 2026 at 9:00 AM"
         />
       </ContentCard>
     </div>
@@ -801,13 +881,15 @@ function SupportPanel() {
 }
 
 function LandingPanel() {
+  const [loading, setLoading] = useState(true);
+
   // Hero
   const [trustBadge, setTrustBadge] = useState("FINTRAC registered · CDIC-style insured deposits");
   const [heroHeadline, setHeroHeadline] = useState("Banking Meets\nCrypto\nIntelligence");
   const [heroBody, setHeroBody] = useState("A regulated Canadian digital bank with a built-in crypto engine. Move money, save smarter, and invest in digital assets — all from one elegant, insured account.");
   const [heroBtn1, setHeroBtn1] = useState("Open Account");
   const [heroBtn2, setHeroBtn2] = useState("Explore Platform");
-  const [heroStats, setHeroStats] = useState<ListItem[]>(makeList(["2M+ / Canadians onboard", "$2.4B / Assets secured", "4.9 / App Store"]));
+  const [heroStats, setHeroStats] = useState<ListItem[]>([]);
 
   // Features
   const [featHeading, setFeatHeading] = useState("Everything a modern Canadian needs from a bank.");
@@ -816,15 +898,7 @@ function LandingPanel() {
   const [feat8Title, setFeat8Title] = useState("And much more");
   const [feat8Desc, setFeat8Desc] = useState("Discover the full power of CDNT.");
   const [feat8Btn, setFeat8Btn] = useState("Get Started");
-  const [featList, setFeatList] = useState<ComplexListItem[]>(makeComplexList([
-    { title: "Crypto + Fiat Wallet", description: "Hold CAD and digital assets side by side in one unified interface." },
-    { title: "Instant e-Transfer", description: "Send and receive Interac e-Transfers in seconds, free of charge." },
-    { title: "Crypto Investing", description: "Buy and sell 50+ cryptocurrencies with low, transparent fees." },
-    { title: "Global Transfers", description: "Send money internationally at mid-market rates with zero hidden markups." },
-    { title: "Smart Savings", description: "Earn high-yield interest on your Canadian Dollar deposits automatically." },
-    { title: "AI Financial Insights", description: "Get personalized alerts and insights to optimize your spending and saving." },
-    { title: "Portfolio Tracking", description: "Monitor your entire net worth with beautiful, real-time exotic curves." }
-  ]));
+  const [featList, setFeatList] = useState<ComplexListItem[]>([]);
 
   // Digital Assets
   const [assetsOverline, setAssetsOverline] = useState("Digital Banking");
@@ -833,21 +907,13 @@ function LandingPanel() {
   // Onboarding
   const [onboardOverline, setOnboardOverline] = useState("Getting Started");
   const [onboardHeading, setOnboardHeading] = useState("From signup to first trade in minutes.");
-  const [onboardList, setOnboardList] = useState<ComplexListItem[]>(makeComplexList([
-    { title: "Create your account", description: "Sign up online. ID documents and social insurance number required." },
-    { title: "Verify your Identity", description: "Government-issued ID, powered by Interac. Approved in minutes." },
-    { title: "Start banking & investing", description: "Load your account, buy crypto, save smarter, and earn through the app." }
-  ]));
+  const [onboardList, setOnboardList] = useState<ComplexListItem[]>([]);
 
   // App Preview
   const [appOverline, setAppOverline] = useState("Your Pocket Branch");
   const [appHeading, setAppHeading] = useState("Your entire financial life, in your pocket.");
   const [appBody, setAppBody] = useState("Send money, manage cards, track investments and oversee your crypto portfolio — all from one beautifully designed interface.");
-  const [appBenefits, setAppBenefits] = useState<ListItem[]>(makeList([
-    "Portfolio profiles with live data and live exotic curves",
-    "Portfolio analytics with your daily and live exotic curves",
-    "Instant e-Transfers, bill pay, and crypto through the app"
-  ]));
+  const [appBenefits, setAppBenefits] = useState<ListItem[]>([]);
 
   // CTA
   const [ctaOverline, setCtaOverline] = useState("Your Financial Future");
@@ -860,75 +926,193 @@ function LandingPanel() {
   const [footerTagline, setFooterTagline] = useState("A modern Canadian digital bank uniting traditional finance with regulated digital assets.");
   const [footerReg, setFooterReg] = useState("Canadian National Trust Bank is a federally regulated Canadian financial institution. FINTRAC #M24-0042001.");
   const [footerCopy, setFooterCopy] = useState("© 2026 Canadian National Trust Bank, Inc. All rights reserved.");
-  const [footerLinks, setFooterLinks] = useState<ComplexListItem[]>(makeComplexList([
-    { title: "Company", description: "About, Careers, Press, Blog" },
-    { title: "Products", description: "Banking, Crypto, Savings, Cards" },
-    { title: "Legal", description: "Terms, Privacy, Cookies, Disclosures" },
-    { title: "Security", description: "Trust center, Vulnerability, Status, Audits" }
-  ]));
+  const [footerLinks, setFooterLinks] = useState<ComplexListItem[]>([]);
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data, error } = await supabase
+          .from("site_content")
+          .select("key, value")
+          .eq("category", "landing");
+
+        if (!error && data) {
+          data.forEach((row) => {
+            // Hero
+            if (row.key === "landing.hero.trust_badge") setTrustBadge(row.value);
+            if (row.key === "landing.hero.headline") setHeroHeadline(row.value);
+            if (row.key === "landing.hero.body") setHeroBody(row.value);
+            if (row.key === "landing.hero.btn1") setHeroBtn1(row.value);
+            if (row.key === "landing.hero.btn2") setHeroBtn2(row.value);
+            if (row.key === "landing.hero.stats") setHeroStats(makeList(row.value || []));
+
+            // Features
+            if (row.key === "landing.features.heading") setFeatHeading(row.value);
+            if (row.key === "landing.features.sub") setFeatSub(row.value);
+            if (row.key === "landing.features.btn") setFeatBtn(row.value);
+            if (row.key === "landing.features.cta_card_title") setFeat8Title(row.value);
+            if (row.key === "landing.features.cta_card_desc") setFeat8Desc(row.value);
+            if (row.key === "landing.features.cta_card_btn") setFeat8Btn(row.value);
+            if (row.key === "landing.features.list") setFeatList(makeComplexList(row.value || []));
+
+            // Assets
+            if (row.key === "landing.assets.overline") setAssetsOverline(row.value);
+            if (row.key === "landing.assets.heading") setAssetsHeading(row.value);
+
+            // Onboarding
+            if (row.key === "landing.onboarding.overline") setOnboardOverline(row.value);
+            if (row.key === "landing.onboarding.heading") setOnboardHeading(row.value);
+            if (row.key === "landing.onboarding.steps") setOnboardList(makeComplexList(row.value || []));
+
+            // App Preview
+            if (row.key === "landing.app.overline") setAppOverline(row.value);
+            if (row.key === "landing.app.heading") setAppHeading(row.value);
+            if (row.key === "landing.app.body") setAppBody(row.value);
+            if (row.key === "landing.app.benefits") setAppBenefits(makeList(row.value || []));
+
+            // CTA
+            if (row.key === "landing.cta.overline") setCtaOverline(row.value);
+            if (row.key === "landing.cta.heading") setCtaHeading(row.value);
+            if (row.key === "landing.cta.body") setCtaBody(row.value);
+            if (row.key === "landing.cta.btn1") setCtaBtn1(row.value);
+            if (row.key === "landing.cta.btn2") setCtaBtn2(row.value);
+
+            // Footer
+            if (row.key === "landing.footer.tagline") setFooterTagline(row.value);
+            if (row.key === "landing.footer.regulatory") setFooterReg(row.value);
+            if (row.key === "landing.footer.copyright") setFooterCopy(row.value);
+            if (row.key === "landing.footer.links") setFooterLinks(makeComplexList(row.value || []));
+          });
+        }
+      } catch (err) {
+        console.error("Error loading landing settings:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Save triggers
+  const saveHero = async () => {
+    await updateContentKey("landing.hero.trust_badge", trustBadge, "text", "landing", "Trust Badge Text");
+    await updateContentKey("landing.hero.headline", heroHeadline, "text_multiline", "landing", "Main Headline");
+    await updateContentKey("landing.hero.body", heroBody, "text_multiline", "landing", "Hero Body Copy");
+    await updateContentKey("landing.hero.btn1", heroBtn1, "text", "landing", "Primary Button");
+    await updateContentKey("landing.hero.btn2", heroBtn2, "text", "landing", "Secondary Button");
+    await updateContentKey("landing.hero.stats", heroStats.map(s => s.value), "json_array", "landing", "Hero Stats");
+  };
+
+  const saveFeatures = async () => {
+    await updateContentKey("landing.features.heading", featHeading, "text", "landing", "Section Heading");
+    await updateContentKey("landing.features.sub", featSub, "text_multiline", "landing", "Section Subheading");
+    await updateContentKey("landing.features.btn", featBtn, "text", "landing", "CTA Button Label");
+    await updateContentKey("landing.features.list", featList.map(i => ({ title: i.title, description: i.description })), "json_complex", "landing", "Feature Cards");
+    await updateContentKey("landing.features.cta_card_title", feat8Title, "text", "landing", "8th CTA Card Title");
+    await updateContentKey("landing.features.cta_card_desc", feat8Desc, "text", "landing", "8th CTA Card Desc");
+    await updateContentKey("landing.features.cta_card_btn", feat8Btn, "text", "landing", "8th CTA Card Button");
+  };
+
+  const saveAssets = async () => {
+    await updateContentKey("landing.assets.overline", assetsOverline, "text", "landing", "Overline Text");
+    await updateContentKey("landing.assets.heading", assetsHeading, "text", "landing", "Section Heading");
+  };
+
+  const saveOnboarding = async () => {
+    await updateContentKey("landing.onboarding.overline", onboardOverline, "text", "landing", "Overline Text");
+    await updateContentKey("landing.onboarding.heading", onboardHeading, "text", "landing", "Section Heading");
+    await updateContentKey("landing.onboarding.steps", onboardList.map(i => ({ title: i.title, description: i.description })), "json_complex", "landing", "Steps");
+  };
+
+  const saveApp = async () => {
+    await updateContentKey("landing.app.overline", appOverline, "text", "landing", "Overline Text");
+    await updateContentKey("landing.app.heading", appHeading, "text", "landing", "Section Heading");
+    await updateContentKey("landing.app.body", appBody, "text_multiline", "landing", "Section Body");
+    await updateContentKey("landing.app.benefits", appBenefits.map(b => b.value), "json_array", "landing", "Benefits List");
+  };
+
+  const saveCta = async () => {
+    await updateContentKey("landing.cta.overline", ctaOverline, "text", "landing", "Overline Text");
+    await updateContentKey("landing.cta.heading", ctaHeading, "text", "landing", "Section Heading");
+    await updateContentKey("landing.cta.body", ctaBody, "text_multiline", "landing", "Section Body");
+    await updateContentKey("landing.cta.btn1", ctaBtn1, "text", "landing", "Primary CTA Button");
+    await updateContentKey("landing.cta.btn2", ctaBtn2, "text", "landing", "Secondary CTA Button");
+  };
+
+  const saveFooter = async () => {
+    await updateContentKey("landing.footer.tagline", footerTagline, "text_multiline", "landing", "Tagline");
+    await updateContentKey("landing.footer.regulatory", footerReg, "text_multiline", "landing", "Regulatory Text");
+    await updateContentKey("landing.footer.copyright", footerCopy, "text", "landing", "Copyright Text");
+    await updateContentKey("landing.footer.links", footerLinks.map(i => ({ title: i.title, description: i.description })), "json_complex", "landing", "Footer Links");
+  };
+
+  if (loading) {
+    return <div className="text-sm text-gray-500 py-4">Loading Landing Settings...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      <ContentCard title="1. Hero Section" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Trust Badge Text" value={trustBadge} onChange={setTrustBadge} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Main Headline" value={heroHeadline} onChange={setHeroHeadline} multiline rows={3} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Body Copy" value={heroBody} onChange={setHeroBody} multiline rows={3} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="1. Hero Section" icon={<Globe className="h-4 w-4" />} onSave={saveHero}>
+        <TextField label="Trust Badge Text" value={trustBadge} onChange={setTrustBadge} />
+        <TextField label="Main Headline" value={heroHeadline} onChange={setHeroHeadline} multiline rows={3} />
+        <TextField label="Body Copy" value={heroBody} onChange={setHeroBody} multiline rows={3} />
         <div className="grid grid-cols-2 gap-4">
-          <TextField label="Primary CTA Button" value={heroBtn1} onChange={setHeroBtn1} updatedAt="Jul 9, 2026 at 10:00 AM" />
-          <TextField label="Secondary CTA Button" value={heroBtn2} onChange={setHeroBtn2} updatedAt="Jul 9, 2026 at 10:00 AM" />
+          <TextField label="Primary CTA Button" value={heroBtn1} onChange={setHeroBtn1} />
+          <TextField label="Secondary CTA Button" value={heroBtn2} onChange={setHeroBtn2} />
         </div>
-        <ListEditor label="Hero Stats (Format: Value / Label)" items={heroStats} onChange={setHeroStats} updatedAt="Jul 9, 2026 at 10:00 AM" />
+        <ListEditor label="Hero Stats (Format: Value / Label)" items={heroStats} onChange={setHeroStats} />
       </ContentCard>
 
-      <ContentCard title="2. Features Section" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Section Heading" value={featHeading} onChange={setFeatHeading} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Subheading" value={featSub} onChange={setFeatSub} multiline rows={2} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="CTA Button Label" value={featBtn} onChange={setFeatBtn} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <ComplexListEditor label="Feature Cards (Title & Description)" items={featList} onChange={setFeatList} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="2. Features Section" icon={<Globe className="h-4 w-4" />} onSave={saveFeatures}>
+        <TextField label="Section Heading" value={featHeading} onChange={setFeatHeading} />
+        <TextField label="Section Subheading" value={featSub} onChange={setFeatSub} multiline rows={2} />
+        <TextField label="CTA Button Label" value={featBtn} onChange={setFeatBtn} />
+        <ComplexListEditor label="Feature Cards (Title & Description)" items={featList} onChange={setFeatList} />
         
         <div className="pt-4 border-t border-gray-100 mt-4">
           <FieldLabel>8th CTA Card (In Grid)</FieldLabel>
           <div className="space-y-4">
-            <TextField label="Card Title" value={feat8Title} onChange={setFeat8Title} updatedAt="Jul 9, 2026 at 10:30 AM" />
-            <TextField label="Card Description" value={feat8Desc} onChange={setFeat8Desc} updatedAt="Jul 9, 2026 at 10:30 AM" />
-            <TextField label="Button Label" value={feat8Btn} onChange={setFeat8Btn} updatedAt="Jul 9, 2026 at 10:30 AM" />
+            <TextField label="Card Title" value={feat8Title} onChange={setFeat8Title} />
+            <TextField label="Card Description" value={feat8Desc} onChange={setFeat8Desc} />
+            <TextField label="Button Label" value={feat8Btn} onChange={setFeat8Btn} />
           </div>
         </div>
       </ContentCard>
 
-      <ContentCard title="3. Digital Assets Section" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Overline Text" value={assetsOverline} onChange={setAssetsOverline} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Heading" value={assetsHeading} onChange={setAssetsHeading} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="3. Digital Assets Section" icon={<Globe className="h-4 w-4" />} onSave={saveAssets}>
+        <TextField label="Overline Text" value={assetsOverline} onChange={setAssetsOverline} />
+        <TextField label="Section Heading" value={assetsHeading} onChange={setAssetsHeading} />
       </ContentCard>
 
-      <ContentCard title="4. Onboarding Section" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Overline Text" value={onboardOverline} onChange={setOnboardOverline} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Heading" value={onboardHeading} onChange={setOnboardHeading} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <ComplexListEditor label="Steps (Title & Description)" items={onboardList} onChange={setOnboardList} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="4. Onboarding Section" icon={<Globe className="h-4 w-4" />} onSave={saveOnboarding}>
+        <TextField label="Overline Text" value={onboardOverline} onChange={setOnboardOverline} />
+        <TextField label="Section Heading" value={onboardHeading} onChange={setOnboardHeading} />
+        <ComplexListEditor label="Steps (Title & Description)" items={onboardList} onChange={setOnboardList} />
       </ContentCard>
 
-      <ContentCard title="5. App Preview Section" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Overline Text" value={appOverline} onChange={setAppOverline} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Heading" value={appHeading} onChange={setAppHeading} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Body" value={appBody} onChange={setAppBody} multiline rows={2} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <ListEditor label="Benefits List" items={appBenefits} onChange={setAppBenefits} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="5. App Preview Section" icon={<Globe className="h-4 w-4" />} onSave={saveApp}>
+        <TextField label="Overline Text" value={appOverline} onChange={setAppOverline} />
+        <TextField label="Section Heading" value={appHeading} onChange={setAppHeading} />
+        <TextField label="Section Body" value={appBody} onChange={setAppBody} multiline rows={2} />
+        <ListEditor label="Benefits List" items={appBenefits} onChange={setAppBenefits} />
       </ContentCard>
 
-      <ContentCard title="6. CTA Section" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Overline Text" value={ctaOverline} onChange={setCtaOverline} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Heading" value={ctaHeading} onChange={setCtaHeading} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Section Body" value={ctaBody} onChange={setCtaBody} multiline rows={2} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="6. CTA Section" icon={<Globe className="h-4 w-4" />} onSave={saveCta}>
+        <TextField label="Overline Text" value={ctaOverline} onChange={setCtaOverline} />
+        <TextField label="Section Heading" value={ctaHeading} onChange={setCtaHeading} />
+        <TextField label="Section Body" value={ctaBody} onChange={setCtaBody} multiline rows={2} />
         <div className="grid grid-cols-2 gap-4">
-          <TextField label="Primary CTA Button" value={ctaBtn1} onChange={setCtaBtn1} updatedAt="Jul 9, 2026 at 10:00 AM" />
-          <TextField label="Secondary CTA Button" value={ctaBtn2} onChange={setCtaBtn2} updatedAt="Jul 9, 2026 at 10:00 AM" />
+          <TextField label="Primary CTA Button" value={ctaBtn1} onChange={setCtaBtn1} />
+          <TextField label="Secondary CTA Button" value={ctaBtn2} onChange={setCtaBtn2} />
         </div>
       </ContentCard>
 
-      <ContentCard title="7. Footer" icon={<Globe className="h-4 w-4" />}>
-        <TextField label="Tagline" value={footerTagline} onChange={setFooterTagline} multiline rows={2} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Regulatory Text" value={footerReg} onChange={setFooterReg} multiline rows={2} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <TextField label="Copyright Text" value={footerCopy} onChange={setFooterCopy} updatedAt="Jul 9, 2026 at 10:00 AM" />
-        <ComplexListEditor label="Footer Links (Category Name & Links List)" items={footerLinks} onChange={setFooterLinks} updatedAt="Jul 9, 2026 at 10:00 AM" />
+      <ContentCard title="7. Footer" icon={<Globe className="h-4 w-4" />} onSave={saveFooter}>
+        <TextField label="Tagline" value={footerTagline} onChange={setFooterTagline} multiline rows={2} />
+        <TextField label="Regulatory Text" value={footerReg} onChange={setFooterReg} multiline rows={2} />
+        <TextField label="Copyright Text" value={footerCopy} onChange={setFooterCopy} />
+        <ComplexListEditor label="Footer Links (Category Name & Links List)" items={footerLinks} onChange={setFooterLinks} />
       </ContentCard>
     </div>
   );
