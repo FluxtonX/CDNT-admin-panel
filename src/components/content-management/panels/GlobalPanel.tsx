@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Megaphone, ToggleLeft, ToggleRight, Info, AlertTriangle, Link, LayoutDashboard } from "lucide-react";
+import { Megaphone, ToggleLeft, ToggleRight, Info, Link, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
@@ -29,7 +29,6 @@ export function GlobalPanel() {
   const [bannerColor, setBannerColor] = useState("blue");
   const [bannerSaved, setBannerSaved] = useState(false);
   const [headerTagline, setHeaderTagline] = useState("Here's what's happening with your portfolio today");
-  const [frozenMsg, setFrozenMsg] = useState("Your account has been temporarily restricted. Please contact support.");
   const [loading, setLoading] = useState(true);
 
   // Load from Supabase on mount
@@ -47,7 +46,6 @@ export function GlobalPanel() {
             if (row.key === "global.banner.url") setBannerUrl(row.value);
             if (row.key === "global.banner.color") setBannerColor(row.value);
             if (row.key === "global.header_tagline") setHeaderTagline(row.value);
-            if (row.key === "global.account_frozen_message") setFrozenMsg(row.value);
           });
         }
       } catch (err) {
@@ -68,10 +66,6 @@ export function GlobalPanel() {
 
   const saveTagline = async () => {
     await updateContentKey("global.header_tagline", headerTagline, "text", "global", "Header Tagline");
-  };
-
-  const saveFrozenMsg = async () => {
-    await updateContentKey("global.account_frozen_message", frozenMsg, "text_multiline", "global", "Account Frozen Message");
   };
 
   const selectedBg = BANNER_COLORS.find((c) => c.id === bannerColor)?.bg ?? "#1650AB";
@@ -180,15 +174,6 @@ export function GlobalPanel() {
         />
       </ContentCard>
 
-      <ContentCard title="Account Frozen Message" icon={<AlertTriangle className="h-4 w-4" />} onSave={saveFrozenMsg}>
-        <TextField
-          label="Message shown to users whose account is frozen"
-          value={frozenMsg}
-          onChange={setFrozenMsg}
-          multiline
-          rows={2}
-        />
-      </ContentCard>
     </div>
   );
 }
