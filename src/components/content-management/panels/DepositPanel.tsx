@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowDownToLine, AlertTriangle, Info } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import {
   ListItem,
   makeList,
   TextField,
   ListEditor,
   ContentCard,
+  updateContentKey,
 } from "../shared/FieldComponents";
 
 export function DepositPanel() {
@@ -25,25 +27,89 @@ export function DepositPanel() {
     "Funds are reviewed manually before balance credit.",
   ]));
 
+  // Load data from Supabase
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data, error } = await supabase
+          .from("site_content")
+          .select("key, value")
+          .eq("category", "deposit");
+        if (!error && data) {
+          data.forEach((row) => {
+            switch (row.key) {
+              case "deposit.page_subheading":
+                setPageSubheading(row.value);
+                break;
+              case "deposit.info_box":
+                setInfoBox(row.value);
+                break;
+              case "deposit.warning_box":
+                setWarningBox(row.value);
+                break;
+              case "deposit.cad_blocked":
+                setCadBlocked(row.value);
+                break;
+              case "deposit.success_title":
+                setSuccessTitle(row.value);
+                break;
+              case "deposit.success_body":
+                setSuccessBody(row.value);
+                break;
+              case "deposit.instructions":
+                if (Array.isArray(row.value)) {
+                  setInstructions(row.value.map((v: string, i: number) => ({ id: String(i), value: v })));
+                }
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error loading deposit settings:", err);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Save handlers for each section
+  const savePageHeader = async () => {
+    await updateContentKey("deposit.page_subheading", pageSubheading, "text", "deposit", "Page Subheading");
+  };
+  const saveInstructions = async () => {
+    const instructionsArray = instructions.map((item) => item.value);
+    await updateContentKey("deposit.instructions", instructionsArray, "array", "deposit", "Instruction Bullet Points");
+  };
+  const saveInfoWarning = async () => {
+    await updateContentKey("deposit.info_box", infoBox, "text", "deposit", "Info Box Text");
+    await updateContentKey("deposit.warning_box", warningBox, "text", "deposit", "Warning Box Text");
+    await updateContentKey("deposit.success_title", successTitle, "text", "deposit", "Success Title");
+    await updateContentKey("deposit.success_body", successBody, "text", "deposit", "Success Body");
+  };
+  const saveCadBlocked = async () => {
+    await updateContentKey("deposit.cad_blocked", cadBlocked, "text", "deposit", "CAD Blocked Message");
+  };
+
   return (
     <div className="space-y-6">
-      <ContentCard title="Page Header" icon={<ArrowDownToLine className="h-4 w-4" />}>
+      <ContentCard title="Page Header" icon={<ArrowDownToLine className="h-4 w-4" />} onSave={savePageHeader}>
         <TextField label="Page Subheading" value={pageSubheading} onChange={setPageSubheading} updatedAt="Jul 3, 2026 at 9:00 AM" />
       </ContentCard>
 
-      <ContentCard title="Important Instructions Block" icon={<AlertTriangle className="h-4 w-4" />}>
+      <ContentCard title="Important Instructions Block" icon={<AlertTriangle className="h-4 w-4" />} onSave={saveInstructions}>
         <p className="text-[12px] text-gray-500 -mt-1 mb-2">Shown in the amber sidebar box (Steps 1 &amp; 3).</p>
         <ListEditor label="Instruction Bullet Points" items={instructions} onChange={setInstructions} updatedAt="Jul 9, 2026 at 8:45 AM" />
       </ContentCard>
 
-      <ContentCard title="Info &amp; Warning Boxes" icon={<Info className="h-4 w-4" />}>
+      <ContentCard title="Info &amp; Warning Boxes" icon={<Info className="h-4 w-4" />} onSave={saveInfoWarning}>
         <TextField label="Blue info box text (Step 1)" value={infoBox} onChange={setInfoBox} multiline rows={3} updatedAt="Jul 2, 2026 at 4:00 PM" />
         <TextField label="Amber warning box text (Step 2)" value={warningBox} onChange={setWarningBox} updatedAt="Jul 2, 2026 at 4:00 PM" />
         <TextField label="Green success box title (Step 3)" value={successTitle} onChange={setSuccessTitle} updatedAt="Jul 2, 2026 at 4:00 PM" />
         <TextField label="Green success box body (Step 3)" value={successBody} onChange={setSuccessBody} updatedAt="Jul 2, 2026 at 4:00 PM" />
       </ContentCard>
 
-      <ContentCard title="CAD Deposit Blocked Message" icon={<AlertTriangle className="h-4 w-4" />}>
+      <ContentCard title="CAD Deposit Blocked Message" icon={<AlertTriangle className="h-4 w-4" />} onSave={saveCadBlocked}>
         <p className="text-[12px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 -mt-1 mb-2">
           Warning: This is a legal/regulatory message. Update with caution.
         </p>
