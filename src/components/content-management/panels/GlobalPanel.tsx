@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Megaphone, ToggleLeft, ToggleRight, Info, Link, LayoutDashboard } from "lucide-react";
+import { Megaphone, ToggleLeft, ToggleRight, Info, Link, LayoutDashboard, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
