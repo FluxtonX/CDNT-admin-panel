@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, Plus, GripVertical, Save, Check, Clock } from "lucide-react";
+import { Trash2, Plus, GripVertical, Save, Check, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
 
 export const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
@@ -256,17 +255,20 @@ export function ContentCard({
   onSave?: () => Promise<void> | void;
 }) {
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const handleSave = async () => {
+    setError(null);
     if (onSave) {
       try {
         await onSave();
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
       } catch (err) {
         console.error("Save failed:", err);
+        setError(err instanceof Error ? err.message : "Failed to save changes");
       }
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -277,6 +279,12 @@ export function ContentCard({
       </div>
       <div className="px-5 py-5 space-y-5">
         {children}
+        {error && (
+          <div className="flex items-center gap-2 text-[12px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <AlertCircle className="h-3.5 w-3.5" />
+            {error}
+          </div>
+        )}
         <SaveRow onSave={handleSave} saved={saved} />
       </div>
     </div>
@@ -284,13 +292,24 @@ export function ContentCard({
 }
 
 export async function updateContentKey(key: string, value: any, type: string, category: string, label: string) {
-  const { error } = await supabase.from("site_content").upsert({
-    key,
-    value,
-    type,
-    category,
-    label,
-    updated_at: new Date().toISOString()
-  });
-  if (error) throw error;
+  try {
+    const response = await fetch('/api/admin/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value, type, category, label }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error('Update failed');
+    }
+  } catch (error) {
+    console.error('updateContentKey error:', error);
+    throw error;
+  }
 }
