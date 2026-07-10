@@ -296,7 +296,6 @@ export async function updateContentKey(key: string, value: any, type: string, ca
     const response = await fetch('/api/admin/content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ key, value, type, category, label }),
     });
 
