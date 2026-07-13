@@ -353,10 +353,12 @@ function ManageBalanceModal({
   const [activeTab, setActiveTab] = useState<"adjust" | "deposit" | "withdrawal">("adjust");
   const [currency, setCurrency] = useState<string>("BTC");
   const [amount, setAmount] = useState("");
+  const [cadAmount, setCadAmount] = useState("");
   const [action, setAction] = useState<"Add" | "Deduct">("Add");
   const [reason, setReason] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
+  const [rateLoading, setRateLoading] = useState(true);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
   const [cadRate, setCadRate] = useState<number>(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -382,6 +384,7 @@ function ManageBalanceModal({
   // Fetch current balance and CAD rate for selected currency
   useEffect(() => {
     const fetchData = async () => {
+      setRateLoading(true);
       try {
         const [userRes, rates] = await Promise.all([
           fetch(`/api/users/${user.id}`),
@@ -394,9 +397,19 @@ function ManageBalanceModal({
           setCurrentBalance(wallet ? Number(wallet.balance) : 0);
         }
         
-        setCadRate(rates[currency] || rates.USDT || 1.36);
+        // Only set rate if it's available from the API response
+        // Don't fall back to hardcoded rates - let the UI show loading instead
+        if (rates[currency]) {
+          setCadRate(rates[currency]);
+        } else if (rates.USDT && currency.toUpperCase() !== "CAD") {
+          setCadRate(rates.USDT);
+        } else if (currency.toUpperCase() === "CAD") {
+          setCadRate(1);
+        }
       } catch (e) {
         console.error("Failed to fetch data:", e);
+      } finally {
+        setRateLoading(false);
       }
     };
     fetchData();
@@ -422,6 +435,37 @@ function ManageBalanceModal({
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  // CAD calculator handlers - bidirectional conversion
+  const handleCryptoChange = (val: string) => {
+    setAmount(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && cadRate > 0 && !rateLoading && currency.toUpperCase() !== "CAD") {
+      setCadAmount((num * cadRate).toFixed(2));
+    } else if (currency.toUpperCase() === "CAD") {
+      setCadAmount(val);
+    } else {
+      setCadAmount("");
+    }
+  };
+
+  const handleCadChange = (val: string) => {
+    setCadAmount(val);
+    const num = parseFloat(val);
+    if (!isNaN(num) && cadRate > 0 && !rateLoading && currency.toUpperCase() !== "CAD") {
+      setAmount((num / cadRate).toFixed(8));
+    } else if (currency.toUpperCase() === "CAD") {
+      setAmount(val);
+    } else {
+      setAmount("");
+    }
+  };
+
+  const handleCurrencyChange = (newCurrency: string) => {
+    setCurrency(newCurrency);
+    setAmount("");
+    setCadAmount("");
   };
 
   useEffect(() => {
@@ -554,7 +598,7 @@ function ManageBalanceModal({
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Currency</label>
-              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold text-gray-800">
+              <select value={currency} onChange={(e) => handleCurrencyChange(e.target.value)} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold text-gray-800">
                 {COIN_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -571,11 +615,41 @@ function ManageBalanceModal({
 
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Amount</label>
-              <input type="number" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs text-gray-800" />
+              <input type="number" min="0" step="any" value={amount} onChange={(e) => handleCryptoChange(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs text-gray-800" />
               {amountError && (
                 <p className="mt-1 text-[11px] font-semibold text-red-600">{amountError}</p>
               )}
             </div>
+
+            {/* CAD Calculator Field */}
+            {currency.toUpperCase() !== "CAD" && (
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
+                  Or enter amount in CAD
+                  <span className="rounded-[4px] bg-[#EEF3FF] px-1.5 py-0.5 text-[10px] font-semibold text-[#113285]">
+                    at live rate
+                  </span>
+                  {rateLoading && (
+                    <span className="text-[10px] text-amber-600 font-medium">(fetching...)</span>
+                  )}
+                </label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  value={cadAmount} 
+                  onChange={(e) => handleCadChange(e.target.value)} 
+                  placeholder={rateLoading ? "Loading rate..." : "0.00"} 
+                  disabled={rateLoading}
+                  className={cn(
+                    "w-full px-3 py-2 border rounded-lg text-xs text-gray-800",
+                    rateLoading 
+                      ? "border-gray-200 bg-gray-100 cursor-not-allowed" 
+                      : "border-gray-200 bg-gray-50"
+                  )} 
+                />
+              </div>
+            )}
 
             {activeTab === "adjust" && (
               <div className="space-y-1">

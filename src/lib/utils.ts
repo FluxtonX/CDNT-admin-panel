@@ -182,9 +182,15 @@ let lastFetchTime = 0;
 
 export async function fetchLiveCADRates(symbols?: string[]): Promise<Record<string, number>> {
   const now = Date.now();
-  if (cachedRates && now - lastFetchTime < 60000) {
+  
+  // Check if we have cached rates and if they're fresh (< 60s)
+  // Only use cache if no specific symbols are requested (global fetch)
+  if (cachedRates && now - lastFetchTime < 60000 && !symbols) {
     return cachedRates;
   }
+  
+  // If specific symbols are requested, always fetch fresh data
+  // to ensure we get live rates and not fallback values
 
   try {
     // If symbols provided, fetch only those; otherwise fetch common ones
@@ -199,7 +205,11 @@ export async function fetchLiveCADRates(symbols?: string[]): Promise<Record<stri
     );
     const coinGeckoData = await coinGeckoRes.json();
 
-    cachedRates = {};
+    // If we had cached rates, merge them with fresh data
+    // Otherwise start fresh
+    if (!cachedRates) {
+      cachedRates = {};
+    }
     
     // Map CoinGecko IDs back to symbols
     Object.entries(SYMBOL_TO_COIN_ID).forEach(([symbol, coinId]) => {
