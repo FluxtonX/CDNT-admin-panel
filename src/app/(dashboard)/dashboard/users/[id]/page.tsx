@@ -15,7 +15,7 @@ import {
   Smartphone, Globe, Wallet, BarChart3, FileText,
   MessageCircle, History, Monitor, LogOut, RefreshCw,
   Eye, Plus, DollarSign, X, Send, Save, Search, Trash2, Loader2,
-  ChevronRight,
+  ChevronRight, Pencil,
 } from "lucide-react";
 import { cn, fetchLiveCADRates, COIN_COLORS } from "@/lib/utils";
 import { type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
@@ -1000,9 +1000,253 @@ function SupportTab({ user }: { user: any }) {
   );
 }
 
+/* ─── Edit Wallet Address Modal ─────────────────────────────────────── */
+function EditWalletAddressModal({ user, onClose, onSuccess }: { user: any; onClose: () => void; onSuccess: () => void }) {
+  const [crypto, setCrypto] = useState("BTC");
+  const [network, setNetwork] = useState("Bitcoin Network");
+  const [address, setAddress] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isCustomAddress, setIsCustomAddress] = useState(false);
+
+  // Fetch current address when crypto/network changes
+  useEffect(() => {
+    const fetchCurrentAddress = async () => {
+      try {
+        // First check user-specific address
+        const userRes = await fetch(`/api/users/${user.id}/wallet-addresses`);
+        const userData = await userRes.json();
+        const userAddress = userData.addresses?.find((a: any) => 
+          a.crypto === crypto && a.network === network
+        );
+        
+        if (userAddress) {
+          setAddress(userAddress.address);
+          setIsCustomAddress(true);
+          return;
+        }
+
+        // Fall back to platform address
+        const platformRes = await fetch(`/api/platform-wallets`);
+        if (platformRes.ok) {
+          const platformData = await platformRes.json();
+          const platformWallet = Array.isArray(platformData) ? platformData.find((w: any) => w.crypto === crypto) : null;
+          if (platformWallet && platformWallet.address) {
+            setAddress(platformWallet.address);
+            setIsCustomAddress(false);
+            return;
+          }
+        }
+
+        // Fall back to hardcoded addresses
+        const fallbackAddresses: Record<string, string> = {
+          BTC: "bc1q7q50t9edden65k94vjzqef0lx3vfjjv4klz5zy",
+          ETH: "0x150B3BB98224598e20821De1A516A9fcC3bB65f9",
+          USDT: network === "TRC20 (Tron)" ? "TVphkS3RjtbYV5TQAyNnc27Ae4BKFrV7QK" : "0x150B3BB98224598e20821De1A516A9fcC3bB65f9",
+        };
+        const fallbackAddress = fallbackAddresses[crypto];
+        if (fallbackAddress) {
+          setAddress(fallbackAddress);
+          setIsCustomAddress(false);
+          return;
+        }
+
+        // No address found
+        setAddress("");
+        setIsCustomAddress(false);
+      } catch (err) {
+        console.error("Failed to fetch current address:", err);
+        setAddress("");
+        setIsCustomAddress(false);
+      }
+    };
+
+    fetchCurrentAddress();
+  }, [user.id, crypto, network]);
+
+  const handleSave = async () => {
+    if (!address.trim()) {
+      setError("Address cannot be empty.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/users/${user.id}/wallet-addresses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ crypto, network, address: address.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save address");
+      }
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCustomAddress = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/users/${user.id}/wallet-addresses?crypto=${crypto}&network=${network}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete custom address");
+      }
+      // Refresh to show platform default
+      const platformRes = await fetch(`/api/platform-wallets`);
+      if (platformRes.ok) {
+        const platformData = await platformRes.json();
+        const platformWallet = Array.isArray(platformData) ? platformData.find((w: any) => w.crypto === crypto) : null;
+        if (platformWallet && platformWallet.address) {
+          setAddress(platformWallet.address);
+          setIsCustomAddress(false);
+        }
+      }
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.40)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.93, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.93, opacity: 0, y: 16 }}
+        transition={{ type: "spring", damping: 28, stiffness: 340 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+      >
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 className="text-[17px] font-bold text-gray-900">Edit Wallet Address</h2>
+              <p className="text-sm text-gray-600 mt-0.5">Set custom deposit address for this user</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-4 mb-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cryptocurrency</label>
+              <select
+                value={crypto}
+                onChange={(e) => setCrypto(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+              >
+                <option value="BTC">BTC</option>
+                <option value="ETH">ETH</option>
+                <option value="USDT">USDT</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Network</label>
+              <select
+                value={network}
+                onChange={(e) => setNetwork(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+              >
+                {crypto === "BTC" && (
+                  <>
+                    <option value="Bitcoin Network">Bitcoin Network</option>
+                  </>
+                )}
+                {crypto === "ETH" && (
+                  <>
+                    <option value="Ethereum (ERC20)">Ethereum (ERC20)</option>
+                  </>
+                )}
+                {crypto === "USDT" && (
+                  <>
+                    <option value="TRC20 (Tron)">TRC20 (Tron)</option>
+                    <option value="ERC20 (Ethereum)">ERC20 (Ethereum)</option>
+                  </>
+                )}
+              </select>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-semibold text-gray-700">Wallet Address</label>
+                {isCustomAddress && (
+                  <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Custom address</span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-mono text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                placeholder="Enter wallet address"
+              />
+              {error && (
+                <p className="text-xs text-red-600 mt-1.5">{error}</p>
+              )}
+              {!isCustomAddress && address && (
+                <p className="text-[10px] text-gray-500 mt-1.5">Using platform default address</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            {isCustomAddress && (
+              <button
+                onClick={handleDeleteCustomAddress}
+                disabled={loading}
+                className="px-4 py-3 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
+              >
+                {loading ? "Deleting…" : "Reset to Default"}
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-60 transition-all"
+              style={{ background: "linear-gradient(135deg, #0A3D91, #1650AB)" }}
+            >
+              {loading ? "Saving…" : "Save Address"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ─── Portfolio Tab ──────────────────────────────────────────────── */
 function PortfolioTab({ user }: { user: any }) {
   const [rates, setRates] = useState<Record<string, number> | null>(null);
+  const [editingWalletAddress, setEditingWalletAddress] = useState(false);
+  const [userWalletAddresses, setUserWalletAddresses] = useState<any[]>([]);
   
   useEffect(() => {
     const userWallets = user.wallets || [];
@@ -1011,6 +1255,14 @@ function PortfolioTab({ user }: { user: any }) {
       : ["BTC", "ETH", "USDT"];
     fetchLiveCADRates(currencySymbols).then(setRates);
   }, [user.wallets]);
+
+  useEffect(() => {
+    // Fetch user-specific wallet addresses
+    fetch(`/api/users/${user.id}/wallet-addresses`)
+      .then(res => res.json())
+      .then(data => setUserWalletAddresses(data.addresses || []))
+      .catch(err => console.error("Failed to fetch user wallet addresses:", err));
+  }, [user.id]);
 
   const userWallets = user.wallets || [];
   
@@ -1045,26 +1297,32 @@ function PortfolioTab({ user }: { user: any }) {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-gray-900 mb-4">Asset Allocation</h3>
-        <div className="h-4 w-full rounded-full bg-gray-100 flex overflow-hidden mb-5">
-          {assets.map((asset: any) => (
-            <div
-              key={asset.coin}
-              style={{ width: asset.alloc, backgroundColor: asset.color }}
-              className="h-full first:rounded-l-full last:rounded-r-full"
-              title={`${asset.name}: ${asset.alloc}`}
-            />
-          ))}
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {assets.map((asset: any) => (
-            <div key={asset.coin} className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: asset.color }} />
-              <span className="text-xs text-gray-600 font-medium">{asset.name} ({asset.alloc})</span>
-            </div>
-          ))}
-        </div>
+        <button
+          onClick={() => setEditingWalletAddress(true)}
+          className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm flex items-center gap-1.5"
+        >
+          <Pencil className="h-3.5 w-3.5" /> Edit Wallet Address
+        </button>
+      </div>
+      <div className="h-4 w-full rounded-full bg-gray-100 flex overflow-hidden mb-5">
+        {assets.map((asset: any) => (
+          <div
+            key={asset.coin}
+            style={{ width: asset.alloc, backgroundColor: asset.color }}
+            className="h-full first:rounded-l-full last:rounded-r-full"
+            title={`${asset.name}: ${asset.alloc}`}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {assets.map((asset: any) => (
+          <div key={asset.coin} className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: asset.color }} />
+            <span className="text-xs text-gray-600 font-medium">{asset.name} ({asset.alloc})</span>
+          </div>
+        ))}
       </div>
 
       <div className="h-px bg-gray-100" />
@@ -1072,25 +1330,46 @@ function PortfolioTab({ user }: { user: any }) {
       <div>
         <h3 className="text-base font-bold text-gray-900 mb-4">Balances</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {assets.map((asset: any) => (
-            <div key={asset.coin} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: asset.color }}>
-                  {asset.coin.slice(0, 3)}
+          {assets.map((asset: any) => {
+            const customAddress = userWalletAddresses.find((a: any) => a.crypto === asset.coin);
+            return (
+              <div key={asset.coin} className="p-4 rounded-xl border border-gray-100 bg-gray-50/40 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: asset.color }}>
+                    {asset.coin.slice(0, 3)}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900">{asset.name}</h4>
+                    <p className="text-xs text-gray-600">{asset.coin}</p>
+                    {customAddress && (
+                      <p className="text-[10px] text-blue-600 font-medium mt-0.5">Custom address set</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-900">{asset.name}</h4>
-                  <p className="text-xs text-gray-600">{asset.coin}</p>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-gray-900">{asset.balance}</p>
+                  <p className="text-xs text-gray-600">{asset.usd}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-gray-900">{asset.balance}</p>
-                <p className="text-xs text-gray-600">{asset.usd}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      <AnimatePresence>
+        {editingWalletAddress && (
+          <EditWalletAddressModal
+            user={user}
+            onClose={() => setEditingWalletAddress(false)}
+            onSuccess={() => {
+              fetch(`/api/users/${user.id}/wallet-addresses`)
+                .then(res => res.json())
+                .then(data => setUserWalletAddresses(data.addresses || []))
+                .catch(err => console.error("Failed to fetch user wallet addresses:", err));
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
