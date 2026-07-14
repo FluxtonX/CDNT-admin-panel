@@ -63,6 +63,14 @@ const INITIAL_NOTIFICATIONS: PlatformNotification[] = [
   },
 ];
 
+function normalizeNotificationType(type: string): NotificationType {
+  const normalized = type.trim().toLowerCase();
+  if (normalized === "warning") return "Warning";
+  if (normalized === "success") return "Success";
+  if (normalized === "error") return "Error";
+  return "Info";
+}
+
 function TypeBadge({ type }: { type: NotificationType }) {
   const map: Record<NotificationType, { cls: string; icon: React.ReactNode }> = {
     Info: { cls: "bg-blue-50 text-blue-750 border-blue-200", icon: <Info className="h-3 w-3" /> },
@@ -70,7 +78,7 @@ function TypeBadge({ type }: { type: NotificationType }) {
     Success: { cls: "bg-green-50 text-green-700 border-green-200", icon: <CheckCircle2 className="h-3 w-3" /> },
     Error: { cls: "bg-red-50 text-red-700 border-red-200", icon: <XCircle className="h-3 w-3" /> },
   };
-  const style = map[type];
+  const style = map[type] ?? map.Info;
 
   return (
     <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase font-mono tracking-wider", style.cls)}>
@@ -129,7 +137,7 @@ export default function NotificationCenterPage() {
           return {
             id: `NOT-${n.id.slice(0, 5).toUpperCase()}`,
             realId: n.id,
-            type: n.type as NotificationType,
+            type: normalizeNotificationType(n.type ?? "Info"),
             title: n.title,
             message: n.message,
             timestamp: new Date(n.created_at).toLocaleString("en-US", {
