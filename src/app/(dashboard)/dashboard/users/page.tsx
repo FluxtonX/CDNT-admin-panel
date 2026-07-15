@@ -17,6 +17,86 @@ import { useClickOutside } from "@/hooks/useHelpers";
 /* ─── Config ─────────────────────────────────────────────────────── */
 const PAGE_SIZE = 8;
 
+/* ─── User Avatar Component with 3-tier Fallback ─────────────────────────────────────── */
+function UserAvatar({
+  user,
+  size = "md",
+}: {
+  user: any;
+  size?: "sm" | "md";
+}) {
+  const [imageError, setImageError] = useState(false);
+  const [currentSource, setCurrentSource] = useState<"kyc" | "google" | "initials">("kyc");
+
+  const sizeClasses = size === "sm" ? "h-7 w-7 rounded-lg text-xs" : "h-9 w-9 rounded-full text-xs";
+
+  // Determine which image source to use based on KYC status
+  const getImageUrl = () => {
+    // Priority 1: KYC selfie (only if KYC is approved)
+    if (currentSource === "kyc" && user.kyc === "Verified" && user.kyc_selfie_url) {
+      return user.kyc_selfie_url;
+    }
+    // Priority 2: Google avatar (if KYC is not approved or selfie fails)
+    if (currentSource === "google" && user.google_avatar_url) {
+      return user.google_avatar_url;
+    }
+    return null;
+  };
+
+  const imageUrl = getImageUrl();
+
+  const handleImageError = () => {
+    if (currentSource === "kyc") {
+      // If KYC selfie fails, try Google avatar
+      if (user.google_avatar_url) {
+        setCurrentSource("google");
+      } else {
+        setCurrentSource("initials");
+        setImageError(true);
+      }
+    } else if (currentSource === "google") {
+      // If Google avatar fails, show initials
+      setCurrentSource("initials");
+      setImageError(true);
+    }
+  };
+
+  // Reset to appropriate source when user changes
+  useEffect(() => {
+    console.log(`[UsersPage UserAvatar] User ${user.name}:`, {
+      kyc: user.kyc,
+      kyc_selfie_url: user.kyc_selfie_url,
+      google_avatar_url: user.google_avatar_url,
+    });
+    
+    if (user.kyc === "Verified" && user.kyc_selfie_url) {
+      setCurrentSource("kyc");
+    } else if (user.google_avatar_url) {
+      setCurrentSource("google");
+    } else {
+      setCurrentSource("initials");
+    }
+    setImageError(false);
+  }, [user.id, user.kyc, user.kyc_selfie_url, user.google_avatar_url, user.name]);
+
+  if (currentSource === "initials" || !imageUrl) {
+    return (
+      <div className={`${sizeClasses} bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0`}>
+        {user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={user.name}
+      onError={handleImageError}
+      className={`${sizeClasses} object-cover shrink-0`}
+    />
+  );
+}
+
 const FILTER_OPTIONS = [
   { label: "All Users",         value: "all" },
   { label: "Verified",          value: "Verified" },
@@ -304,9 +384,7 @@ function UserRow({
     >
       {/* USER */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-          {user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-        </div>
+        <UserAvatar user={user} size="md" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{user.name}</p>
           <p className="text-xs text-gray-600 truncate">{(user as any).shortId || user.id}</p>

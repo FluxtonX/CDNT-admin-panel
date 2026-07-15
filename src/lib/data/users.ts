@@ -21,6 +21,9 @@ export interface AdminUser {
   lastLogin: string;
   twoFactor: boolean;
   lastIp: string;
+  // Avatar fields for chat
+  kyc_selfie_url?: string | null;
+  google_avatar_url?: string | null;
 }
 
 export const USERS_DATA: AdminUser[] = [

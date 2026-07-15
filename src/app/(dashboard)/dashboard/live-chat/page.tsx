@@ -50,6 +50,67 @@ type ChatThread = {
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
+/* ─── User Avatar Component with 3-tier Fallback ─────────────────────────────────────── */
+function UserAvatar({
+  user,
+  size = "md",
+}: {
+  user: AdminUser;
+  size?: "sm" | "md";
+}) {
+  const [imageError, setImageError] = useState(false);
+  const [currentSource, setCurrentSource] = useState<"kyc" | "google" | "initials">("kyc");
+
+  const sizeClasses = size === "sm" ? "h-7 w-7 rounded-lg text-xs" : "h-9 w-9 rounded-xl text-sm";
+
+  // Determine which image source to use
+  const getImageUrl = () => {
+    if (currentSource === "kyc" && user.kyc_selfie_url) {
+      return user.kyc_selfie_url;
+    }
+    if (currentSource === "google" && user.google_avatar_url) {
+      return user.google_avatar_url;
+    }
+    return null;
+  };
+
+  const imageUrl = getImageUrl();
+
+  const handleImageError = () => {
+    console.log(`[UserAvatar] Image load error for ${user.name}, source: ${currentSource}, url: ${imageUrl}`);
+    if (currentSource === "kyc" && user.google_avatar_url) {
+      setCurrentSource("google");
+    } else {
+      setCurrentSource("initials");
+      setImageError(true);
+    }
+  };
+
+  // Reset to KYC when user changes
+  useEffect(() => {
+    console.log(`[UserAvatar] User changed to ${user.name}, KYC URL: ${user.kyc_selfie_url}, Google URL: ${user.google_avatar_url}`);
+    setCurrentSource("kyc");
+    setImageError(false);
+  }, [user.id, user.kyc_selfie_url, user.google_avatar_url]);
+
+  if (currentSource === "initials" || !imageUrl) {
+    return (
+      <div className={`${sizeClasses} bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono shrink-0`}>
+        {user.name[0] || "U"}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={user.name}
+      onError={handleImageError}
+      className={`${sizeClasses} object-cover shrink-0`}
+    />
+  );
+}
+
 function StatusIndicator({ status }: { status: ChatStatus }) {
   const map: Record<ChatStatus, string> = {
     Active: "bg-green-500",
@@ -96,16 +157,18 @@ function LiveChatSupportPageContent() {
           .order("last_message_at", { ascending: false });
 
         // Fetch auth users (with resolved full names from kyc/profiles/email)
-        let authUsersMap: Record<string, { email: string; fullName: string }> = {};
+        let authUsersMap: Record<string, { email: string; fullName: string; kycSelfieUrl: string | null; googleAvatarUrl: string | null }> = {};
         try {
           const res = await fetch("/api/support/users");
           if (res.ok) {
             const usersData = await res.json();
             authUsersMap = usersData.reduce(
-              (acc: Record<string, { email: string; fullName: string }>, u: { id: string; email: string; full_name: string | null }) => {
+              (acc: Record<string, { email: string; fullName: string; kycSelfieUrl: string | null; googleAvatarUrl: string | null }>, u: { id: string; email: string; full_name: string | null; kyc_selfie_url: string | null; google_avatar_url: string | null }) => {
                 acc[u.id] = {
                   email: u.email,
                   fullName: u.full_name || u.email?.split("@")[0] || "Unknown User",
+                  kycSelfieUrl: u.kyc_selfie_url || null,
+                  googleAvatarUrl: u.google_avatar_url || null,
                 };
                 return acc;
               },
@@ -137,6 +200,8 @@ function LiveChatSupportPageContent() {
               lastLogin: "",
               twoFactor: false,
               lastIp: "",
+              kyc_selfie_url: authEntry?.kycSelfieUrl || null,
+              google_avatar_url: authEntry?.googleAvatarUrl || null,
             };
 
             return {
@@ -522,9 +587,7 @@ function LiveChatSupportPageContent() {
                     >
                       {/* Avatar */}
                       <div className="relative">
-                        <div className="h-9 w-9 rounded-xl bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-sm shrink-0">
-                          {thread.user.name[0]}
-                        </div>
+                        <UserAvatar user={thread.user} size="md" />
                         <span className="absolute -bottom-0.5 -right-0.5 p-0.5 rounded-full bg-white">
                           <StatusIndicator status={thread.status} />
                         </span>
@@ -595,9 +658,7 @@ function LiveChatSupportPageContent() {
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <div className="h-10 w-10 rounded-xl bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-base">
-                      {activeThread.user.name[0]}
-                    </div>
+                    <UserAvatar user={activeThread.user} size="md" />
                     <div>
                       <div className="flex items-center gap-1.5">
                         <h4 className="font-bold text-gray-900 text-sm leading-none">{activeThread.user.name}</h4>
@@ -650,9 +711,13 @@ function LiveChatSupportPageContent() {
                         )}
                       >
                         {/* Avatar */}
-                        <div className="h-7 w-7 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-xs shrink-0 select-none">
-                          {isAdmin ? "A" : activeThread.user.name[0]}
-                        </div>
+                        {isAdmin ? (
+                          <div className="h-7 w-7 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-xs shrink-0 select-none">
+                            A
+                          </div>
+                        ) : (
+                          <UserAvatar user={activeThread.user} size="sm" />
+                        )}
 
                         {/* Bubble */}
                         <div className="space-y-1">

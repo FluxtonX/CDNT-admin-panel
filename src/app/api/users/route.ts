@@ -21,9 +21,37 @@ export async function GET(request: Request) {
       .select("id, full_name, is_frozen");
     if (profErr) throw profErr;
 
-    // Fetch KYC submissions to get real verification statuses
-    const { data: kycData, error: kycErr } = await supabaseAdmin.from("kyc_submissions").select("*");
+    // Fetch KYC submissions to get real verification statuses and selfie URLs
+    const { data: kycData, error: kycErr } = await supabaseAdmin.from("kyc_submissions").select("user_id, full_name, selfie_url, status");
     if (kycErr) throw kycErr;
+
+    // Generate signed URLs for KYC selfies
+    const kycDataWithSignedUrls = await Promise.all(
+      (kycData || []).map(async (kyc) => {
+        if (kyc.selfie_url && kyc.status === "approved") {
+          try {
+            // Extract the file path from the public URL
+            const url = new URL(kyc.selfie_url);
+            const pathParts = url.pathname.split('/kyc-documents/');
+            if (pathParts.length > 1) {
+              const filePath = pathParts[1];
+              const { data: signedUrlData } = await supabaseAdmin
+                .storage
+                .from('kyc-documents')
+                .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+              
+              return {
+                ...kyc,
+                signed_selfie_url: signedUrlData?.signedUrl || null,
+              };
+            }
+          } catch (err) {
+            console.error(`[users API] Error generating signed URL for ${kyc.user_id}:`, err);
+          }
+        }
+        return { ...kyc, signed_selfie_url: null };
+      })
+    );
 
     // Fetch all user wallets
     const { data: userWallets, error: walletsErr } = await supabaseAdmin.from("user_wallets").select("*");
@@ -48,7 +76,7 @@ export async function GET(request: Request) {
     const mappedUsers = users.map((user) => {
       // Find matching profile and KYC
       const profile = profiles.find((p: any) => p.id === user.id);
-      const kyc = kycData.find((k: any) => k.user_id === user.id);
+      const kyc = kycDataWithSignedUrls.find((k: any) => k.user_id === user.id);
 
       // Determine KYC Status
       let kycStatus = "Not Started";
@@ -71,6 +99,24 @@ export async function GET(request: Request) {
       // Parse metadata
       const rawName = profile?.full_name || user.user_metadata?.full_name || "Unknown User";
 
+      // Debug: log user_metadata for all users to see avatar_url
+      console.log(`[users API] User ${rawName} (${user.id}) user_metadata:`, {
+        avatar_url: user.user_metadata?.avatar_url,
+        full_metadata: user.user_metadata,
+      });
+
+      // Avatar URLs
+      const kycSelfieUrl = kyc?.status === "approved" ? kyc.signed_selfie_url : null;
+      const googleAvatarUrl = user.user_metadata?.avatar_url || null;
+
+      // Debug: log avatar data for users with Google avatars
+      if (googleAvatarUrl) {
+        console.log(`[users API] User ${rawName} (${user.id}) has Google avatar:`, {
+          googleAvatarUrl,
+          kycStatus: kycStatus,
+        });
+      }
+
       return {
         id: user.id, // For routing and unique keys
         shortId: user.id.slice(0, 8).toUpperCase(), // For UI display
@@ -83,6 +129,8 @@ export async function GET(request: Request) {
         balance: userBalanceMap[user.id] || 0,
         wallets: walletsForUser,
         risk: riskLevel,
+        kyc_selfie_url: kycSelfieUrl,
+        google_avatar_url: googleAvatarUrl,
       };
     });
 
