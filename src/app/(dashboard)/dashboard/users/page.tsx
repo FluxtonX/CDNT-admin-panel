@@ -82,7 +82,7 @@ function UserAvatar({
   if (currentSource === "initials" || !imageUrl) {
     return (
       <div className={`${sizeClasses} bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0`}>
-        {user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+        {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
       </div>
     );
   }

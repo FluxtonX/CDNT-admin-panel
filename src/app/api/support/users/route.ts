@@ -56,6 +56,12 @@ export async function GET(request: Request) {
       const kyc = kycDataWithSignedUrls?.find((k) => k.user_id === u.id);
       const profile = profiles?.find((p) => p.id === u.id);
       
+      // Debug: log user_metadata for all users to see avatar_url
+      console.log(`[support/users API] User ${u.email} (${u.id}) user_metadata:`, {
+        avatar_url: u.user_metadata?.avatar_url,
+        full_metadata: u.user_metadata,
+      });
+      
       // Priority 1: KYC selfie (only if approved) - use signed URL
       const kycSelfieUrl = kyc?.status === "approved" ? kyc.signed_selfie_url : null;
       
