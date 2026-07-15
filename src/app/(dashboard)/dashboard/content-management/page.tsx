@@ -14,6 +14,8 @@ import {
   HeadphonesIcon,
   ChevronRight,
   Globe,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RequirePermission } from "@/components/layout/RequirePermission";
@@ -90,7 +92,13 @@ export default function ContentManagementPage() {
 
 function ContentManagementPageContent() {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("global");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const activeLabel = CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "";
+
+  const handleCategorySelect = (id: CategoryId) => {
+    setActiveCategory(id);
+    setSidebarOpen(false); // Auto-close sidebar on mobile after selection
+  };
 
   return (
     <motion.div
@@ -101,20 +109,56 @@ function ContentManagementPageContent() {
     >
       {/* Page Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[28px]">
-          Content Management
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[28px]">
+            Content Management
+          </h1>
+          {/* Mobile toggle button */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden h-10 w-10 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+          >
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
         <p className="text-sm text-gray-500">
           Edit website text, labels, messages, and announcements shown to clients — no code required.
         </p>
       </div>
 
       {/* Two-column layout */}
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-6 items-start relative">
+        {/* Mobile overlay */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden fixed inset-0 z-40 bg-black/40"
+            />
+          )}
+        </AnimatePresence>
+
         {/* Inner Sidebar */}
-        <aside className="w-[210px] shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden sticky top-[88px]">
-          <div className="px-4 py-3 border-b border-gray-100">
+        <aside
+          className={cn(
+            "w-[210px] shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden",
+            "md:sticky md:top-[88px]",
+            "fixed md:relative z-50 transition-transform duration-300 ease-in-out",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+            "top-0 left-0 h-full md:h-auto"
+          )}
+        >
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Content Categories</p>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
           <nav className="py-2">
             {CATEGORIES.map((cat) => {
@@ -123,7 +167,7 @@ function ContentManagementPageContent() {
               return (
                 <button
                   key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
+                  onClick={() => handleCategorySelect(cat.id)}
                   className={cn(
                     "w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium transition-all text-left group cursor-pointer",
                     isActive

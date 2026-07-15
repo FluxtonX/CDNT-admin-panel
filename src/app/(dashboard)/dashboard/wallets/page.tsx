@@ -16,6 +16,7 @@ import {
   Copy,
   Coins,
   Pencil,
+  Plus,
 } from "lucide-react";
 import { COIN_COLORS } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -160,6 +161,166 @@ function EditAddressModal({
   );
 }
 
+/* ─── Create Wallet Modal ─────────────────────────────────────── */
+function CreateWalletModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [crypto, setCrypto] = useState("");
+  const [network, setNetwork] = useState("");
+  const [address, setAddress] = useState("");
+  const [status, setStatus] = useState<WalletStatus>("Active");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!crypto.trim() || !network.trim() || !address.trim()) {
+      setError("Crypto, network, and address are required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/platform-wallets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          crypto: crypto.trim().toUpperCase(),
+          network: network.trim(),
+          address: address.trim(),
+          status,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create wallet");
+      }
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.40)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.93, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.93, opacity: 0, y: 16 }}
+        transition={{ type: "spring", damping: 28, stiffness: 340 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+      >
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 className="text-[17px] font-bold text-gray-900">Create New Wallet</h2>
+              <p className="text-sm text-gray-600 mt-0.5">
+                Add a new platform deposit wallet
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-4 mb-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Crypto Symbol
+              </label>
+              <input
+                type="text"
+                value={crypto}
+                onChange={(e) => setCrypto(e.target.value.toUpperCase())}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-mono text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                placeholder="e.g. SOL, USDC"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Network Name
+              </label>
+              <input
+                type="text"
+                value={network}
+                onChange={(e) => setNetwork(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-mono text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                placeholder="e.g. Solana, ERC20"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Wallet Address
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-mono text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+                placeholder="Enter wallet address"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as WalletStatus)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+              >
+                <option value="Active">Active</option>
+                <option value="Paused">Paused</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+
+            {error && (
+              <p className="text-xs text-red-600">{error}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-60 transition-all"
+              style={{ background: BRAND_GRADIENT }}
+            >
+              {saving ? "Creating…" : "Create Wallet"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function WalletManagementPage() {
   return (
     <RequirePermission permission={["manage-wallets", "view-wallets"]}>
@@ -175,6 +336,7 @@ function WalletManagementPageContent() {
   const [toast, setToast] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
+  const [creatingWallet, setCreatingWallet] = useState(false);
 
   const wallets = useMemo(() => {
     const mappedWallets: Wallet[] = (walletData as any[]).map((w: any) => ({
@@ -232,6 +394,12 @@ function WalletManagementPageContent() {
     window.setTimeout(() => setToast(null), 2500);
   };
 
+  const handleWalletCreated = () => {
+    queryClient.invalidateQueries({ queryKey: adminQueryKeys.platformWallets() });
+    setToast("Wallet created successfully.");
+    window.setTimeout(() => setToast(null), 2500);
+  };
+
   return (
     <>
       <motion.div
@@ -246,16 +414,25 @@ function WalletManagementPageContent() {
             <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Platform Wallets</h1>
             <p className="mt-1 text-sm text-gray-600 sm:text-base">Monitor and manage platform deposit addresses</p>
           </div>
-          <button
-            onClick={() => {
-              setToast("Wallet report export prepared.");
-              window.setTimeout(() => setToast(null), 2500);
-            }}
-            className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"
-          >
-            <Download className="h-4 w-4" />
-            Export Report
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setToast("Wallet report export prepared.");
+                window.setTimeout(() => setToast(null), 2500);
+              }}
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              Export Report
+            </button>
+            <button
+              onClick={() => setCreatingWallet(true)}
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Add Wallet
+            </button>
+          </div>
         </div>
 
         {/* Toast */}
@@ -446,6 +623,16 @@ function WalletManagementPageContent() {
             wallet={editingWallet}
             onClose={() => setEditingWallet(null)}
             onSaved={handleAddressSaved}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create Wallet Modal */}
+      <AnimatePresence>
+        {creatingWallet && (
+          <CreateWalletModal
+            onClose={() => setCreatingWallet(false)}
+            onSaved={handleWalletCreated}
           />
         )}
       </AnimatePresence>

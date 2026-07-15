@@ -104,6 +104,86 @@ export async function GET(request: Request) {
   }
 }
 
+export async function POST(request: Request) {
+  try {
+    const { allowed } = await checkAdminPermission(request, "manage-wallets");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const body = await request.json();
+    const { crypto, network, address, status } = body;
+
+    // Validate required fields
+    if (!crypto || !network || !address) {
+      return NextResponse.json({ error: "crypto, network, and address are required" }, { status: 400 });
+    }
+
+    const upperCrypto = crypto.toUpperCase().trim();
+    const upperNetwork = network.toUpperCase().trim();
+    const trimmedAddress = address.trim();
+    const walletStatus = status || "Active";
+
+    const supabase = createAdminClient();
+
+    // Check if wallet for this crypto/network already exists
+    const { data: existingWallet, error: checkError } = await supabase
+      .from("platform_wallets")
+      .select("wallet_id")
+      .eq("crypto", upperCrypto)
+      .eq("network", upperNetwork)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+
+    if (existingWallet) {
+      return NextResponse.json({ error: "A wallet for this crypto/network already exists" }, { status: 409 });
+    }
+
+    // Generate wallet_id with incrementing suffix
+    const baseWalletId = `wallet-${upperCrypto.toLowerCase()}-${upperNetwork.toLowerCase()}`;
+    let walletId = `${baseWalletId}-01`;
+    let suffix = 1;
+
+    // Check if wallet_id exists and increment suffix if needed
+    while (true) {
+      const { data: idCheck } = await supabase
+        .from("platform_wallets")
+        .select("wallet_id")
+        .eq("wallet_id", walletId)
+        .maybeSingle();
+
+      if (!idCheck) break; // wallet_id is available
+
+      suffix++;
+      walletId = `${baseWalletId}-${suffix.toString().padStart(2, '0')}`;
+    }
+
+    // Insert new wallet
+    const { data: newWallet, error: insertError } = await supabase
+      .from("platform_wallets")
+      .insert({
+        wallet_id: walletId,
+        type: "deposit",
+        crypto: upperCrypto,
+        network: upperNetwork,
+        address: trimmedAddress,
+        balance_crypto: "0",
+        balance_cad: 0,
+        status: walletStatus,
+        last_activity: "Never",
+        transactions: []
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    return NextResponse.json({ success: true, wallet: newWallet });
+  } catch (error: any) {
+    console.error("Error creating platform wallet:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request) {
   try {
     const { allowed } = await checkAdminPermission(request, "manage-wallets");
