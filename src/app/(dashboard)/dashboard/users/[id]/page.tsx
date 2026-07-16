@@ -365,22 +365,6 @@ function ManageBalanceModal({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Amount threshold validation to prevent unrealistic large amounts
-  const getAmountThreshold = (assetType: string): number => {
-    const upperAsset = assetType.toUpperCase();
-    if (upperAsset === "BTC") return 10;
-    if (upperAsset === "ETH") return 100;
-    if (upperAsset === "USDT" || upperAsset === "USDC") return 100000;
-    return Infinity; // No limit for other assets
-  };
-
-  const amountThreshold = getAmountThreshold(currency);
-  const numericAmount = Number(amount);
-  const amountExceedsThreshold = Number.isFinite(numericAmount) && numericAmount > amountThreshold;
-  const amountError = amountExceedsThreshold 
-    ? `Amount seems unusually high. Maximum allowed for ${currency} is ${amountThreshold.toLocaleString()}. Please double-check and re-enter.`
-    : null;
-
   // Fetch current balance and CAD rate for selected currency
   useEffect(() => {
     const fetchData = async () => {
@@ -483,10 +467,6 @@ function ManageBalanceModal({
     const numericAmount = Number(amount);
     if (!numericAmount || numericAmount <= 0) {
       onError("Enter a valid amount greater than zero.");
-      return;
-    }
-    if (amountExceedsThreshold) {
-      onError(amountError || "Amount exceeds maximum allowed limit.");
       return;
     }
     if (activeTab === "adjust" && !reason.trim()) {
@@ -616,9 +596,6 @@ function ManageBalanceModal({
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Amount</label>
               <input type="number" min="0" step="any" value={amount} onChange={(e) => handleCryptoChange(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-xs text-gray-800" />
-              {amountError && (
-                <p className="mt-1 text-[11px] font-semibold text-red-600">{amountError}</p>
-              )}
             </div>
 
             {/* CAD Calculator Field */}
@@ -668,7 +645,7 @@ function ManageBalanceModal({
 
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button onClick={handleSubmit} disabled={loading || amountExceedsThreshold} className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
+            <button onClick={handleSubmit} disabled={loading} className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-70" style={{ background: "linear-gradient(135deg,#0A3D91,#1650AB)" }}>
               {loading ? "Processing…" : activeTab === "adjust" ? "Adjust Balance" : activeTab === "deposit" ? "Add Deposit" : "Add Withdrawal"}
             </button>
           </div>
