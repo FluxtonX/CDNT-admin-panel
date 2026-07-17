@@ -216,18 +216,24 @@ export function ComplexListEditor({
   );
 }
 
-export function SaveRow({ onSave, saved }: { onSave: () => void; saved: boolean }) {
+export function SaveRow({ onSave, saved, loading }: { onSave: () => void | Promise<void>; saved: boolean; loading: boolean }) {
   return (
     <div className="flex justify-end pt-4 border-t border-gray-100">
       <button
         onClick={onSave}
+        disabled={loading}
         className={cn(
           "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-sm cursor-pointer",
-          saved ? "bg-emerald-500" : "hover:opacity-90"
+          saved ? "bg-emerald-500" : loading ? "opacity-75 cursor-not-allowed" : "hover:opacity-90"
         )}
         style={saved ? {} : { background: BRAND_GRADIENT }}
       >
-        {saved ? (
+        {loading ? (
+          <>
+            <Clock className="h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : saved ? (
           <>
             <Check className="h-4 w-4" />
             Saved
@@ -255,10 +261,12 @@ export function ContentCard({
   onSave?: () => Promise<void> | void;
 }) {
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const handleSave = async () => {
     setError(null);
+    setLoading(true);
     if (onSave) {
       try {
         await onSave();
@@ -267,6 +275,8 @@ export function ContentCard({
       } catch (err) {
         console.error("Save failed:", err);
         setError(err instanceof Error ? err.message : "Failed to save changes");
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -285,7 +295,7 @@ export function ContentCard({
             {error}
           </div>
         )}
-        <SaveRow onSave={handleSave} saved={saved} />
+        <SaveRow onSave={handleSave} saved={saved} loading={loading} />
       </div>
     </div>
   );
