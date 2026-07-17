@@ -7,9 +7,22 @@ export const dynamic = "force-dynamic";
 // GET /api/roles
 export async function GET(request: Request) {
   try {
-    const { allowed } = await checkAdminPermission(request, "manage-roles");
-    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
+
+    // Check if any admin users exist (for initial setup scenario)
+    const { data: adminUsers, error: countErr } = await supabaseAdmin
+      .from("admin_users")
+      .select("id", { count: "exact", head: true });
+
+    if (countErr) throw countErr;
+
+    // If no admin users exist, allow unauthenticated access (initial setup)
+    const isAdminSetup = !adminUsers || adminUsers.length === 0;
+
+    if (!isAdminSetup) {
+      const { allowed } = await checkAdminPermission(request, "manage-roles");
+      if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Fetch roles
     const { data: roles, error: rolesErr } = await supabaseAdmin
@@ -18,6 +31,63 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: true });
 
     if (rolesErr) throw rolesErr;
+
+    // Ensure super_admin role exists and has all permissions
+    const allPermissions = [
+      "view-users",
+      "edit-users",
+      "delete-users",
+      "review-kyc",
+      "view-docs",
+      "approve-withdrawals",
+      "view-transactions",
+      "manage-wallets",
+      "view-wallets",
+      "edit-settings",
+      "manage-roles",
+      "view-reports",
+      "respond-chat",
+      "manage-tickets",
+    ];
+
+    const superAdminRole = roles?.find((r) => r.code === "super_admin");
+    if (!superAdminRole) {
+      // Create super_admin role if it doesn't exist
+      const { error: insertError } = await supabaseAdmin.from("roles").insert({
+        code: "super_admin",
+        name: "Super Admin",
+        description: "Full access to all features",
+        is_active: true,
+        permissions: allPermissions,
+      });
+      if (insertError) console.error("Failed to create super_admin role:", insertError);
+      else {
+        // Refetch roles after insertion
+        const { data: updatedRoles, error: refetchError } = await supabaseAdmin
+          .from("roles")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (!refetchError && updatedRoles) {
+          roles.length = 0;
+          roles.push(...updatedRoles);
+        }
+      }
+    } else {
+      // Update super_admin role permissions if they're incomplete
+      const currentPerms = superAdminRole.permissions || [];
+      const hasAllPerms = allPermissions.every((p) => currentPerms.includes(p));
+      if (!hasAllPerms) {
+        const { error: updateError } = await supabaseAdmin
+          .from("roles")
+          .update({ permissions: allPermissions })
+          .eq("code", "super_admin");
+        if (updateError) console.error("Failed to update super_admin role permissions:", updateError);
+        else {
+          // Update the role in the local array
+          superAdminRole.permissions = allPermissions;
+        }
+      }
+    }
 
     // Fetch admin_users to calculate count
     const { data: admins, error: adminsErr } = await supabaseAdmin
@@ -43,6 +113,83 @@ export async function GET(request: Request) {
     return NextResponse.json({ roles: mappedRoles });
   } catch (error: any) {
     console.error("GET /api/roles failed:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// PUT /api/roles/reset-super-admin
+export async function PUT(request: Request) {
+  try {
+    const supabaseAdmin = createAdminClient();
+
+    // Check if this is initial setup (no admin users)
+    const { data: adminUsers, error: countErr } = await supabaseAdmin
+      .from("admin_users")
+      .select("id", { count: "exact", head: true });
+
+    if (countErr) throw countErr;
+
+    const isAdminSetup = !adminUsers || adminUsers.length === 0;
+
+    if (!isAdminSetup) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Update or create super_admin role with all permissions
+    const { data: existingRole } = await supabaseAdmin
+      .from("roles")
+      .select("id")
+      .eq("code", "super_admin")
+      .single();
+
+    const allPermissions = [
+      "view-users",
+      "edit-users",
+      "delete-users",
+      "review-kyc",
+      "view-docs",
+      "approve-withdrawals",
+      "view-transactions",
+      "manage-wallets",
+      "view-wallets",
+      "edit-settings",
+      "manage-roles",
+      "view-reports",
+      "respond-chat",
+      "manage-tickets",
+    ];
+
+    let result;
+    if (existingRole) {
+      // Update existing role
+      const { data, error } = await supabaseAdmin
+        .from("roles")
+        .update({ permissions: allPermissions })
+        .eq("code", "super_admin")
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    } else {
+      // Create new role
+      const { data, error } = await supabaseAdmin
+        .from("roles")
+        .insert({
+          code: "super_admin",
+          name: "Super Admin",
+          description: "Full access to all features",
+          is_active: true,
+          permissions: allPermissions,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    }
+
+    return NextResponse.json({ role: result });
+  } catch (error: any) {
+    console.error("PUT /api/roles/reset-super-admin failed:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

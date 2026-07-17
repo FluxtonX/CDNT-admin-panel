@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, Loader2, UserPlus } from "lucide-react";
 import { CdntLogo } from "@/components/ui/CdntLogo";
 import { supabase } from "@/lib/supabase";
 
@@ -321,6 +321,18 @@ export default function LoginPage() {
               admin@cdntb.ca / admin123
             </button>
           </p>
+
+          {/* Create Super Admin button */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => router.push("/create-super-admin")}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
+            >
+              <UserPlus className="h-4 w-4" />
+              Create Super Admin
+            </button>
+          </div>
         </div>
       </div>
 

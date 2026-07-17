@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, Bell, ChevronDown, Menu, LogOut, Info, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
+import { supabase } from "@/lib/supabase";
 
 // Types for our notification data
 type Notification = {
@@ -21,8 +22,40 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [adminName, setAdminName] = useState<string>("Admin User");
+  const [adminRole, setAdminRole] = useState<string>("Super Admin");
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Fetch admin user info
+  useEffect(() => {
+    async function fetchAdminInfo() {
+      try {
+        const cookies = document.cookie.split('; ').reduce((acc: any, cookie) => {
+          const [key, value] = cookie.split('=');
+          acc[key] = decodeURIComponent(value);
+          return acc;
+        }, {});
+
+        const adminEmail = cookies.admin_auth;
+        if (!adminEmail) return;
+
+        const { data, error } = await supabase
+          .from("admin_users")
+          .select("full_name, roles(name)")
+          .eq("email", adminEmail)
+          .single();
+
+        if (data && !error) {
+          setAdminName(data.full_name || "Admin User");
+          setAdminRole(data.roles?.[0]?.name || "Admin");
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin info:", err);
+      }
+    }
+    fetchAdminInfo();
+  }, []);
 
   // Ctrl+K shortcut to open search
   useEffect(() => {
@@ -237,11 +270,11 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
             className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded-lg transition-colors select-none"
           >
             <div className="h-8 w-8 rounded-full bg-orange-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              AD
+              {adminName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'AD'}
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-gray-900 leading-none">Admin User</p>
-              <p className="text-[11px] text-gray-600 mt-0.5 leading-none">Super Admin</p>
+              <p className="text-sm font-semibold text-gray-900 leading-none">{adminName}</p>
+              <p className="text-[11px] text-gray-600 mt-0.5 leading-none">{adminRole}</p>
             </div>
             <ChevronDown className="h-3.5 w-3.5 text-gray-600 hidden sm:block transition-transform duration-205" style={{ transform: dropdownOpen ? "rotate(180deg)" : "rotate(0)" }} />
           </div>
