@@ -13,7 +13,7 @@ import {
 } from "../shared/FieldComponents";
 
 export function DepositPanel() {
-  const [pageSubheading, setPageSubheading] = useState("Select an asset, review the network, then scan the company deposit QR.");
+  const [pageSubheading, setPageSubheading] = useState("Select an asset, then scan the company deposit QR.");
   const [infoBox, setInfoBox] = useState("The QR contains the fixed company deposit address for this asset and network. The address is intentionally not displayed as plain text on this screen.");
   const [warningBox, setWarningBox] = useState("Sending the wrong asset or network can permanently lose funds.");
   const [cadBlocked, setCadBlocked] = useState("Canadian regulations absolutely forbid CAD deposits on fraud-refund accounts. The deposit function is permanently disabled.");
@@ -98,15 +98,15 @@ export function DepositPanel() {
       </ContentCard>
 
       <ContentCard title="Important Instructions Block" icon={<AlertTriangle className="h-4 w-4" />} onSave={saveInstructions}>
-        <p className="text-[12px] text-gray-500 -mt-1 mb-2">Shown in the amber sidebar box (Steps 1 &amp; 3).</p>
+        <p className="text-[12px] text-gray-500 -mt-1 mb-2">Shown in the amber sidebar box (Steps 1 &amp; 2).</p>
         <ListEditor label="Instruction Bullet Points" items={instructions} onChange={setInstructions} updatedAt="Jul 9, 2026 at 8:45 AM" />
       </ContentCard>
 
       <ContentCard title="Info &amp; Warning Boxes" icon={<Info className="h-4 w-4" />} onSave={saveInfoWarning}>
         <TextField label="Blue info box text (Step 1)" value={infoBox} onChange={setInfoBox} multiline rows={3} updatedAt="Jul 2, 2026 at 4:00 PM" />
         <TextField label="Amber warning box text (Step 2)" value={warningBox} onChange={setWarningBox} updatedAt="Jul 2, 2026 at 4:00 PM" />
-        <TextField label="Green success box title (Step 3)" value={successTitle} onChange={setSuccessTitle} updatedAt="Jul 2, 2026 at 4:00 PM" />
-        <TextField label="Green success box body (Step 3)" value={successBody} onChange={setSuccessBody} updatedAt="Jul 2, 2026 at 4:00 PM" />
+        <TextField label="Green success box title (Step 2)" value={successTitle} onChange={setSuccessTitle} updatedAt="Jul 2, 2026 at 4:00 PM" />
+        <TextField label="Green success box body (Step 2)" value={successBody} onChange={setSuccessBody} updatedAt="Jul 2, 2026 at 4:00 PM" />
       </ContentCard>
 
       <ContentCard title="CAD Deposit Blocked Message" icon={<AlertTriangle className="h-4 w-4" />} onSave={saveCadBlocked}>
