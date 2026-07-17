@@ -28,6 +28,7 @@ export function GlobalPanel() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [bannerColor, setBannerColor] = useState("blue");
   const [bannerSaved, setBannerSaved] = useState(false);
+  const [bannerSaving, setBannerSaving] = useState(false);
   const [headerTagline, setHeaderTagline] = useState("Here's what's happening with your portfolio today");
   const [loading, setLoading] = useState(true);
 
@@ -154,14 +155,18 @@ export function GlobalPanel() {
           <SaveRow
             onSave={async () => {
               try {
+                setBannerSaving(true);
                 await saveBanner();
                 setBannerSaved(true);
                 setTimeout(() => setBannerSaved(false), 2000);
               } catch (err) {
                 console.error("Save failed:", err);
+              } finally {
+                setBannerSaving(false);
               }
             }}
             saved={bannerSaved}
+            loading={bannerSaving}
           />
         </div>
       </div>
