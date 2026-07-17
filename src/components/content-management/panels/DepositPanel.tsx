@@ -59,6 +59,15 @@ export function DepositPanel() {
               case "deposit.instructions":
                 if (Array.isArray(row.value)) {
                   setInstructions(row.value.map((v: string, i: number) => ({ id: String(i), value: v })));
+                } else if (typeof row.value === 'string') {
+                  try {
+                    const parsed = JSON.parse(row.value);
+                    if (Array.isArray(parsed)) {
+                      setInstructions(parsed.map((v: string, i: number) => ({ id: String(i), value: v })));
+                    }
+                  } catch (e) {
+                    console.warn("Failed to parse deposit.instructions:", e);
+                  }
                 }
                 break;
               default:
@@ -79,7 +88,7 @@ export function DepositPanel() {
   };
   const saveInstructions = async () => {
     const instructionsArray = instructions.map((item) => item.value);
-    await updateContentKey("deposit.instructions", instructionsArray, "array", "deposit", "Instruction Bullet Points");
+    await updateContentKey("deposit.instructions", instructionsArray, "json_array", "deposit", "Instruction Bullet Points");
   };
   const saveInfoWarning = async () => {
     await updateContentKey("deposit.info_box", infoBox, "text", "deposit", "Info Box Text");
