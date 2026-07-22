@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import NextTopLoader from "nextjs-toploader";
 import { QueryProvider } from "@/providers/query-provider";
+import MaintenanceGuard from "@/components/MaintenanceGuard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +30,10 @@ export default function RootLayout({
       </head>
       <body className="antialiased" suppressHydrationWarning>
         <NextTopLoader color="#2563eb" height={3} showSpinner={false} crawl={true} crawlSpeed={200} initialPosition={0.08} />
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <MaintenanceGuard appType="admin" />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );
