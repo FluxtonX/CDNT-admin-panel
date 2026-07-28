@@ -11,9 +11,17 @@ export async function GET(request: Request) {
     if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const supabaseAdmin = createAdminClient();
 
-    // Fetch all users securely using service_role
-    const { data: { users }, error: authErr } = await supabaseAdmin.auth.admin.listUsers();
-    if (authErr) throw authErr;
+    // Fetch ALL users — paginate because Supabase defaults to 50 per page
+    let users: any[] = [];
+    let page = 1;
+    const perPage = 1000;
+    while (true) {
+      const { data, error: authErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      if (authErr) throw authErr;
+      users = users.concat(data.users);
+      if (data.users.length < perPage) break;
+      page++;
+    }
 
     // Fetch profiles to get their full names and freeze status
     const { data: profiles, error: profErr } = await supabaseAdmin

@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
-import { fetchLiveCADRates } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -31,7 +28,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       try {
         const { data, error } = await supabaseAdmin.from(table).select("*").match(query);
         if (error) {
-          // If relation does not exist or column does not exist, fail silently and return empty
           console.warn(`SafeFetch Warning (${table}):`, error.message);
           return [];
         }
@@ -69,9 +65,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       safeFetch("audit_logs", { user_id: userId }),
     ]);
 
-    console.log(`[DEBUG] API Route /api/users/[id] hit! userId param: "${userId}"`);
-    console.log(`[DEBUG] Raw support_threads result:`, JSON.stringify(threads, null, 2));
-
     const profile = profiles[0] || {};
     const kycSubmission = kyc[0] || {};
 
@@ -105,6 +98,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
       });
       const currencySymbols = Array.from(uniqueCurrencies);
+      const { fetchLiveCADRates } = require("@/lib/utils");
       const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
       
       totalBalance = wallets.reduce((sum: number, w: any) => {
@@ -131,7 +125,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       auth: user,
       profile,
       kyc: kycSubmission,
-      kycDocuments: kyc, // In case there are multiple or history
+      kycDocuments: kyc,
       wallets,
       balance: totalBalance,
       transactions: combinedTransactions,
@@ -146,5 +140,60 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   } catch (error: any) {
     console.error("Failed to fetch user details:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    // 1. Verify admin permissions (delete-users)
+    const { allowed } = await checkAdminPermission(request, "delete-users");
+    if (!allowed) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id: userId } = await context.params;
+    if (!userId) {
+      return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
+    }
+
+    const supabaseAdmin = createAdminClient();
+
+    // 2. Fetch user auth context first to get the email address
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: authError?.message || "User does not exist in Auth" },
+        { status: 404 }
+      );
+    }
+
+    // 3. Execute atomic cascading database deletion via transactional RPC
+    const { error: rpcError } = await supabaseAdmin.rpc("delete_user_cascade", {
+      target_user_id: userId,
+      target_email: user.email,
+    });
+
+    if (rpcError) {
+      console.error("[DELETE USER] Database transactional RPC failed:", rpcError);
+      throw new Error(`Database transaction failed: ${rpcError.message}`);
+    }
+
+    // 4. Delete the user from Supabase Auth
+    const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (deleteAuthError) {
+      console.error("[DELETE USER] Failed to delete Auth user:", deleteAuthError);
+      throw new Error(`Failed to delete Auth account: ${deleteAuthError.message}`);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("[DELETE USER ERROR]:", error);
+    return NextResponse.json(
+      { error: error.message || "An unexpected error occurred during user deletion" },
+      { status: 500 }
+    );
   }
 }
