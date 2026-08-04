@@ -405,7 +405,12 @@ function UserRow({
       {/* BALANCE */}
       <div>
         <p className="text-sm font-bold text-gray-900">${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
-        <p className="text-xs text-gray-600">Joined {user.joinedDate}</p>
+        <p
+          className="text-xs text-gray-600"
+          title={(user as any).createdAt ? `Registered: ${new Date((user as any).createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}` : `Joined ${user.joinedDate}`}
+        >
+          Joined {(user as any).createdAt ? new Date((user as any).createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : user.joinedDate}
+        </p>
       </div>
       {/* RISK */}
       <div><RiskBadge level={user.risk} /></div>
