@@ -131,6 +131,7 @@ export async function GET(request: Request) {
         name: rawName,
         email: user.email,
         phone: user.phone || "N/A",
+        createdAt: user.created_at,
         joinedDate: new Date(user.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         kyc: kycStatus,
         account: accountStatus,
