@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  LayoutDashboard, Users, ShieldCheck, ArrowDownToLine,
+  LayoutDashboard, Users, ShieldCheck, ArrowDownToLine, Landmark,
   ArrowLeftRight, Wallet, PieChart, Banknote, Bell,
   MessageCircle, BarChart3, ShieldAlert, Settings,
   FileEdit,
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { id: "users",         label: "Users",                href: "/dashboard/users",         icon: Users },
   { id: "kyc",           label: "KYC Verification",    href: "/dashboard/kyc",           icon: ShieldCheck },
   { id: "withdrawals",   label: "Withdrawal Requests", href: "/dashboard/withdrawals",   icon: ArrowDownToLine },
+  { id: "bank-accounts", label: "Bank Accounts",       href: "/dashboard/bank-accounts", icon: Landmark },
   { id: "transactions",  label: "Transactions",         href: "/dashboard/transactions",  icon: ArrowLeftRight },
   { id: "wallets",       label: "Wallets",              href: "/dashboard/wallets",       icon: Wallet },
   { id: "portfolio",     label: "Portfolio Management", href: "/dashboard/portfolio",     icon: PieChart },
