@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { getCachedSignedUrl } from "@/lib/storage-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +17,13 @@ export async function GET(request: Request) {
     
     if (error) throw error;
 
-    // Generate signed URLs for private bucket images
+    // Generate stable cached signed URLs for private bucket images (24 hour TTL)
     const getSignedUrl = async (publicUrl: string | null) => {
       if (!publicUrl) return null;
-      const parts = publicUrl.split("kyc-documents/");
-      if (parts.length < 2) return publicUrl;
-      const path = parts[1];
-      const { data } = await supabaseAdmin.storage.from("kyc-documents").createSignedUrl(path, 60 * 60); // 1 hr
-      return data?.signedUrl || publicUrl;
+      return getCachedSignedUrl("kyc-documents", publicUrl, 86400, {
+        width: 1200,
+        quality: 85,
+      });
     };
 
     const secureData = await Promise.all((data || []).map(async (item: any) => ({

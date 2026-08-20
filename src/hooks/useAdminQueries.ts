@@ -15,7 +15,8 @@ export function useDashboardMetrics() {
   return useQuery({
     queryKey: adminQueryKeys.dashboard(),
     queryFn: () => fetchJson<Record<string, unknown>>("/api/dashboard"),
-    staleTime: 30_000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -26,6 +27,8 @@ export function useUsers() {
       const data = await fetchJson<{ users: unknown[] }>("/api/users");
       return data.users || [];
     },
+    staleTime: 5 * 60_000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -34,6 +37,8 @@ export function useUserDetail(userId: string) {
     queryKey: adminQueryKeys.user(userId),
     queryFn: () => fetchJson<Record<string, unknown>>(`/api/users/${userId}`),
     enabled: Boolean(userId),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -44,7 +49,8 @@ export function useWithdrawals() {
       const data = await fetchJson<{ withdrawals: unknown[] }>("/api/withdrawals");
       return data.withdrawals || [];
     },
-    staleTime: 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -55,6 +61,8 @@ export function useDeposits() {
       const data = await fetchJson<{ deposits: unknown[] }>("/api/deposits");
       return data.deposits || [];
     },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -62,6 +70,8 @@ export function usePlatformWallets() {
   return useQuery({
     queryKey: adminQueryKeys.platformWallets(),
     queryFn: () => fetchJson<unknown[]>("/api/platform-wallets"),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

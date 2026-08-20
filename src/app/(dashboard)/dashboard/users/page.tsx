@@ -92,6 +92,8 @@ function UserAvatar({
     <img
       src={imageUrl}
       alt={user.name}
+      loading="lazy"
+      decoding="async"
       onError={handleImageError}
       className={`${sizeClasses} object-cover shrink-0`}
     />
