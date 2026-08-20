@@ -188,6 +188,20 @@ export async function DELETE(
       throw new Error(`Failed to delete Auth account: ${deleteAuthError.message}`);
     }
 
+    // 5. Clean up stored KYC documents in Supabase Storage to prevent storage bloat
+    try {
+      const { data: storageFiles } = await supabaseAdmin.storage
+        .from("kyc-documents")
+        .list(userId);
+      
+      if (storageFiles && storageFiles.length > 0) {
+        const filePaths = storageFiles.map((f) => `${userId}/${f.name}`);
+        await supabaseAdmin.storage.from("kyc-documents").remove(filePaths);
+      }
+    } catch (storageErr) {
+      console.warn("[DELETE USER] Storage cleanup warning:", storageErr);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("[DELETE USER ERROR]:", error);
