@@ -21,11 +21,20 @@ import {
   Loader2,
   Edit2,
   Trash2,
+  Bell,
+  BellRing,
+  Volume2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AdminUser } from "@/lib/data/users";
 import { supabase } from "@/lib/supabase";
 import { RequirePermission } from "@/components/layout/RequirePermission";
+import { 
+  getNotificationPermission, 
+  requestNotificationPermission, 
+  soundManager,
+  sendDesktopNotification 
+} from "@/lib/notifications";
 
 type ChatStatus = "Active" | "Waiting" | "Resolved" | "Closed";
 
@@ -154,6 +163,11 @@ function LiveChatSupportPageContent() {
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    setNotifPerm(getNotificationPermission());
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -695,9 +709,47 @@ function LiveChatSupportPageContent() {
         className="space-y-6 flex flex-col h-[calc(100vh-130px)] max-h-[850px]"
       >
         {/* Header */}
-        <div>
-          <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Live Chat Support</h1>
-          <p className="mt-1 text-sm text-gray-600 sm:text-base">Manage customer support conversations in real-time</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-[26px] font-bold leading-tight text-gray-900 sm:text-[30px]">Live Chat Support</h1>
+            <p className="mt-1 text-sm text-gray-600 sm:text-base">Manage customer support conversations in real-time</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => soundManager.play()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              title="Test notification chime sound"
+            >
+              <Volume2 className="h-3.5 w-3.5 text-blue-600" />
+              Test Chime
+            </button>
+
+            {notifPerm !== "granted" ? (
+              <button
+                onClick={async () => {
+                  const perm = await requestNotificationPermission();
+                  setNotifPerm(perm);
+                  if (perm === "granted") {
+                    sendDesktopNotification({
+                      title: "🔔 Desktop Notifications Enabled!",
+                      body: "You will now get alerted whenever clients reply.",
+                      playSound: true,
+                    });
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <Bell className="h-3.5 w-3.5" />
+                Enable Desktop Alerts
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                <BellRing className="h-3.5 w-3.5 text-emerald-600" />
+                Desktop Alerts Active
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Chat Interface Container */}
