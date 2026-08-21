@@ -864,12 +864,22 @@ function LiveChatSupportPageContent() {
                     </button>
                     <UserAvatar user={activeThread.user} size="md" />
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <h4 className="font-bold text-gray-900 text-sm leading-none">{activeThread.user.name}</h4>
                         <span className="flex items-center gap-1 bg-gray-100 text-gray-600 font-bold uppercase px-2 py-0.5 rounded-full text-[9px] tracking-wide border border-gray-150 font-mono">
                           <StatusIndicator status={activeThread.status} />
                           {activeThread.status}
                         </span>
+                        {activeThread.ticket_id && (
+                          <span className="bg-blue-50 text-blue-700 border border-blue-200 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            {activeThread.ticket_id}
+                          </span>
+                        )}
+                        {activeThread.category && (
+                          <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            {activeThread.category}
+                          </span>
+                        )}
                       </div>
                       <span className="text-[10px] text-gray-600 font-mono mt-1 block">{activeThread.user.id.substring(0, 8)} • {activeThread.user.email}</span>
                     </div>
