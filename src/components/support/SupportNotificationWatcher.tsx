@@ -1,43 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { Bell, BellRing, Volume2, X } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import {
   isNotificationSupported,
   getNotificationPermission,
   requestNotificationPermission,
   sendDesktopNotification,
-  soundManager,
 } from "@/lib/notifications";
 
 export function SupportNotificationWatcher() {
   const router = useRouter();
-  const pathname = usePathname();
-  const [permission, setPermission] = useState<NotificationPermission>("default");
-  const [dismissBanner, setDismissBanner] = useState(false);
-  const [showPromptBanner, setShowPromptBanner] = useState(false);
+  const queryClient = useQueryClient();
 
+  // 1. Auto-request native browser permission on first user interaction (required by browser security policies)
   useEffect(() => {
     if (!isNotificationSupported()) return;
 
-    const currentPerm = getNotificationPermission();
-    setPermission(currentPerm);
-
-    // If permission is default and user hasn't dismissed before in this session
-    if (currentPerm === "default") {
-      const dismissed = sessionStorage.getItem("cdnt_notif_banner_dismissed");
-      if (!dismissed) {
-        setShowPromptBanner(true);
+    const askPermissionOnGesture = async () => {
+      if (getNotificationPermission() === "default") {
+        try {
+          await requestNotificationPermission();
+        } catch {
+          // ignore
+        }
       }
+    };
+
+    // Try immediately (in case browser allows it)
+    if (getNotificationPermission() === "default") {
+      askPermissionOnGesture();
     }
+
+    // Also attach to first user gesture (Chrome / Safari strictly require a click or keydown to display the permission dialog)
+    window.addEventListener("click", askPermissionOnGesture, { once: true });
+    window.addEventListener("keydown", askPermissionOnGesture, { once: true });
+
+    return () => {
+      window.removeEventListener("click", askPermissionOnGesture);
+      window.removeEventListener("keydown", askPermissionOnGesture);
+    };
   }, []);
 
-  // Real-time Global Message & Thread Listener
+  // 2. Real-time Listener for ALL Admin Notifications & Client Support Messages
   useEffect(() => {
-    const channel = supabase
-      .channel("global_support_alerts")
+    // A. Listen for Client Support Messages
+    const supportChannel = supabase
+      .channel("global_support_messages_alerts")
       .on(
         "postgres_changes",
         {
@@ -47,11 +58,9 @@ export function SupportNotificationWatcher() {
         },
         async (payload) => {
           const newMsg = payload.new as any;
-          // Only notify for messages from clients
           if (newMsg.sender !== "Client") return;
 
           try {
-            // Fetch thread details to know the user & ticket
             const { data: thread } = await supabase
               .from("support_threads")
               .select("id, user_id, ticket_id, category")
@@ -69,7 +78,7 @@ export function SupportNotificationWatcher() {
                   }
                 }
               } catch {
-                // fallback
+                // ignore
               }
             }
 
@@ -78,91 +87,105 @@ export function SupportNotificationWatcher() {
 
             sendDesktopNotification({
               title: `💬 New Message: ${senderName}${ticketLabel}`,
-              body: `${categoryLabel ? categoryLabel + "\n" : ""}${newMsg.text || "Sent a message"}`,
-              tag: `thread-${newMsg.thread_id}`,
+              body: `${categoryLabel ? categoryLabel + "\n" : ""}${newMsg.text || "Sent a new message"}`,
+              tag: `support-${newMsg.thread_id}`,
               onClick: () => {
                 router.push(`/dashboard/live-chat?thread=${newMsg.thread_id}`);
               },
               playSound: true,
             });
           } catch (err) {
-            console.error("Error handling support notification:", err);
+            console.error("Error displaying support notification:", err);
           }
         }
       )
       .subscribe();
 
+    // B. Listen for Platform Admin Notifications (Local bank, deposits, withdrawals, KYC, etc.)
+    const adminNotifChannel = supabase
+      .channel("global_admin_platform_notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+        },
+        (payload) => {
+          const newNotif = payload.new as any;
+          
+          // Trigger for admin-audience notifications or general platform notifications
+          const isForAdmin =
+            !newNotif.user_id ||
+            newNotif.audience === "Admin" ||
+            newNotif.audience === "admin" ||
+            newNotif.type === "ADMIN_ALERT" ||
+            newNotif.type === "BANK_ACCOUNT_CREATED" ||
+            newNotif.type === "DEPOSIT" ||
+            newNotif.type === "WITHDRAWAL";
+
+          if (isForAdmin) {
+            // Update Header notification badge
+            queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+
+            sendDesktopNotification({
+              title: `🔔 ${newNotif.title || "New Admin Notification"}`,
+              body: newNotif.message || "New activity recorded on the platform",
+              tag: `notif-${newNotif.id}`,
+              onClick: () => {
+                if (newNotif.link) {
+                  router.push(newNotif.link);
+                } else if (newNotif.title?.toLowerCase().includes("bank")) {
+                  router.push("/dashboard/bank-accounts");
+                } else if (newNotif.title?.toLowerCase().includes("withdraw")) {
+                  router.push("/dashboard/withdrawals");
+                } else if (newNotif.title?.toLowerCase().includes("deposit")) {
+                  router.push("/dashboard/transactions");
+                } else {
+                  router.push("/dashboard/notifications");
+                }
+              },
+              playSound: true,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // C. Listen for direct User Bank Account Submissions
+    const bankChannel = supabase
+      .channel("global_bank_account_alerts")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "user_bank_accounts",
+        },
+        (payload) => {
+          const newBank = payload.new as any;
+          queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+
+          sendDesktopNotification({
+            title: "🏦 New Bank Account Added",
+            body: `Bank: ${newBank.bank_name || "Bank Account"} (${newBank.account_holder_name || "User"})`,
+            tag: `bank-${newBank.id}`,
+            onClick: () => {
+              router.push("/dashboard/bank-accounts");
+            },
+            playSound: true,
+          });
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(supportChannel);
+      supabase.removeChannel(adminNotifChannel);
+      supabase.removeChannel(bankChannel);
     };
-  }, [router, pathname]);
+  }, [router, queryClient]);
 
-  const handleEnableNotifications = async () => {
-    const perm = await requestNotificationPermission();
-    setPermission(perm);
-    setShowPromptBanner(false);
-    if (perm === "granted") {
-      sendDesktopNotification({
-        title: "🔔 Notifications Enabled!",
-        body: "You will now receive desktop alerts & sound chimes when clients message.",
-        tag: "cdnt-welcome",
-        playSound: true,
-      });
-    }
-  };
-
-  const handleDismiss = () => {
-    setDismissBanner(true);
-    setShowPromptBanner(false);
-    sessionStorage.setItem("cdnt_notif_banner_dismissed", "true");
-  };
-
-  const handleTestSound = () => {
-    soundManager.play();
-  };
-
-  if (!showPromptBanner || dismissBanner || permission === "granted") {
-    return null;
-  }
-
-  return (
-    <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white px-4 py-2.5 shadow-md flex items-center justify-between text-xs sm:text-sm z-50">
-      <div className="flex items-center gap-2.5">
-        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-700/60 text-blue-200">
-          <BellRing className="h-4 w-4 animate-pulse" />
-        </div>
-        <div>
-          <span className="font-bold">Enable Desktop Notifications:</span>{" "}
-          <span className="text-blue-100 text-xs hidden sm:inline">
-            Get instant PC pop-up alerts and audio chimes whenever clients reply or open support tickets.
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleTestSound}
-          className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-800/80 hover:bg-blue-700 text-blue-200 text-xs font-semibold transition-colors"
-          title="Test audio chime"
-        >
-          <Volume2 className="h-3.5 w-3.5" />
-          Test Sound
-        </button>
-        <button
-          onClick={handleEnableNotifications}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-blue-900 font-bold text-xs hover:bg-blue-50 shadow-sm transition-all cursor-pointer"
-        >
-          <Bell className="h-3.5 w-3.5" />
-          Enable Notifications
-        </button>
-        <button
-          onClick={handleDismiss}
-          className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-          aria-label="Dismiss banner"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
+  // Headless component - no visible UI banners
+  return null;
 }

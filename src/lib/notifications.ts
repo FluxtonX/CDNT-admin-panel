@@ -2,6 +2,29 @@
 
 class NotificationSound {
   private audioCtx: AudioContext | null = null;
+  private isUnlocked: boolean = false;
+
+  constructor() {
+    if (typeof window !== "undefined") {
+      const unlockAudio = () => {
+        try {
+          this.getAudioContext();
+          if (this.audioCtx && this.audioCtx.state === "suspended") {
+            this.audioCtx.resume();
+          }
+          this.isUnlocked = true;
+          window.removeEventListener("click", unlockAudio);
+          window.removeEventListener("keydown", unlockAudio);
+          window.removeEventListener("touchstart", unlockAudio);
+        } catch {
+          // ignore
+        }
+      };
+      window.addEventListener("click", unlockAudio, { passive: true });
+      window.addEventListener("keydown", unlockAudio, { passive: true });
+      window.addEventListener("touchstart", unlockAudio, { passive: true });
+    }
+  }
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -28,6 +51,10 @@ class NotificationSound {
     try {
       const ctx = this.getAudioContext();
       if (!ctx) return;
+
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
 
       const now = ctx.currentTime;
 
@@ -110,7 +137,7 @@ export function sendDesktopNotification({
 }: DesktopNotificationOptions): void {
   if (typeof window === "undefined") return;
 
-  // 1. Play audible sound chime if enabled
+  // 1. Play audible sound chime
   if (playSound) {
     soundManager.play();
   }
@@ -121,7 +148,7 @@ export function sendDesktopNotification({
       const notification = new Notification(title, {
         body,
         icon: "/favicon.ico",
-        tag: tag || "cdnt-support",
+        tag: tag || "cdnt-admin-alert",
       });
 
       if (onClick) {
