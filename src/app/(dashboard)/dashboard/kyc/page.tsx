@@ -171,7 +171,13 @@ function DocumentScanPreview({
     if (tab === "selfie") {
       return (
         <div className="flex items-center justify-center w-full h-full p-2">
-          <img src={request.rawImages.selfie} alt="Selfie" className="max-h-[400px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
+          <img
+            src={request.rawImages.selfie}
+            alt="Selfie"
+            loading="lazy"
+            decoding="async"
+            className="max-h-[400px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200"
+          />
         </div>
       );
     } else if (tab === "front") {
@@ -179,11 +185,23 @@ function DocumentScanPreview({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full h-full p-2 overflow-y-auto">
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs font-bold text-gray-600">FRONT</span>
-            <img src={request.rawImages.front} alt="Front ID" className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
+            <img
+              src={request.rawImages.front}
+              alt="Front ID"
+              loading="lazy"
+              decoding="async"
+              className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200"
+            />
           </div>
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs font-bold text-gray-600">BACK</span>
-            <img src={request.rawImages.back} alt="Back ID" className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200" />
+            <img
+              src={request.rawImages.back}
+              alt="Back ID"
+              loading="lazy"
+              decoding="async"
+              className="max-h-[300px] max-w-[100%] rounded-xl object-contain shadow-md border border-gray-200"
+            />
           </div>
         </div>
       );

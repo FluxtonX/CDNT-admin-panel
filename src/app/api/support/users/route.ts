@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
+import { getCachedSignedUrl } from "@/lib/storage-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -39,25 +40,22 @@ export async function GET(request: Request) {
     const profiles = profilesResult.data || [];
     const kycData = kycResult.data || [];
 
-    // Generate signed URLs for KYC selfies *only* for the fetched users
+    // Generate stable cached signed URLs with thumbnail transformation for KYC selfies
     const kycDataWithSignedUrls = await Promise.all(
       kycData.map(async (kyc) => {
         if (kyc.selfie_url && kyc.status === "approved") {
           try {
-            const url = new URL(kyc.selfie_url);
-            const pathParts = url.pathname.split('/kyc-documents/');
-            if (pathParts.length > 1) {
-              const filePath = pathParts[1];
-              const { data: signedUrlData } = await supabaseAdmin
-                .storage
-                .from('kyc-documents')
-                .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-              
-              return {
-                ...kyc,
-                signed_selfie_url: signedUrlData?.signedUrl || null,
-              };
-            }
+            const signedSelfieUrl = await getCachedSignedUrl("kyc-documents", kyc.selfie_url, 86400, {
+              width: 96,
+              height: 96,
+              resize: "cover",
+              quality: 80,
+            });
+            
+            return {
+              ...kyc,
+              signed_selfie_url: signedSelfieUrl,
+            };
           } catch (err) {
             console.error(`[support/users] Error generating signed URL for ${kyc.user_id}:`, err);
           }

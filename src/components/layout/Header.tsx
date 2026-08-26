@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Bell, ChevronDown, Menu, LogOut, Info, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 import { supabase } from "@/lib/supabase";
+import { sendDesktopNotification, requestNotificationPermission } from "@/lib/notifications";
 
 // Types for our notification data
 type Notification = {
@@ -70,6 +71,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const initialLoadRef = useRef(true);
+  const knownNotificationIds = useRef<Set<string>>(new Set());
+
   // Fetch admin notifications
   const { data: notificationsData } = useQuery<{ notifications: Notification[] }>({
     queryKey: ["admin-notifications"],
@@ -78,11 +82,47 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
       if (!res.ok) throw new Error("Failed to fetch notifications");
       return res.json();
     },
-    refetchInterval: 30000, // Poll every 30s
+    refetchInterval: 5000, // Poll every 5s for fast background alerts
   });
 
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  // Detect newly arrived unread notifications and play chime + desktop alert
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) return;
+
+    if (initialLoadRef.current) {
+      // First load: seed the known set without firing sound
+      notifications.forEach((n) => knownNotificationIds.current.add(n.id));
+      initialLoadRef.current = false;
+      return;
+    }
+
+    const newlyArrived = notifications.filter(
+      (n) => !n.is_read && !knownNotificationIds.current.has(n.id)
+    );
+
+    if (newlyArrived.length > 0) {
+      newlyArrived.forEach((n) => knownNotificationIds.current.add(n.id));
+      const latest = newlyArrived[0];
+      sendDesktopNotification({
+        title: `🔔 ${latest.title || "New Admin Notification"}`,
+        body: latest.message || "New activity recorded on the platform",
+        tag: `notif-${latest.id}`,
+        onClick: () => {
+          if (latest.link) {
+            router.push(latest.link);
+          } else {
+            router.push("/dashboard/notifications");
+          }
+        },
+        playSound: true,
+      });
+    } else {
+      notifications.forEach((n) => knownNotificationIds.current.add(n.id));
+    }
+  }, [notifications, router]);
 
   const markAsRead = useMutation({
     mutationFn: async (id?: string) => {
@@ -163,6 +203,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
         <div className="relative">
           <button
             onClick={() => {
+              if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission().catch(() => {});
+              }
               setNotificationsOpen(!notificationsOpen);
               setDropdownOpen(false);
             }}

@@ -18,10 +18,14 @@ export async function GET(request: Request) {
 
     const totalUsers = profilesCount || 0;
 
-    // 2. Fetch all user wallets directly
-    const { data: userWallets, error: walletsErr } = await supabaseAdmin
-      .from("user_wallets")
-      .select("*");
+    // 2. Fetch all user wallets and active bank accounts
+    const [
+      { data: userWallets, error: walletsErr },
+      { data: userBankAccounts, error: bankAccsErr }
+    ] = await Promise.all([
+      supabaseAdmin.from("user_wallets").select("*"),
+      supabaseAdmin.from("user_bank_accounts").select("currency, balance, status").eq("status", "active")
+    ]);
 
     // Extract unique currencies from user_wallets
     const uniqueCurrencies = new Set<string>();
@@ -32,7 +36,7 @@ export async function GET(request: Request) {
     }
 
     const currencySymbols = Array.from(uniqueCurrencies);
-    const liveRates = await fetchLiveCADRates(currencySymbols);
+    const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
 
     // Aggregate balances by currency dynamically
     const currencyBalances: Record<string, number> = {};
@@ -46,10 +50,21 @@ export async function GET(request: Request) {
       });
     }
 
+    // Add fiat bank account balances (CAD)
+    if (!bankAccsErr && userBankAccounts) {
+      userBankAccounts.forEach((b: any) => {
+        const coin = (b.currency || "CAD").toUpperCase();
+        const amount = Number(b.balance) || 0;
+        if (amount > 0) {
+          currencyBalances[coin] = (currencyBalances[coin] || 0) + amount;
+        }
+      });
+    }
+
     // Calculate total AUM in CAD (CAD doesn't need conversion)
     const totalAum = Object.entries(currencyBalances).reduce((sum, [coin, bal]) => {
       // If CAD, use balance directly (no conversion needed)
-      if (coin === 'CAD') return sum + bal;
+      if (coin === "CAD") return sum + bal;
       const rate = liveRates[coin] || 1;
       return sum + (bal * rate);
     }, 0);

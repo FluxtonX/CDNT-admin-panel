@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { checkAdminPermission } from "@/lib/checkAdminPermission";
 import { fetchLiveCADRates } from "@/lib/utils";
+import { getCachedSignedUrl } from "@/lib/storage-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -33,26 +34,22 @@ export async function GET(request: Request) {
     const { data: kycData, error: kycErr } = await supabaseAdmin.from("kyc_submissions").select("user_id, full_name, selfie_url, status");
     if (kycErr) throw kycErr;
 
-    // Generate signed URLs for KYC selfies
+    // Generate stable cached signed URLs with thumbnail transformation for KYC selfies
     const kycDataWithSignedUrls = await Promise.all(
       (kycData || []).map(async (kyc) => {
         if (kyc.selfie_url && kyc.status === "approved") {
           try {
-            // Extract the file path from the public URL
-            const url = new URL(kyc.selfie_url);
-            const pathParts = url.pathname.split('/kyc-documents/');
-            if (pathParts.length > 1) {
-              const filePath = pathParts[1];
-              const { data: signedUrlData } = await supabaseAdmin
-                .storage
-                .from('kyc-documents')
-                .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
-              
-              return {
-                ...kyc,
-                signed_selfie_url: signedUrlData?.signedUrl || null,
-              };
-            }
+            const signedSelfieUrl = await getCachedSignedUrl("kyc-documents", kyc.selfie_url, 86400, {
+              width: 96,
+              height: 96,
+              resize: "cover",
+              quality: 80,
+            });
+            
+            return {
+              ...kyc,
+              signed_selfie_url: signedSelfieUrl,
+            };
           } catch (err) {
             console.error(`[users API] Error generating signed URL for ${kyc.user_id}:`, err);
           }
@@ -61,9 +58,16 @@ export async function GET(request: Request) {
       })
     );
 
-    // Fetch all user wallets
-    const { data: userWallets, error: walletsErr } = await supabaseAdmin.from("user_wallets").select("*");
+    // Fetch all user wallets and active bank accounts
+    const [
+      { data: userWallets, error: walletsErr },
+      { data: userBankAccounts, error: bankAccsErr }
+    ] = await Promise.all([
+      supabaseAdmin.from("user_wallets").select("*"),
+      supabaseAdmin.from("user_bank_accounts").select("user_id, currency, balance, status").eq("status", "active")
+    ]);
     if (walletsErr) throw walletsErr;
+    if (bankAccsErr) console.warn("Could not fetch user_bank_accounts:", bankAccsErr.message);
 
     // Extract unique currencies from user_wallets for dynamic rate fetching
     const uniqueCurrencies = new Set<string>();
@@ -71,14 +75,30 @@ export async function GET(request: Request) {
       if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
     });
     const currencySymbols = Array.from(uniqueCurrencies);
-    const liveRates = await fetchLiveCADRates(currencySymbols);
+    const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
 
-    const userBalanceMap = (userWallets || []).reduce((acc: Record<string, number>, w: any) => {
-      const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
-      const val = Number(w.balance) * rate;
-      acc[w.user_id] = (acc[w.user_id] || 0) + val;
-      return acc;
-    }, {});
+    // Calculate user balances and CAD bank totals
+    const userBalanceMap: Record<string, number> = {};
+    const userCadBankMap: Record<string, number> = {};
+
+    // 1. Add crypto balances converted to CAD
+    (userWallets || []).forEach((w: any) => {
+      const isCAD = w.currency?.toUpperCase() === "CAD";
+      const rate = isCAD ? 1 : (liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36);
+      const val = Number(w.balance || 0) * rate;
+      userBalanceMap[w.user_id] = (userBalanceMap[w.user_id] || 0) + val;
+    });
+
+    // 2. Add active fiat bank accounts (CAD Chequing / Savings)
+    (userBankAccounts || []).forEach((b: any) => {
+      const isCAD = (b.currency || "CAD").toUpperCase() === "CAD";
+      const rate = isCAD ? 1 : (liveRates[b.currency?.toUpperCase()] || 1);
+      const val = Number(b.balance || 0) * rate;
+      userBalanceMap[b.user_id] = (userBalanceMap[b.user_id] || 0) + val;
+      if (isCAD) {
+        userCadBankMap[b.user_id] = (userCadBankMap[b.user_id] || 0) + Number(b.balance || 0);
+      }
+    });
 
     // Map and merge data together
     const mappedUsers = users.map((user) => {
@@ -94,12 +114,22 @@ export async function GET(request: Request) {
         else if (kyc.status === "rejected") kycStatus = "Rejected";
       }
 
-      const walletsForUser = (userWallets || [])
+      const rawWallets = (userWallets || [])
         .filter((w: any) => w.user_id === user.id)
         .map((w: any) => ({
           currency: w.currency,
           balance: Number(w.balance),
         }));
+
+      // Merge CAD bank balance into user wallets list
+      const cadBankBal = userCadBankMap[user.id] || 0;
+      const walletsForUser = [...rawWallets];
+      const cadWalletIndex = walletsForUser.findIndex(w => w.currency?.toUpperCase() === "CAD");
+      if (cadWalletIndex >= 0) {
+        walletsForUser[cadWalletIndex].balance += cadBankBal;
+      } else if (cadBankBal > 0) {
+        walletsForUser.push({ currency: "CAD", balance: cadBankBal });
+      }
 
       const accountStatus = profile?.is_frozen ? "Frozen" : "Active";
       const riskLevel = "Low Risk";

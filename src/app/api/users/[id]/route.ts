@@ -50,7 +50,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       securityLogs,
       tickets,
       threads,
-      auditLogs
+      auditLogs,
+      bankAccounts
     ] = await Promise.all([
       safeFetch("profiles", { id: userId }),
       safeFetch("kyc_submissions", { user_id: userId }),
@@ -63,6 +64,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       safeFetch("support_tickets", { user_id: userId }),
       safeFetch("support_threads", { user_id: userId }),
       safeFetch("audit_logs", { user_id: userId }),
+      safeFetch("user_bank_accounts", { user_id: userId }),
     ]);
 
     const profile = profiles[0] || {};
@@ -90,8 +92,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       })),
     ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20);
 
+    // Calculate total bank CAD from active bank accounts
+    let totalBankCad = 0;
+    if (bankAccounts && bankAccounts.length > 0) {
+      const cadBankAccs = bankAccounts.filter((a: any) => (a.currency || "CAD").toUpperCase() === "CAD" && a.status === "active");
+      totalBankCad = cadBankAccs.reduce((sum: number, a: any) => sum + Number(a.balance || 0), 0);
+    }
+
     // Calculate total balance dynamically using live CAD rates
-    let totalBalance = 0;
+    let totalCryptoCad = 0;
     if (wallets && wallets.length > 0) {
       const uniqueCurrencies = new Set<string>();
       wallets.forEach((w: any) => {
@@ -101,10 +110,25 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       const { fetchLiveCADRates } = require("@/lib/utils");
       const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
       
-      totalBalance = wallets.reduce((sum: number, w: any) => {
-        const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
+      totalCryptoCad = wallets.reduce((sum: number, w: any) => {
+        const isCAD = w.currency?.toUpperCase() === "CAD";
+        const rate = isCAD ? 1 : (liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36);
         return sum + (Number(w.balance || 0) * rate);
       }, 0);
+    }
+
+    const totalBalance = totalCryptoCad + totalBankCad;
+
+    // Merge CAD bank accounts into wallets array for UI portfolio breakdown
+    const mergedWallets = [...(wallets || [])];
+    const cadWalletIndex = mergedWallets.findIndex((w: any) => w.currency?.toUpperCase() === "CAD");
+    if (cadWalletIndex >= 0) {
+      mergedWallets[cadWalletIndex] = {
+        ...mergedWallets[cadWalletIndex],
+        balance: Number(mergedWallets[cadWalletIndex].balance || 0) + totalBankCad,
+      };
+    } else if (totalBankCad > 0) {
+      mergedWallets.push({ currency: "CAD", balance: totalBankCad });
     }
 
     // Attach last message preview to threads
@@ -126,7 +150,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       profile,
       kyc: kycSubmission,
       kycDocuments: kyc,
-      wallets,
+      wallets: mergedWallets,
+      bankAccounts: bankAccounts || [],
       balance: totalBalance,
       transactions: combinedTransactions,
       sessions,
@@ -186,6 +211,20 @@ export async function DELETE(
     if (deleteAuthError) {
       console.error("[DELETE USER] Failed to delete Auth user:", deleteAuthError);
       throw new Error(`Failed to delete Auth account: ${deleteAuthError.message}`);
+    }
+
+    // 5. Clean up stored KYC documents in Supabase Storage to prevent storage bloat
+    try {
+      const { data: storageFiles } = await supabaseAdmin.storage
+        .from("kyc-documents")
+        .list(userId);
+      
+      if (storageFiles && storageFiles.length > 0) {
+        const filePaths = storageFiles.map((f) => `${userId}/${f.name}`);
+        await supabaseAdmin.storage.from("kyc-documents").remove(filePaths);
+      }
+    } catch (storageErr) {
+      console.warn("[DELETE USER] Storage cleanup warning:", storageErr);
     }
 
     return NextResponse.json({ success: true });

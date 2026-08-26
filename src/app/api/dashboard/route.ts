@@ -13,6 +13,7 @@ export async function GET() {
       { data: profiles },
       { data: kycData },
       { data: userWallets },
+      { data: userBankAccounts },
       { data: platformWallets },
       { data: depositReqs },
       { data: withdrawalReqs }
@@ -20,6 +21,7 @@ export async function GET() {
       supabaseAdmin.from("profiles").select("id, full_name, created_at"),
       supabaseAdmin.from("kyc_submissions").select("status"),
       supabaseAdmin.from("user_wallets").select("currency, balance"),
+      supabaseAdmin.from("user_bank_accounts").select("currency, balance, status").eq("status", "active"),
       supabaseAdmin.from("platform_wallets").select("*"),
       supabaseAdmin.from("deposit_requests").select("*"),
       supabaseAdmin.from("withdrawal_requests").select("*")
@@ -35,7 +37,7 @@ export async function GET() {
     });
     
     const currencySymbols = Array.from(uniqueCurrencies);
-    const liveRates = await fetchLiveCADRates(currencySymbols);
+    const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
 
     // Top Stats
     const totalUsers = (profiles || []).length;
@@ -44,8 +46,14 @@ export async function GET() {
 
     let platformAssets = 0;
     (userWallets || []).forEach(w => {
-      const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
+      const isCAD = w.currency?.toUpperCase() === "CAD";
+      const rate = isCAD ? 1 : (liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36);
       platformAssets += Number(w.balance || 0) * rate;
+    });
+    (userBankAccounts || []).forEach(b => {
+      const isCAD = (b.currency || "CAD").toUpperCase() === "CAD";
+      const rate = isCAD ? 1 : (liveRates[b.currency?.toUpperCase()] || 1);
+      platformAssets += Number(b.balance || 0) * rate;
     });
 
     const pendingWithdrawals = (withdrawalReqs || []).filter(w => w.status === "pending").length;
@@ -85,10 +93,15 @@ export async function GET() {
         currencyBalances[coin] = (currencyBalances[coin] || 0) + amt;
       });
     } else {
-      // Fallback to user_wallets
+      // Fallback to user_wallets + user_bank_accounts
       (userWallets || []).forEach(w => {
         const coin = w.currency?.toUpperCase();
         const amt = Number(w.balance || 0);
+        currencyBalances[coin] = (currencyBalances[coin] || 0) + amt;
+      });
+      (userBankAccounts || []).forEach(b => {
+        const coin = (b.currency || "CAD").toUpperCase();
+        const amt = Number(b.balance || 0);
         currencyBalances[coin] = (currencyBalances[coin] || 0) + amt;
       });
     }
