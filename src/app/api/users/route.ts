@@ -81,15 +81,17 @@ export async function GET(request: Request) {
     const userBalanceMap: Record<string, number> = {};
     const userCadBankMap: Record<string, number> = {};
 
-    // 1. Add crypto balances converted to CAD
+    // 1. Add crypto balances ONLY (exclude CAD from user_wallets to avoid duplication)
     (userWallets || []).forEach((w: any) => {
       const isCAD = w.currency?.toUpperCase() === "CAD";
-      const rate = isCAD ? 1 : (liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36);
-      const val = Number(w.balance || 0) * rate;
-      userBalanceMap[w.user_id] = (userBalanceMap[w.user_id] || 0) + val;
+      if (!isCAD) {
+        const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
+        const val = Number(w.balance || 0) * rate;
+        userBalanceMap[w.user_id] = (userBalanceMap[w.user_id] || 0) + val;
+      }
     });
 
-    // 2. Add active fiat bank accounts (CAD Chequing / Savings)
+    // 2. Add active fiat bank accounts (CAD Chequing / Savings / TFSA / RRSP)
     (userBankAccounts || []).forEach((b: any) => {
       const isCAD = (b.currency || "CAD").toUpperCase() === "CAD";
       const rate = isCAD ? 1 : (liveRates[b.currency?.toUpperCase()] || 1);
@@ -114,22 +116,19 @@ export async function GET(request: Request) {
         else if (kyc.status === "rejected") kycStatus = "Rejected";
       }
 
+      // Filter out CAD from raw user_wallets and use true CAD bank total
       const rawWallets = (userWallets || [])
-        .filter((w: any) => w.user_id === user.id)
+        .filter((w: any) => w.user_id === user.id && w.currency?.toUpperCase() !== "CAD")
         .map((w: any) => ({
           currency: w.currency,
           balance: Number(w.balance),
         }));
 
-      // Merge CAD bank balance into user wallets list
       const cadBankBal = userCadBankMap[user.id] || 0;
-      const walletsForUser = [...rawWallets];
-      const cadWalletIndex = walletsForUser.findIndex(w => w.currency?.toUpperCase() === "CAD");
-      if (cadWalletIndex >= 0) {
-        walletsForUser[cadWalletIndex].balance += cadBankBal;
-      } else if (cadBankBal > 0) {
-        walletsForUser.push({ currency: "CAD", balance: cadBankBal });
-      }
+      const walletsForUser = [
+        { currency: "CAD", balance: cadBankBal },
+        ...rawWallets
+      ];
 
       const accountStatus = profile?.is_frozen ? "Frozen" : "Active";
       const riskLevel = "Low Risk";
@@ -243,58 +242,125 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Missing currency or delta for balance adjustment" }, { status: 400 });
       }
 
-      const { data: wallet, error: fetchErr } = await supabaseAdmin
-        .from("user_wallets")
-        .select("balance")
-        .eq("user_id", userId)
-        .eq("currency", currency)
-        .maybeSingle();
+      const isCAD = currency.toUpperCase() === "CAD";
 
-      if (fetchErr) throw fetchErr;
-
-      const currentBalance = wallet ? Number(wallet.balance) : 0;
-      const newBalance = currentBalance + delta;
-
-      if (newBalance < 0) {
-        return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
-      }
-
-      if (wallet) {
-        const { error } = await supabaseAdmin
-          .from("user_wallets")
-          .update({ balance: newBalance, updated_at: new Date().toISOString() })
+      if (isCAD) {
+        // Fetch or create active Chequing account
+        const { data: existingAcc } = await supabaseAdmin
+          .from("user_bank_accounts")
+          .select("id, balance")
           .eq("user_id", userId)
-          .eq("currency", currency);
-        if (error) throw error;
-      } else {
-        const { error } = await supabaseAdmin
-          .from("user_wallets")
-          .insert({ user_id: userId, currency, balance: newBalance });
-        if (error) throw error;
-      }
+          .eq("account_type", "chequing")
+          .eq("status", "active")
+          .maybeSingle();
 
-      // Insert wallet_ledger entry using admin client to bypass RLS
-      const { error: ledgerError } = await supabaseAdmin
-        .from("wallet_ledger")
-        .insert({
+        const currentBalance = existingAcc ? Number(existingAcc.balance || 0) : 0;
+        const newBalance = currentBalance + delta;
+
+        if (newBalance < 0) {
+          return NextResponse.json({ error: `Insufficient CAD balance: Account has $${currentBalance.toFixed(2)} CAD.` }, { status: 400 });
+        }
+
+        if (existingAcc) {
+          const { error: updateErr } = await supabaseAdmin
+            .from("user_bank_accounts")
+            .update({ balance: newBalance, updated_at: new Date().toISOString() })
+            .eq("id", existingAcc.id);
+          if (updateErr) throw updateErr;
+        } else {
+          const randomAcc = "05496-" + Math.floor(1000000 + Math.random() * 9000000);
+          const { error: insertErr } = await supabaseAdmin
+            .from("user_bank_accounts")
+            .insert({
+              user_id: userId,
+              account_category: "everyday",
+              account_type: "chequing",
+              account_name: "Chequing Account",
+              account_number: randomAcc,
+              currency: "CAD",
+              balance: newBalance,
+              status: "active",
+              approved_at: new Date().toISOString(),
+            });
+          if (insertErr) throw insertErr;
+        }
+
+        // Insert wallet_ledger entry
+        await supabaseAdmin
+          .from("wallet_ledger")
+          .insert({
+            user_id: userId,
+            type: "ADMIN_ADJUSTMENT",
+            provider: "ADMIN",
+            currency: "CAD",
+            amount: delta,
+            status: "COMPLETED",
+          });
+
+        // Insert audit log
+        await supabaseAdmin.from("audit_logs").insert({
           user_id: userId,
-          type: "ADMIN_ADJUSTMENT",
-          provider: "ADMIN",
-          currency: currency,
-          amount: delta,
-          status: "COMPLETED",
+          admin_id: null,
+          action: "BALANCE_ADJUSTED",
+          details: { currency: "CAD", amount: delta, type: delta > 0 ? "add" : "deduct" },
         });
-      if (ledgerError) throw ledgerError;
 
-      // Insert audit log
-      await supabaseAdmin.from("audit_logs").insert({
-        user_id: userId,
-        admin_id: null,
-        action: "BALANCE_ADJUSTED",
-        details: { currency, amount: delta, type: delta > 0 ? "add" : "deduct" },
-      });
+        return NextResponse.json({ success: true, newBalance });
+      } else {
+        // Crypto balance adjustment in user_wallets
+        const { data: wallet, error: fetchErr } = await supabaseAdmin
+          .from("user_wallets")
+          .select("balance")
+          .eq("user_id", userId)
+          .eq("currency", currency)
+          .maybeSingle();
 
-      return NextResponse.json({ success: true, newBalance });
+        if (fetchErr) throw fetchErr;
+
+        const currentBalance = wallet ? Number(wallet.balance) : 0;
+        const newBalance = currentBalance + delta;
+
+        if (newBalance < 0) {
+          return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
+        }
+
+        if (wallet) {
+          const { error } = await supabaseAdmin
+            .from("user_wallets")
+            .update({ balance: newBalance, updated_at: new Date().toISOString() })
+            .eq("user_id", userId)
+            .eq("currency", currency);
+          if (error) throw error;
+        } else {
+          const { error } = await supabaseAdmin
+            .from("user_wallets")
+            .insert({ user_id: userId, currency, balance: newBalance });
+          if (error) throw error;
+        }
+
+        // Insert wallet_ledger entry using admin client to bypass RLS
+        const { error: ledgerError } = await supabaseAdmin
+          .from("wallet_ledger")
+          .insert({
+            user_id: userId,
+            type: "ADMIN_ADJUSTMENT",
+            provider: "ADMIN",
+            currency: currency,
+            amount: delta,
+            status: "COMPLETED",
+          });
+        if (ledgerError) throw ledgerError;
+
+        // Insert audit log
+        await supabaseAdmin.from("audit_logs").insert({
+          user_id: userId,
+          admin_id: null,
+          action: "BALANCE_ADJUSTED",
+          details: { currency, amount: delta, type: delta > 0 ? "add" : "deduct" },
+        });
+
+        return NextResponse.json({ success: true, newBalance });
+      }
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
