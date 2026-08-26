@@ -99,12 +99,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       totalBankCad = cadBankAccs.reduce((sum: number, a: any) => sum + Number(a.balance || 0), 0);
     }
 
-    // Calculate total balance dynamically using live CAD rates
+    // Calculate total crypto balance dynamically using live CAD rates
     let totalCryptoCad = 0;
     if (wallets && wallets.length > 0) {
       const uniqueCurrencies = new Set<string>();
       wallets.forEach((w: any) => {
-        if (w.currency) uniqueCurrencies.add(w.currency.toUpperCase());
+        if (w.currency && w.currency.toUpperCase() !== "CAD") uniqueCurrencies.add(w.currency.toUpperCase());
       });
       const currencySymbols = Array.from(uniqueCurrencies);
       const { fetchLiveCADRates } = require("@/lib/utils");
@@ -112,24 +112,20 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       
       totalCryptoCad = wallets.reduce((sum: number, w: any) => {
         const isCAD = w.currency?.toUpperCase() === "CAD";
-        const rate = isCAD ? 1 : (liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36);
+        if (isCAD) return sum; // CAD is handled strictly through bank accounts
+        const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
         return sum + (Number(w.balance || 0) * rate);
       }, 0);
     }
 
     const totalBalance = totalCryptoCad + totalBankCad;
 
-    // Merge CAD bank accounts into wallets array for UI portfolio breakdown
-    const mergedWallets = [...(wallets || [])];
-    const cadWalletIndex = mergedWallets.findIndex((w: any) => w.currency?.toUpperCase() === "CAD");
-    if (cadWalletIndex >= 0) {
-      mergedWallets[cadWalletIndex] = {
-        ...mergedWallets[cadWalletIndex],
-        balance: Number(mergedWallets[cadWalletIndex].balance || 0) + totalBankCad,
-      };
-    } else if (totalBankCad > 0) {
-      mergedWallets.push({ currency: "CAD", balance: totalBankCad });
-    }
+    // Use CAD bank total for CAD and exclude old CAD from user_wallets
+    const nonCadWallets = (wallets || []).filter((w: any) => w.currency?.toUpperCase() !== "CAD");
+    const mergedWallets = [
+      { currency: "CAD", balance: totalBankCad },
+      ...nonCadWallets
+    ];
 
     // Attach last message preview to threads
     const enrichedThreads = await Promise.all(

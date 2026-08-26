@@ -1691,7 +1691,7 @@ function UserDetailPageContent() {
         {/* ── 4 Info Cards */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {[
-            { label: "Total Balance",  content: <p className="text-xl font-bold text-gray-900">${(user.balance || 0).toLocaleString("en-US",{minimumFractionDigits:2})}</p>, icon: Wallet,        iconBg: "bg-blue-50",  iconColor: "text-blue-600" },
+            { label: "Total Balance",  content: <p className="text-xl font-bold text-gray-900">${(user.balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>, icon: Wallet,        iconBg: "bg-blue-50",  iconColor: "text-blue-600" },
             { label: "KYC Status",     content: <KycBadge status={user.kyc as KycStatus} />,          icon: CheckCircle2,  iconBg: "bg-green-50", iconColor: "text-green-500" },
             { label: "Account Status", content: <AccountBadge status={currentAccount} />, icon: Shield,        iconBg: "bg-blue-50",  iconColor: "text-blue-500" },
             { label: "Risk Level",     content: <RiskBadge level={user.risk} />,          icon: AlertTriangle, iconBg: "bg-amber-50", iconColor: "text-amber-500" },
