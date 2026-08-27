@@ -47,7 +47,8 @@ export async function GET() {
     let platformAssets = 0;
     (userWallets || []).forEach(w => {
       const isCAD = w.currency?.toUpperCase() === "CAD";
-      const rate = isCAD ? 1 : (liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36);
+      if (isCAD) return; // CAD is counted exclusively from user_bank_accounts
+      const rate = liveRates[w.currency?.toUpperCase()] || liveRates.USDT || 1.36;
       platformAssets += Number(w.balance || 0) * rate;
     });
     (userBankAccounts || []).forEach(b => {

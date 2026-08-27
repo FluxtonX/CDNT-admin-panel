@@ -38,11 +38,12 @@ export async function GET(request: Request) {
     const currencySymbols = Array.from(uniqueCurrencies);
     const liveRates = await fetchLiveCADRates(currencySymbols.length > 0 ? currencySymbols : ["BTC", "ETH", "USDT"]);
 
-    // Aggregate balances by currency dynamically
+    // Aggregate balances by currency dynamically (Crypto from user_wallets, CAD from user_bank_accounts)
     const currencyBalances: Record<string, number> = {};
     if (!walletsErr && userWallets) {
       userWallets.forEach((w: any) => {
         const coin = w.currency?.toUpperCase();
+        if (coin === "CAD") return; // CAD comes exclusively from user_bank_accounts
         const amount = Number(w.balance) || 0;
         if (coin && amount > 0) {
           currencyBalances[coin] = (currencyBalances[coin] || 0) + amount;
