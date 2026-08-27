@@ -144,38 +144,108 @@ export async function PATCH(request: Request) {
     let cryptoAmountToDeduct = 0;
 
     if (status === "approved" || status === "completed") {
-      // Check if withdrawal is in CAD - if so, deduct directly from CAD wallet
+      // Check if withdrawal is in CAD - if so, deduct directly from user_bank_accounts (all active CAD bank accounts)
       if (cryptoCurrency === "CAD") {
-        // 2. Fetch user CAD balance from user_wallets
-        const { data: userWallet, error: walletQueryErr } = await supabaseAdmin
+        // 2. Fetch user CAD balances from user_bank_accounts across all active account types
+        const { data: bankAccounts, error: bankQueryErr } = await supabaseAdmin
+          .from("user_bank_accounts")
+          .select("id, account_type, currency, balance, status")
+          .eq("user_id", wdr.user_id);
+
+        if (bankQueryErr) {
+          console.error("Error fetching user bank accounts for withdrawal:", bankQueryErr);
+        }
+
+        const cadBankAccounts = (bankAccounts || []).filter(
+          (a: any) => (a.currency || "CAD").toUpperCase() === "CAD" && a.status !== "rejected" && a.status !== "closed"
+        );
+        let totalBankCad = cadBankAccounts.reduce(
+          (sum: number, a: any) => sum + Number(a.balance || 0),
+          0
+        );
+
+        // Also check legacy user_wallets for CAD balance
+        const { data: userWallet } = await supabaseAdmin
           .from("user_wallets")
-          .select("balance")
+          .select("id, balance")
           .eq("user_id", wdr.user_id)
           .eq("currency", "CAD")
           .maybeSingle();
 
-        if (walletQueryErr) {
-          console.error("Error fetching user CAD wallet:", walletQueryErr);
-        }
-
-        const currentBalance = userWallet ? Number(userWallet.balance) : 0;
-        const amountToDeduct = wdr.amount;
+        const walletCadBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+        const totalAvailableCad = totalBankCad + walletCadBalance;
+        const amountToDeduct = Number(wdr.amount);
         
-        // Block if insufficient CAD funds
-        if (currentBalance < amountToDeduct) {
+        // Block if insufficient CAD funds across all active bank accounts + wallet
+        if (totalAvailableCad < amountToDeduct) {
           return NextResponse.json({ 
-            error: `Insufficient CAD balance: User has $${currentBalance.toFixed(2)} CAD, but withdrawal request is for $${amountToDeduct.toFixed(2)} CAD.` 
+            error: `Insufficient CAD balance: User has $${totalAvailableCad.toFixed(2)} CAD across bank accounts, but withdrawal request is for $${amountToDeduct.toFixed(2)} CAD.` 
           }, { status: 400 });
         }
 
-        // 3. Deduct from CAD wallet
-        const newBalance = currentBalance - amountToDeduct;
-        const { error: walletErr } = await supabaseAdmin
-          .from("user_wallets")
-          .update({ balance: newBalance, updated_at: new Date().toISOString() })
-          .eq("user_id", wdr.user_id)
-          .eq("currency", "CAD");
-        if (walletErr) throw walletErr;
+        // If user has funds in legacy CAD wallet, consolidate them into Chequing bank account
+        if (walletCadBalance > 0) {
+          let chequingAcc = cadBankAccounts.find((a: any) => a.account_type === "chequing");
+          if (!chequingAcc) {
+            const randomAcc = "05496-" + Math.floor(1000000 + Math.random() * 9000000);
+            const { data: newAcc } = await supabaseAdmin
+              .from("user_bank_accounts")
+              .insert({
+                user_id: wdr.user_id,
+                account_category: "everyday",
+                account_type: "chequing",
+                account_name: "Chequing Account",
+                account_number: randomAcc,
+                currency: "CAD",
+                balance: walletCadBalance,
+                status: "active",
+                approved_at: new Date().toISOString(),
+              })
+              .select()
+              .single();
+            if (newAcc) {
+              cadBankAccounts.push(newAcc);
+              chequingAcc = newAcc;
+            }
+          } else {
+            const updatedChequingBal = Number(chequingAcc.balance || 0) + walletCadBalance;
+            await supabaseAdmin
+              .from("user_bank_accounts")
+              .update({ 
+                balance: updatedChequingBal, 
+                updated_at: new Date().toISOString() 
+              })
+              .eq("id", chequingAcc.id);
+            chequingAcc.balance = updatedChequingBal;
+          }
+
+          // Zero out legacy CAD wallet
+          await supabaseAdmin
+            .from("user_wallets")
+            .update({ balance: 0, updated_at: new Date().toISOString() })
+            .eq("user_id", wdr.user_id)
+            .eq("currency", "CAD");
+        }
+
+        // 3. Deduct from active CAD bank accounts (prioritize chequing first, then other CAD accounts)
+        let remainingToDeduct = amountToDeduct;
+        const sortedAccs = [...cadBankAccounts].sort((a: any, b: any) => 
+          a.account_type === "chequing" ? -1 : (b.account_type === "chequing" ? 1 : 0)
+        );
+
+        for (const acc of sortedAccs) {
+          if (remainingToDeduct <= 0) break;
+          const currentBal = Number(acc.balance || 0);
+          const deductFromThis = Math.min(currentBal, remainingToDeduct);
+          const newBal = Math.max(0, currentBal - deductFromThis);
+          remainingToDeduct -= deductFromThis;
+
+          const { error: updateAccErr } = await supabaseAdmin
+            .from("user_bank_accounts")
+            .update({ balance: newBal, updated_at: new Date().toISOString() })
+            .eq("id", acc.id);
+          if (updateAccErr) throw updateAccErr;
+        }
 
         // 4. wallet_ledger entry for CAD withdrawal
         const { error: ledgerErr } = await supabaseAdmin
