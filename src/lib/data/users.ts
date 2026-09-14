@@ -1,5 +1,5 @@
 export type KycStatus = "Verified" | "Pending" | "Rejected" | "Not Started";
-export type AccountStatus = "Active" | "Suspended" | "Frozen";
+export type AccountStatus = "Active" | "Suspended" | "Frozen" | "Locked";
 export type RiskLevel = "Low Risk" | "Medium Risk" | "High Risk";
 
 export interface AdminUser {
@@ -12,15 +12,18 @@ export interface AdminUser {
   balance: number;
   joinedDate: string;
   risk: RiskLevel;
+  wallets?: Array<{ currency: string; balance: number }>;
+  is_frozen?: boolean;
+  is_locked?: boolean;
   // Detail fields
-  dateOfBirth: string;
-  street: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  lastLogin: string;
-  twoFactor: boolean;
-  lastIp: string;
+  dateOfBirth?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  lastLogin?: string;
+  twoFactor?: boolean;
+  lastIp?: string;
   // Avatar fields for chat
   kyc_selfie_url?: string | null;
   google_avatar_url?: string | null;

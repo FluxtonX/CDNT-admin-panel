@@ -145,7 +145,7 @@ export function useUpdateDeposit() {
 
 type UserAccountPatchInput = {
   userId: string;
-  action: "freeze" | "unfreeze";
+  action: "freeze" | "unfreeze" | "lock" | "unlock";
   reason?: string;
 };
 

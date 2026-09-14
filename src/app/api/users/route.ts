@@ -24,11 +24,20 @@ export async function GET(request: Request) {
       page++;
     }
 
-    // Fetch profiles to get their full names and freeze status
-    const { data: profiles, error: profErr } = await supabaseAdmin
+    // Fetch profiles to get their full names, freeze status, and locked status
+    let profiles: any[] = [];
+    const { data: profWithLocked, error: profWithLockedErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, is_frozen");
-    if (profErr) throw profErr;
+      .select("id, full_name, is_frozen, is_locked");
+    if (!profWithLockedErr && profWithLocked) {
+      profiles = profWithLocked;
+    } else {
+      const { data: profFallback, error: fallbackErr } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, is_frozen");
+      if (fallbackErr) throw fallbackErr;
+      profiles = profFallback || [];
+    }
 
     // Fetch KYC submissions to get real verification statuses and selfie URLs
     const { data: kycData, error: kycErr } = await supabaseAdmin.from("kyc_submissions").select("user_id, full_name, selfie_url, status");
@@ -130,7 +139,9 @@ export async function GET(request: Request) {
         ...rawWallets
       ];
 
-      const accountStatus = profile?.is_frozen ? "Frozen" : "Active";
+      const isFrozen = !!profile?.is_frozen;
+      const isLocked = !isFrozen && !!profile?.is_locked;
+      const accountStatus = isFrozen ? "Frozen" : (isLocked ? "Locked" : "Active");
       const riskLevel = "Low Risk";
 
       // Parse metadata
@@ -163,6 +174,8 @@ export async function GET(request: Request) {
         joinedDate: new Date(user.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         kyc: kycStatus,
         account: accountStatus,
+        is_frozen: isFrozen,
+        is_locked: isLocked,
         balance: userBalanceMap[user.id] || 0,
         wallets: walletsForUser,
         risk: riskLevel,
@@ -234,6 +247,50 @@ export async function PATCH(request: Request) {
       });
 
       return NextResponse.json({ success: true, status: isFrozen ? "Frozen" : "Active" });
+    }
+
+    if (action === "lock" || action === "unlock") {
+      const isLocked = action === "lock";
+
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update({ is_locked: isLocked })
+        .eq("id", userId);
+
+      if (error) {
+        if (error.message.includes("relation") || error.message.includes("column")) {
+          return NextResponse.json({ success: true, warning: "profiles table or is_locked column pending migration" });
+        }
+        throw error;
+      }
+
+      if (isLocked) {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: userId,
+          title: "Account Locked",
+          message: "Your account has been locked to view-only mode. Trading and withdrawals are restricted. Please contact support.",
+          type: "warning",
+          is_read: false,
+        });
+      } else {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: userId,
+          title: "Account Unlocked",
+          message: "Your account has been unlocked. Full trading and transaction capabilities have been restored.",
+          type: "success",
+          is_read: false,
+        });
+      }
+
+      // Insert audit log
+      await supabaseAdmin.from("audit_logs").insert({
+        user_id: userId,
+        admin_id: null,
+        action: isLocked ? "ACCOUNT_LOCKED" : "ACCOUNT_UNLOCKED",
+        details: { reason: body.reason || "admin action" },
+      });
+
+      return NextResponse.json({ success: true, status: isLocked ? "Locked" : "Active", is_locked: isLocked });
     }
 
     if (action === "adjust-balance") {
@@ -367,6 +424,170 @@ export async function PATCH(request: Request) {
   } catch (error: any) {
     console.error("Failed to update user status:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { allowed } = await checkAdminPermission(request, "edit-users");
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const body = await request.json();
+    const {
+      fullName,
+      email,
+      phone,
+      password,
+      initialCadBalance = 0,
+      kycStatus = "Verified",
+    } = body;
+
+    if (!email || !fullName) {
+      return NextResponse.json({ error: "Full Name and Email are required." }, { status: 400 });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const finalPassword = password && password.trim() ? password.trim() : `CDNT-${Math.random().toString(36).slice(-8)}!`;
+
+    const supabaseAdmin = createAdminClient();
+
+    // 1. Create auth user with confirmed email
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: normalizedEmail,
+      password: finalPassword,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName.trim(),
+        phone: phone ? phone.trim() : null,
+      },
+    });
+
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
+
+    const newUser = authData.user;
+
+    // 2. Upsert profile
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .upsert({
+        id: newUser.id,
+        full_name: fullName.trim(),
+        email: normalizedEmail,
+        phone: phone ? phone.trim() : null,
+        is_frozen: false,
+        is_locked: false,
+        role: "client",
+      });
+
+    if (profileError) {
+      console.warn("[users POST] Profile upsert notice:", profileError.message);
+    }
+
+    // 3. Ensure CAD Chequing Account exists and set balance
+    const randomAccNum = `05496-${Math.floor(1000000 + Math.random() * 9000000)}`;
+    const parsedBalance = parseFloat(initialCadBalance) || 0;
+
+    const { data: existingAcc } = await supabaseAdmin
+      .from("user_bank_accounts")
+      .select("id")
+      .eq("user_id", newUser.id)
+      .eq("account_type", "chequing")
+      .maybeSingle();
+
+    if (existingAcc) {
+      if (parsedBalance > 0) {
+        await supabaseAdmin
+          .from("user_bank_accounts")
+          .update({ balance: parsedBalance })
+          .eq("id", existingAcc.id);
+      }
+    } else {
+      await supabaseAdmin.from("user_bank_accounts").insert({
+        user_id: newUser.id,
+        account_category: "everyday",
+        account_type: "chequing",
+        account_name: "Chequing Account",
+        account_number: randomAccNum,
+        currency: "CAD",
+        balance: parsedBalance,
+        status: "active",
+        approved_at: new Date().toISOString(),
+      });
+    }
+
+    // 4. Provision default crypto wallets (BTC, ETH, USDT, USDC)
+    const defaultCrypto = ["BTC", "ETH", "USDT", "USDC"];
+    for (const cur of defaultCrypto) {
+      await supabaseAdmin.from("user_wallets").upsert(
+        {
+          user_id: newUser.id,
+          currency: cur,
+          balance: 0,
+        },
+        { onConflict: "user_id,currency" }
+      );
+    }
+
+    // 5. If initial balance > 0, create a ledger entry
+    if (parsedBalance > 0) {
+      await supabaseAdmin.from("wallet_ledgers").insert({
+        user_id: newUser.id,
+        type: "DEPOSIT",
+        provider: "ADMIN_INITIAL",
+        currency: "CAD",
+        amount: parsedBalance,
+        status: "COMPLETED",
+      });
+    }
+
+    // 6. If KYC status requested as Verified, create/update kyc_submissions
+    if (kycStatus === "Verified") {
+      await supabaseAdmin.from("kyc_submissions").upsert({
+        user_id: newUser.id,
+        full_name: fullName.trim(),
+        status: "approved",
+        document_type: "Passport",
+        reviewed_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+    }
+
+    // 7. Send welcome notification
+    await supabaseAdmin.from("notifications").insert({
+      user_id: newUser.id,
+      title: "Welcome to CDNT Bank",
+      message: `Your account has been successfully opened by our private banking team. Everyday CAD Chequing is ready.`,
+      type: "success",
+      is_read: false,
+    });
+
+    // 8. Audit log
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: newUser.id,
+      admin_id: null,
+      action: "MANUAL_CLIENT_ACCOUNT_OPENED",
+      details: {
+        email: normalizedEmail,
+        initialBalance: parsedBalance,
+        kycStatus,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: newUser.id,
+        email: normalizedEmail,
+        fullName: fullName.trim(),
+        temporaryPassword: finalPassword,
+        accountNumber: randomAccNum,
+        initialCadBalance: parsedBalance,
+      },
+    });
+  } catch (error: any) {
+    console.error("[users POST] Error creating client account:", error);
+    return NextResponse.json({ error: error.message || "Failed to create client account" }, { status: 500 });
   }
 }
 

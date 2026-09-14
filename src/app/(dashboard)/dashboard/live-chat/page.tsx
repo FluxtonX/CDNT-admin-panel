@@ -21,6 +21,9 @@ import {
   Loader2,
   Edit2,
   Trash2,
+  FileText,
+  Download,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AdminUser } from "@/lib/data/users";
@@ -36,6 +39,9 @@ type Message = {
   timestamp: string;
   is_edited?: boolean;
   deleted_for_admin?: boolean;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
 };
 
 type ChatThread = {
@@ -154,8 +160,11 @@ function LiveChatSupportPageContent() {
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch threads from Supabase
   useEffect(() => {
@@ -276,6 +285,9 @@ function LiveChatSupportPageContent() {
               text: m.text,
               timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
               is_edited: m.is_edited,
+              attachment_url: m.attachment_url || null,
+              attachment_name: m.attachment_name || null,
+              attachment_type: m.attachment_type || null,
             }));
 
           setThreads((current) =>
@@ -353,6 +365,9 @@ function LiveChatSupportPageContent() {
             text: newMsg.text,
             timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             is_edited: newMsg.is_edited,
+            attachment_url: newMsg.attachment_url || null,
+            attachment_name: newMsg.attachment_name || null,
+            attachment_type: newMsg.attachment_type || null,
           };
 
           setThreads((current) =>
@@ -493,19 +508,59 @@ function LiveChatSupportPageContent() {
   /* Send Admin Message */
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !activeThread) return;
+    if ((!inputText.trim() && !selectedFile) || !activeThread || uploadingFile) return;
 
-    const messageText = inputText.trim();
+    const fileToSend = selectedFile;
+    const messageText = inputText.trim() || (fileToSend ? `Sent an attachment: ${fileToSend.name}` : "");
     setInputText("");
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadingFile(true);
 
     try {
+      let uploadedUrl: string | null = null;
+      let uploadedName: string | null = null;
+      let uploadedType: string | null = null;
+
+      if (fileToSend) {
+        try {
+          const fileExt = fileToSend.name.split(".").pop() || "bin";
+          const safeName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `${activeThread.threadId}/${safeName}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from("chat-attachments")
+            .upload(filePath, fileToSend);
+
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage
+              .from("chat-attachments")
+              .getPublicUrl(filePath);
+            uploadedUrl = urlData.publicUrl;
+            uploadedName = fileToSend.name;
+            uploadedType = fileToSend.type;
+          } else {
+            console.error("Storage upload error in admin:", uploadErr);
+          }
+        } catch (err) {
+          console.error("Admin chat attachment upload exception:", err);
+        }
+      }
+
+      const insertPayload: any = {
+        thread_id: activeThread.threadId,
+        sender: "Admin",
+        text: messageText,
+      };
+      if (uploadedUrl) {
+        insertPayload.attachment_url = uploadedUrl;
+        insertPayload.attachment_name = uploadedName;
+        insertPayload.attachment_type = uploadedType;
+      }
+
       const { data: newMsg, error } = await supabase
         .from("support_messages")
-        .insert({
-          thread_id: activeThread.threadId,
-          sender: "Admin",
-          text: messageText,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -516,6 +571,9 @@ function LiveChatSupportPageContent() {
         sender: "Admin",
         text: newMsg.text,
         timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        attachment_url: newMsg.attachment_url || uploadedUrl,
+        attachment_name: newMsg.attachment_name || uploadedName,
+        attachment_type: newMsg.attachment_type || uploadedType,
       };
 
       setThreads((current) =>
@@ -533,6 +591,8 @@ function LiveChatSupportPageContent() {
       );
     } catch (err) {
       console.error("Error sending support response:", err);
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -976,6 +1036,41 @@ function LiveChatSupportPageContent() {
                             ) : (
                               <>
                                 <div>{msg.text}</div>
+                                {msg.attachment_url && (
+                                  <div className="mt-2">
+                                    {msg.attachment_type?.startsWith("image/") || /\.(png|jpg|jpeg|webp|gif)$/i.test(msg.attachment_url) ? (
+                                      <a
+                                        href={msg.attachment_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block overflow-hidden rounded-xl border border-white/20 shadow-sm hover:opacity-95 transition-opacity"
+                                      >
+                                        <img
+                                          src={msg.attachment_url}
+                                          alt={msg.attachment_name || "Attachment"}
+                                          className="max-h-52 max-w-full rounded-xl object-contain bg-black/5"
+                                        />
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={msg.attachment_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        download={msg.attachment_name || "attachment"}
+                                        className={cn(
+                                          "flex items-center gap-2 p-2 rounded-xl border transition-colors text-xs font-semibold",
+                                          isAdmin
+                                            ? "bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                                            : "bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-800"
+                                        )}
+                                      >
+                                        <FileText className="h-4 w-4 shrink-0" />
+                                        <span className="truncate flex-1">{msg.attachment_name || "Download Attachment"}</span>
+                                        <Download className="h-3.5 w-3.5 shrink-0" />
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
                                 {msg.is_edited && (
                                   <span className={cn(
                                     "text-[9px] block mt-1 font-normal italic",
@@ -1030,31 +1125,75 @@ function LiveChatSupportPageContent() {
                 </div>
 
                 {/* Footer Message Compose Area */}
-                <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-200 flex items-center gap-3">
-                  <button
-                    type="button"
-                    className="h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-600 hover:text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer shrink-0"
-                    title="Attach Files"
-                  >
-                    <Paperclip className="h-4.5 w-4.5 stroke-[1.8]" />
-                  </button>
+                <form onSubmit={handleSendMessage} className="bg-white border-t border-gray-200">
+                  {/* Attachment Preview Chip */}
+                  {selectedFile && (
+                    <div className="px-4 pt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs text-blue-800 font-medium">
+                        <Paperclip className="h-3.5 w-3.5" />
+                        <span className="truncate max-w-[240px] font-semibold">{selectedFile.name}</span>
+                        <span className="text-[10px] text-gray-500">
+                          ({(selectedFile.size / 1024).toFixed(0)} KB)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                          className="ml-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                  <input
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Type your message..."
-                    className="h-10 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20"
-                  />
+                  <div className="p-4 flex items-center gap-3">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 20 * 1024 * 1024) {
+                          alert("Attachment must be under 20MB.");
+                          return;
+                        }
+                        setSelectedFile(file);
+                      }}
+                      className="hidden"
+                    />
 
-                  <button
-                    type="submit"
-                    disabled={!inputText.trim()}
-                    className="h-10 px-4.5 rounded-xl text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
-                    style={{ background: BRAND_GRADIENT }}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    Send
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-colors cursor-pointer shrink-0",
+                        selectedFile && "bg-blue-50 border-blue-300 text-blue-600"
+                      )}
+                      title="Attach Files"
+                    >
+                      <Paperclip className="h-4.5 w-4.5 stroke-[1.8]" />
+                    </button>
+
+                    <input
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={selectedFile ? "Add a message (optional)..." : "Type your message..."}
+                      className="h-10 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={(!inputText.trim() && !selectedFile) || uploadingFile}
+                      className="h-10 px-4.5 rounded-xl text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                      style={{ background: BRAND_GRADIENT }}
+                    >
+                      {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Send
+                    </button>
+                  </div>
                 </form>
               </>
             ) : (

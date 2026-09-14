@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useUsers, useUpdateUserAccount } from "@/hooks/useAdminQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { adminQueryKeys } from "@/lib/query-keys";
 import { useRouter } from "next/navigation";
 import { RequirePermission } from "@/components/layout/RequirePermission";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,11 +11,11 @@ import {
   Search, Filter, Download, UserPlus, ChevronLeft, ChevronRight,
   CheckCircle2, Clock, XCircle, AlertTriangle, Shield, X,
   User, Mail, Phone, Lock, Unlock, MoreVertical, FileEdit, Eye,
+  Copy, Check, Key, DollarSign, ShieldAlert, Trash2, AlertOctagon, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AdminUser, type KycStatus, type AccountStatus, type RiskLevel } from "@/lib/data/users";
 import { useClickOutside } from "@/hooks/useHelpers";
-import { Trash2, AlertOctagon } from "lucide-react";
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const PAGE_SIZE = 8;
@@ -107,6 +109,7 @@ const FILTER_OPTIONS = [
   { label: "Rejected",          value: "Rejected" },
   { label: "Not Started",       value: "Not Started" },
   { label: "Active Accounts",   value: "Active" },
+  { label: "Locked Accounts",   value: "Locked" },
   { label: "Suspended",         value: "Suspended" },
   { label: "Frozen",            value: "Frozen" },
   { label: "High Risk",         value: "High Risk" },
@@ -130,13 +133,14 @@ function KycBadge({ status }: { status: KycStatus }) {
   );
 }
 
-function AccountBadge({ status }: { status: AccountStatus }) {
-  const styles: Record<AccountStatus, { cls: string; icon?: React.ReactNode }> = {
+function AccountBadge({ status }: { status: AccountStatus | "Locked" }) {
+  const styles: Record<string, { cls: string; icon?: React.ReactNode }> = {
     Active:    { cls: "bg-green-50 text-green-700 border-green-200" },
     Suspended: { cls: "bg-red-50 text-red-700 border-red-200" },
     Frozen:    { cls: "bg-red-50 text-red-700 border-red-200", icon: <Lock className="h-3 w-3 text-red-500" /> },
+    Locked:    { cls: "bg-amber-50 text-amber-700 border-amber-200", icon: <Lock className="h-3 w-3 text-amber-600" /> },
   };
-  const s = styles[status];
+  const s = styles[status] || styles["Active"];
   return (
     <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border", s.cls)}>
       {s.icon}{status}
@@ -158,20 +162,60 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
-/* ─── Add User Modal ─────────────────────────────────────────────── */
-function AddUserModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", role: "viewer" });
+/* ─── Open Client Account Modal (Add User) ───────────────────────── */
+function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: () => void }) {
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    password: "",
+    initialCadBalance: "0.00",
+    kycStatus: "Verified",
+  });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdData, setCreatedData] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
+
+  const generatePassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+    let pwd = "CDNT-";
+    for (let i = 0; i < 8; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setForm((prev) => ({ ...prev, password: pwd }));
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setLoading(false);
-    setSuccess(true);
-    await new Promise(r => setTimeout(r, 800));
-    onClose();
+
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create client account.");
+      }
+
+      setCreatedData(data.user);
+      onSuccess?.();
+    } catch (err: any) {
+      setError(err.message || "Failed to open client account");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -180,7 +224,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
@@ -188,57 +232,267 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 16 }}
         transition={{ type: "spring", damping: 30, stiffness: 350 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">Add New User</h2>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">
+              {createdData ? "Account Opened Successfully" : "Open Client Account"}
+            </h2>
+            <p className="text-xs text-gray-500">
+              {createdData ? "Client credentials and account summary" : "Manually register and provision a client account"}
+            </p>
+          </div>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {[
-            { label: "Full Name",  field: "name",  type: "text",  icon: User,  placeholder: "Enter full name" },
-            { label: "Email",      field: "email", type: "email", icon: Mail,  placeholder: "admin@example.com" },
-            { label: "Phone",      field: "phone", type: "tel",   icon: Phone, placeholder: "+1 (000) 000-0000" },
-          ].map(({ label, field, type, icon: Icon, placeholder }) => (
-            <div key={field} className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">{label}</label>
-              <div className="relative">
-                <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" />
-                <input
-                  type={type} required placeholder={placeholder}
-                  value={form[field as keyof typeof form]}
-                  onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all"
-                />
+
+        <div className="p-6 overflow-y-auto">
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+              {error}
+            </div>
+          )}
+
+          {createdData ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-emerald-900">
+                <div className="flex items-center gap-2 font-bold text-sm mb-1">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  Client Account Active
+                </div>
+                <p className="text-xs text-emerald-700">
+                  The client has been registered in Supabase Auth, their CAD Everyday Chequing account has been provisioned, and default crypto wallets are active.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Full Name</span>
+                  <span className="font-bold text-gray-900">{createdData.fullName}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Email</span>
+                  <span className="font-bold text-gray-900">{createdData.email}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">CAD Chequing Account</span>
+                  <span className="font-mono font-bold text-blue-700">{createdData.accountNumber}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Initial CAD Balance</span>
+                  <span className="font-bold text-emerald-700">${Number(createdData.initialCadBalance).toFixed(2)} CAD</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500 font-medium">Temporary Password</span>
+                  <div className="flex items-center gap-2">
+                    <code className="font-mono bg-white px-2 py-1 rounded border border-gray-200 text-gray-900 font-bold">
+                      {createdData.temporaryPassword}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(createdData.temporaryPassword)}
+                      className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-200 rounded text-gray-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white shadow-sm transition-all cursor-pointer"
+                  style={{ background: "linear-gradient(135deg, #0A3D91, #1650AB)" }}
+                >
+                  Done
+                </button>
               </div>
             </div>
-          ))}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Role</label>
-            <select
-              value={form.role}
-              onChange={e => setForm(prev => ({ ...prev, role: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
-            >
-              <option value="viewer">Viewer</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-700">Full Name *</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Johnathan Miller"
+                    value={form.fullName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-700">Email Address *</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="client@example.com"
+                      value={form.email}
+                      onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-700">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      value={form.phone}
+                      onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-700">Temporary Password</label>
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+                  >
+                    🎲 Generate Password
+                  </button>
+                </div>
+                <div className="relative">
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Leave blank to auto-generate"
+                    value={form.password}
+                    onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-xs sm:text-sm font-mono text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-700">Initial CAD Chequing Balance</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={form.initialCadBalance}
+                      onChange={(e) => setForm((prev) => ({ ...prev, initialCadBalance: e.target.value }))}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-700">Initial KYC Status</label>
+                  <select
+                    value={form.kycStatus}
+                    onChange={(e) => setForm((prev) => ({ ...prev, kycStatus: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 bg-white"
+                  >
+                    <option value="Verified">Verified (Instant Approval)</option>
+                    <option value="Pending">Pending Review</option>
+                    <option value="Not Started">Not Started</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white transition-all disabled:opacity-70 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  style={{ background: "linear-gradient(135deg, #0A3D91, #1650AB)" }}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Opening Account...
+                    </>
+                  ) : (
+                    "Open Client Account"
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Lock Account Modal ─────────────────────────────────────────── */
+function LockModal({ onConfirm, onClose }: { onConfirm: (r: string) => void; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        transition={{ type: "spring", damping: 28, stiffness: 340 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+      >
+        <div className="p-6">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <Lock className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="pt-0.5">
+              <h2 className="text-[17px] font-bold text-gray-900">Lock Account</h2>
+              <p className="text-sm text-gray-600 mt-0.5">Allow client to view account and switch pages, but restrict trading and touching funds</p>
+            </div>
           </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading || success}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-80"
-              style={{ background: "linear-gradient(135deg, #0A3D91, #1650AB)" }}>
-              {success ? "✓ Created!" : loading ? "Creating…" : "Create User"}
+          <div className="mb-5">
+            <label className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+              Reason for locking (optional)
+            </label>
+            <textarea rows={3} placeholder="Enter the reason for locking this account..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder:text-gray-500 outline-none resize-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button onClick={() => onConfirm(reason)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+              style={{ background: "#D97706" }}>
+              Lock Account
             </button>
           </div>
-        </form>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -368,12 +622,14 @@ function UserRow({
   user,
   onView,
   onFreeze,
+  onLock,
   onNote,
   onDelete,
 }: {
   user: AdminUser;
   onView: () => void;
   onFreeze: () => void;
+  onLock: () => void;
   onNote: () => void;
   onDelete: () => void;
 }) {
@@ -391,28 +647,61 @@ function UserRow({
       <div className="flex items-center gap-3 min-w-0">
         <UserAvatar user={user} size="md" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">{user.name}</p>
-          <p className="text-xs text-gray-600 truncate">{(user as any).shortId || user.id}</p>
+          <p className="text-xs font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">{user.name}</p>
+          <p className="text-[11px] text-gray-600 truncate">{user.email}</p>
         </div>
       </div>
-      {/* CONTACT */}
+
+      {/* WALLETS PREVIEW */}
       <div className="min-w-0">
-        <p className="text-sm text-gray-700 truncate">{user.email}</p>
-        <p className="text-xs text-gray-600 truncate">{user.phone}</p>
+        {user.wallets && user.wallets.length > 0 ? (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {user.wallets.slice(0, 4).map((w: any, idx: number) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100/80 text-[10px] font-medium text-gray-700 border border-gray-200/50"
+              >
+                <span className="font-semibold text-gray-900">{w.currency}:</span>
+                <span className="text-gray-600 font-mono">
+                  {w.currency === "CAD"
+                    ? `$${Number(w.balance || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : Number(w.balance || 0).toLocaleString("en-US", { maximumFractionDigits: 4 })}
+                </span>
+              </span>
+            ))}
+            {user.wallets.length > 4 && (
+              <span className="text-[10px] text-gray-600 font-medium">+{user.wallets.length - 4}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-600 italic">No wallets</span>
+        )}
       </div>
-      {/* KYC STATUS */}
-      <div><KycBadge status={user.kyc} /></div>
+
+      {/* KYC */}
+      <div>
+        <KycBadge status={user.kyc} />
+      </div>
+
       {/* ACCOUNT */}
-      <div><AccountBadge status={user.account} /></div>
+      <div>
+        <AccountBadge status={user.account as AccountStatus | "Locked"} />
+      </div>
+
       {/* BALANCE */}
       <div>
-        <p className="text-sm font-bold text-gray-900">${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
-        <p className="text-xs text-gray-600">Joined {user.joinedDate}</p>
+        <p className="text-xs font-bold text-gray-900">
+          ${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD
+        </p>
       </div>
-      {/* RISK */}
-      <div><RiskBadge level={user.risk} /></div>
+
+      {/* JOINED */}
+      <div>
+        <p className="text-xs text-gray-600">{user.joinedDate}</p>
+      </div>
+
       {/* ACTIONS */}
-      <div className="relative flex justify-end gap-1.5 pr-1" onClick={e => e.stopPropagation()}>
+      <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
         <button
           onClick={onView}
           title="View user overview"
@@ -450,6 +739,21 @@ function UserRow({
                 className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <FileEdit className="h-3.5 w-3.5 text-gray-600" /> Add Admin Note
+              </button>
+              <button
+                onClick={() => { onLock(); setIsMenuOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 flex items-center gap-2 border-t border-gray-50"
+                style={{ color: user.account === "Locked" ? "#22C55E" : "#D97706" }}
+              >
+                {user.account === "Locked" ? (
+                  <>
+                    <Unlock className="h-3.5 w-3.5" /> Unlock Account
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-3.5 w-3.5" /> Lock Account
+                  </>
+                )}
               </button>
               <button
                 onClick={() => { onFreeze(); setIsMenuOpen(false); }}
@@ -491,6 +795,7 @@ export default function UsersPage() {
 
 function UsersPageContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: users = [], isLoading: loading } = useUsers() as { data: AdminUser[]; isLoading: boolean };
   const updateUserAccount = useUpdateUserAccount();
   const [search, setSearch] = useState("");
@@ -498,6 +803,7 @@ function UsersPageContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [activeUserForLock, setActiveUserForLock] = useState<AdminUser | null>(null);
   const [activeUserForFreeze, setActiveUserForFreeze] = useState<AdminUser | null>(null);
   const [activeUserForNote, setActiveUserForNote] = useState<AdminUser | null>(null);
   const [activeUserForDelete, setActiveUserForDelete] = useState<AdminUser | null>(null);
@@ -738,6 +1044,14 @@ function UsersPageContent() {
                     key={user.id}
                     user={user}
                     onView={() => router.push(`/dashboard/users/${user.id}`)}
+                    onLock={async () => {
+                      if (user.account === "Locked") {
+                        await updateUserAccount.mutateAsync({ userId: user.id, action: "unlock" });
+                        setToastMsg("Account unlocked successfully ✓");
+                      } else {
+                        setActiveUserForLock(user);
+                      }
+                    }}
                     onFreeze={async () => {
                       if (user.account === "Frozen") {
                         await updateUserAccount.mutateAsync({ userId: user.id, action: "unfreeze" });
@@ -798,7 +1112,28 @@ function UsersPageContent() {
 
       {/* Modals */}
       <AnimatePresence>
-        {showAddUser && <AddUserModal onClose={() => setShowAddUser(false)} />}
+        {showAddUser && (
+          <AddUserModal
+            onClose={() => setShowAddUser(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: adminQueryKeys.users() });
+              setToastMsg("Client account opened successfully ✓");
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeUserForLock && (
+          <LockModal
+            onClose={() => setActiveUserForLock(null)}
+            onConfirm={async (reason) => {
+              await updateUserAccount.mutateAsync({ userId: activeUserForLock.id, action: "lock", reason });
+              setActiveUserForLock(null);
+              setToastMsg("Account locked to view-only mode successfully ✓");
+            }}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

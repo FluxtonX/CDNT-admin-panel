@@ -43,15 +43,17 @@ function KycBadge({ status }: { status: KycStatus }) {
   );
 }
 
-function AccountBadge({ status }: { status: AccountStatus }) {
-  const map: Record<AccountStatus, string> = {
+function AccountBadge({ status }: { status: AccountStatus | "Locked" }) {
+  const map: Record<string, string> = {
     "Active":    "bg-green-50 text-green-700 border-green-200",
     "Suspended": "bg-red-50   text-red-700   border-red-200",
     "Frozen":    "bg-red-50   text-red-700   border-red-200",
+    "Locked":    "bg-amber-50 text-amber-700 border-amber-200",
   };
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border", map[status] || map["Active"])}>
-      {status === "Frozen" && <Lock className="h-3.5 w-3.5" />}
+      {status === "Frozen" && <Lock className="h-3.5 w-3.5 text-red-500" />}
+      {status === "Locked" && <Lock className="h-3.5 w-3.5 text-amber-600" />}
       {status}
     </span>
   );
@@ -144,6 +146,57 @@ function FreezeModal({ onConfirm, onClose }: { onConfirm: (r: string) => void; o
               className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
               style={{ background: "#F59E0B" }}>
               Freeze Account
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Lock Account Modal ─────────────────────────────────────────── */
+function LockModal({ onConfirm, onClose }: { onConfirm: (r: string) => void; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        transition={{ type: "spring", damping: 28, stiffness: 340 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+      >
+        <div className="p-6">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <Lock className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="pt-0.5">
+              <h2 className="text-[17px] font-bold text-gray-900">Lock Account</h2>
+              <p className="text-sm text-gray-600 mt-0.5">Allow client to view account and switch pages, but restrict trading and touching funds</p>
+            </div>
+          </div>
+          <div className="mb-5">
+            <label className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+              Reason for locking (optional)
+            </label>
+            <textarea rows={3} placeholder="Enter the reason for locking this account..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder:text-gray-500 outline-none resize-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button onClick={() => onConfirm(reason)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all"
+              style={{ background: "#D97706" }}>
+              Lock Account
             </button>
           </div>
         </div>
@@ -1558,7 +1611,7 @@ function UserDetailPageContent() {
       security_logs: data.securityLogs || [],
       notes: data.notes || [],
       audit_logs: data.auditLogs || [],
-      account: data.profile?.is_frozen ? "Frozen" : "Active",
+      account: data.profile?.is_frozen ? "Frozen" : (data.profile?.is_locked ? "Locked" : "Active"),
       risk: data.profile?.risk_level || "Low Risk",
       kyc: data.kyc?.status === "approved" ? "Verified" : data.kyc?.status === "rejected" ? "Rejected" : data.kyc?.status === "pending" ? "Pending" : "Not Started",
       balance: data.balance || 0,
@@ -1569,10 +1622,12 @@ function UserDetailPageContent() {
 
   const [activeTab, setActiveTab]         = useState("overview");
   const [isFrozen, setIsFrozen]           = useState(false);
+  const [isLocked, setIsLocked]           = useState(false);
   useEffect(() => {
     if (rawUserData) {
-      const data = rawUserData as { profile?: { is_frozen?: boolean } };
+      const data = rawUserData as { profile?: { is_frozen?: boolean; is_locked?: boolean } };
       setIsFrozen(data.profile?.is_frozen === true);
+      setIsLocked(data.profile?.is_locked === true);
     }
   }, [rawUserData]);
 
@@ -1586,6 +1641,7 @@ function UserDetailPageContent() {
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
         (payload) => {
           setIsFrozen(!!(payload.new as { is_frozen?: boolean }).is_frozen);
+          setIsLocked(!!(payload.new as { is_locked?: boolean }).is_locked);
         }
       )
       .subscribe();
@@ -1596,6 +1652,7 @@ function UserDetailPageContent() {
   }, [userId]);
 
   const [showFreezeModal, setShowFreeze]  = useState(false);
+  const [showLockModal, setShowLockModal] = useState(false);
   const [showNoteModal, setShowNote]      = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showManageBalanceModal, setShowManageBalanceModal] = useState(false);
@@ -1670,6 +1727,23 @@ function UserDetailPageContent() {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
               <Download className="h-4 w-4" /> Export
             </button>
+            <motion.button whileTap={{ scale: 0.97 }}
+              onClick={async () => {
+                if (isLocked) {
+                  await updateUserAccount.mutateAsync({ userId: user.id, action: "unlock" });
+                  setIsLocked(false);
+                  queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(user.id) });
+                } else {
+                  setShowLockModal(true);
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all"
+              style={{ background: isLocked ? "#22C55E" : "#D97706" }}
+              title="Locked accounts can browse and view balances, but cannot trade or touch funds"
+            >
+              <Lock className="h-4 w-4" />
+              {isLocked ? "Unlock Account" : "Lock Account"}
+            </motion.button>
             <motion.button whileTap={{ scale: 0.97 }}
               onClick={async () => {
                 if (isFrozen) {
@@ -1765,6 +1839,14 @@ function UserDetailPageContent() {
       </motion.div>
 
       {/* Modals */}
+      <AnimatePresence>
+        {showLockModal && <LockModal onClose={() => setShowLockModal(false)} onConfirm={async (reason) => {
+          await updateUserAccount.mutateAsync({ userId: user.id, action: "lock", reason });
+          setIsLocked(true);
+          setShowLockModal(false);
+          queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(user.id) });
+        }} />}
+      </AnimatePresence>
       <AnimatePresence>
         {showFreezeModal && <FreezeModal onClose={() => setShowFreeze(false)} onConfirm={async (reason) => {
           await updateUserAccount.mutateAsync({ userId: user.id, action: "freeze", reason });
