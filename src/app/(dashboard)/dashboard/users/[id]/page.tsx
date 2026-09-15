@@ -1623,11 +1623,13 @@ function UserDetailPageContent() {
   const [activeTab, setActiveTab]         = useState("overview");
   const [isFrozen, setIsFrozen]           = useState(false);
   const [isLocked, setIsLocked]           = useState(false);
+  const [lockReason, setLockReason]       = useState<string | null>(null);
   useEffect(() => {
     if (rawUserData) {
-      const data = rawUserData as { profile?: { is_frozen?: boolean; is_locked?: boolean } };
+      const data = rawUserData as { profile?: { is_frozen?: boolean; is_locked?: boolean; lock_reason?: string | null } };
       setIsFrozen(data.profile?.is_frozen === true);
       setIsLocked(data.profile?.is_locked === true);
+      setLockReason(data.profile?.lock_reason || null);
     }
   }, [rawUserData]);
 
@@ -1640,8 +1642,12 @@ function UserDetailPageContent() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
         (payload) => {
-          setIsFrozen(!!(payload.new as { is_frozen?: boolean }).is_frozen);
-          setIsLocked(!!(payload.new as { is_locked?: boolean }).is_locked);
+          const row = payload.new as { is_frozen?: boolean; is_locked?: boolean; lock_reason?: string | null };
+          setIsFrozen(!!row.is_frozen);
+          setIsLocked(!!row.is_locked);
+          if ("lock_reason" in row) {
+            setLockReason(row.lock_reason || null);
+          }
         }
       )
       .subscribe();
@@ -1732,6 +1738,7 @@ function UserDetailPageContent() {
                 if (isLocked) {
                   await updateUserAccount.mutateAsync({ userId: user.id, action: "unlock" });
                   setIsLocked(false);
+                  setLockReason(null);
                   queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(user.id) });
                 } else {
                   setShowLockModal(true);
@@ -1761,6 +1768,30 @@ function UserDetailPageContent() {
             </motion.button>
           </div>
         </div>
+
+        {/* ── Lock Banner */}
+        {isLocked && !isFrozen && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-100 text-amber-700 shrink-0 mt-0.5">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-amber-900">Account Locked (View-Only Mode)</h3>
+                <span className="text-[11px] font-semibold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">Locked by Admin</span>
+              </div>
+              <p className="text-xs text-amber-800 mt-1">
+                Client can view account balances and navigation, but trading and withdrawals are restricted.
+              </p>
+              {lockReason && (
+                <div className="mt-2.5 rounded-lg bg-amber-100/80 border border-amber-300/60 p-2.5 text-xs text-amber-950">
+                  <span className="font-bold text-amber-900">Reason / Comment:</span>{" "}
+                  <span className="break-words whitespace-pre-wrap">{lockReason}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── 4 Info Cards */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -1843,6 +1874,7 @@ function UserDetailPageContent() {
         {showLockModal && <LockModal onClose={() => setShowLockModal(false)} onConfirm={async (reason) => {
           await updateUserAccount.mutateAsync({ userId: user.id, action: "lock", reason });
           setIsLocked(true);
+          setLockReason(reason || null);
           setShowLockModal(false);
           queryClient.invalidateQueries({ queryKey: adminQueryKeys.user(user.id) });
         }} />}

@@ -506,8 +506,8 @@ function LiveChatSupportPageContent() {
   }, [threads, search]);
 
   /* Send Admin Message */
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async (e?: React.SyntheticEvent) => {
+    if (e?.preventDefault) e.preventDefault();
     if ((!inputText.trim() && !selectedFile) || !activeThread || uploadingFile) return;
 
     const fileToSend = selectedFile;
@@ -1005,12 +1005,22 @@ function LiveChatSupportPageContent() {
                             style={isAdmin ? { background: BRAND_GRADIENT } : {}}
                           >
                             {editingMessageId === msg.id ? (
-                              <div className="flex flex-col gap-2 min-w-[180px]">
-                                <input
-                                  type="text"
+                              <div className="flex flex-col gap-2 min-w-[200px]">
+                                <textarea
+                                  rows={2}
                                   value={editingText}
                                   onChange={(e) => setEditingText(e.target.value)}
-                                  className="w-full p-2 text-xs text-gray-800 rounded border border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      if (editingText.trim()) {
+                                        await handleEditMessage(msg.id, editingText.trim());
+                                        setEditingMessageId(null);
+                                        setEditingText("");
+                                      }
+                                    }
+                                  }}
+                                  className="w-full p-2 text-xs text-gray-800 rounded-lg border border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white resize-y font-normal"
                                 />
                                 <div className="flex gap-2 justify-end">
                                   <button
@@ -1035,7 +1045,7 @@ function LiveChatSupportPageContent() {
                               </div>
                             ) : (
                               <>
-                                <div>{msg.text}</div>
+                                <div className="whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
                                 {msg.attachment_url && (
                                   <div className="mt-2">
                                     {msg.attachment_type?.startsWith("image/") || /\.(png|jpg|jpeg|webp|gif)$/i.test(msg.attachment_url) ? (
@@ -1177,11 +1187,18 @@ function LiveChatSupportPageContent() {
                       <Paperclip className="h-4.5 w-4.5 stroke-[1.8]" />
                     </button>
 
-                    <input
+                    <textarea
+                      rows={1}
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      placeholder={selectedFile ? "Add a message (optional)..." : "Type your message..."}
-                      className="h-10 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage(e);
+                        }
+                      }}
+                      placeholder={selectedFile ? "Add a message (optional)..." : "Type your message (Shift+Enter for new line)..."}
+                      className="min-h-[40px] max-h-32 py-2.5 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20 resize-none overflow-y-auto leading-relaxed"
                     />
 
                     <button

@@ -176,6 +176,7 @@ export async function GET(request: Request) {
         account: accountStatus,
         is_frozen: isFrozen,
         is_locked: isLocked,
+        lock_reason: profile?.lock_reason || null,
         balance: userBalanceMap[user.id] || 0,
         wallets: walletsForUser,
         risk: riskLevel,
@@ -251,11 +252,25 @@ export async function PATCH(request: Request) {
 
     if (action === "lock" || action === "unlock") {
       const isLocked = action === "lock";
+      const lockReason = isLocked ? (body.reason?.trim() || null) : null;
 
-      const { error } = await supabaseAdmin
+      const updatePayload: { is_locked: boolean; lock_reason?: string | null } = {
+        is_locked: isLocked,
+        lock_reason: lockReason,
+      };
+
+      let { error } = await supabaseAdmin
         .from("profiles")
-        .update({ is_locked: isLocked })
+        .update(updatePayload)
         .eq("id", userId);
+
+      if (error && error.message.includes("lock_reason")) {
+        const fallbackRes = await supabaseAdmin
+          .from("profiles")
+          .update({ is_locked: isLocked })
+          .eq("id", userId);
+        error = fallbackRes.error;
+      }
 
       if (error) {
         if (error.message.includes("relation") || error.message.includes("column")) {
@@ -265,10 +280,14 @@ export async function PATCH(request: Request) {
       }
 
       if (isLocked) {
+        const lockMsg = body.reason?.trim()
+          ? `Your account has been locked to view-only mode. Reason: "${body.reason.trim()}". Please contact support if you need assistance.`
+          : "Your account has been locked to view-only mode. Trading and withdrawals are restricted. Please contact support.";
+
         await supabaseAdmin.from("notifications").insert({
           user_id: userId,
           title: "Account Locked",
-          message: "Your account has been locked to view-only mode. Trading and withdrawals are restricted. Please contact support.",
+          message: lockMsg,
           type: "warning",
           is_read: false,
         });
@@ -290,7 +309,7 @@ export async function PATCH(request: Request) {
         details: { reason: body.reason || "admin action" },
       });
 
-      return NextResponse.json({ success: true, status: isLocked ? "Locked" : "Active", is_locked: isLocked });
+      return NextResponse.json({ success: true, status: isLocked ? "Locked" : "Active", is_locked: isLocked, lock_reason: lockReason });
     }
 
     if (action === "adjust-balance") {

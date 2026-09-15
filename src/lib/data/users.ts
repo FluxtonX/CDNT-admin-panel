@@ -15,6 +15,7 @@ export interface AdminUser {
   wallets?: Array<{ currency: string; balance: number }>;
   is_frozen?: boolean;
   is_locked?: boolean;
+  lock_reason?: string | null;
   // Detail fields
   dateOfBirth?: string;
   street?: string;
