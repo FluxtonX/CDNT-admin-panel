@@ -60,6 +60,14 @@ type ChatThread = {
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
 
+function isImageAttachment(url?: string | null, name?: string | null, type?: string | null): boolean {
+  if (type && type.startsWith("image/")) return true;
+  const cleanUrl = (url || "").split("?")[0].toLowerCase();
+  const cleanName = (name || "").toLowerCase();
+  const imageRegex = /\.(png|jpe?g|webp|gif|svg|bmp|ico|tiff)$/i;
+  return imageRegex.test(cleanUrl) || imageRegex.test(cleanName);
+}
+
 /* ─── User Avatar Component with 3-tier Fallback ─────────────────────────────────────── */
 function UserAvatar({
   user,
@@ -524,26 +532,32 @@ function LiveChatSupportPageContent() {
 
       if (fileToSend) {
         try {
-          const fileExt = fileToSend.name.split(".").pop() || "bin";
-          const safeName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          const filePath = `${activeThread.threadId}/${safeName}`;
+          const formData = new FormData();
+          formData.append("file", fileToSend);
+          formData.append("threadId", activeThread.threadId);
 
-          const { error: uploadErr } = await supabase.storage
-            .from("chat-attachments")
-            .upload(filePath, fileToSend);
+          const res = await fetch("/api/support/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-          if (!uploadErr) {
-            const { data: urlData } = supabase.storage
-              .from("chat-attachments")
-              .getPublicUrl(filePath);
-            uploadedUrl = urlData.publicUrl;
-            uploadedName = fileToSend.name;
-            uploadedType = fileToSend.type;
-          } else {
-            console.error("Storage upload error in admin:", uploadErr);
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Upload failed with status ${res.status}`);
           }
-        } catch (err) {
-          console.error("Admin chat attachment upload exception:", err);
+
+          const uploadData = await res.json();
+          uploadedUrl = uploadData.url;
+          uploadedName = uploadData.name;
+          uploadedType = uploadData.type;
+        } catch (uploadErr: any) {
+          console.error("Admin chat attachment upload exception:", uploadErr);
+          alert(`Failed to upload attachment: ${uploadErr.message || "Unknown error"}`);
+          // Restore user input so it is not lost
+          setSelectedFile(fileToSend);
+          setInputText(inputText);
+          setUploadingFile(false);
+          return;
         }
       }
 
@@ -1047,18 +1061,19 @@ function LiveChatSupportPageContent() {
                               <>
                                 <div className="whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
                                 {msg.attachment_url && (
-                                  <div className="mt-2">
-                                    {msg.attachment_type?.startsWith("image/") || /\.(png|jpg|jpeg|webp|gif)$/i.test(msg.attachment_url) ? (
+                                  <div className="mt-2.5">
+                                    {isImageAttachment(msg.attachment_url, msg.attachment_name, msg.attachment_type) ? (
                                       <a
                                         href={msg.attachment_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="block overflow-hidden rounded-xl border border-white/20 shadow-sm hover:opacity-95 transition-opacity"
+                                        className="block overflow-hidden rounded-xl border border-white/20 shadow-sm hover:opacity-95 transition-opacity max-w-sm"
                                       >
                                         <img
                                           src={msg.attachment_url}
                                           alt={msg.attachment_name || "Attachment"}
-                                          className="max-h-52 max-w-full rounded-xl object-contain bg-black/5"
+                                          className="max-h-60 max-w-full rounded-xl object-contain bg-black/10 cursor-zoom-in"
+                                          loading="lazy"
                                         />
                                       </a>
                                     ) : (
@@ -1068,15 +1083,33 @@ function LiveChatSupportPageContent() {
                                         rel="noopener noreferrer"
                                         download={msg.attachment_name || "attachment"}
                                         className={cn(
-                                          "flex items-center gap-2 p-2 rounded-xl border transition-colors text-xs font-semibold",
+                                          "flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-xs font-semibold",
                                           isAdmin
                                             ? "bg-white/10 hover:bg-white/20 border-white/20 text-white"
-                                            : "bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-800"
+                                            : "bg-white hover:bg-gray-50 border-gray-200 text-gray-800 shadow-xs"
                                         )}
                                       >
-                                        <FileText className="h-4 w-4 shrink-0" />
-                                        <span className="truncate flex-1">{msg.attachment_name || "Download Attachment"}</span>
-                                        <Download className="h-3.5 w-3.5 shrink-0" />
+                                        <div className={cn(
+                                          "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                                          isAdmin ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
+                                        )}>
+                                          <FileText className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="truncate font-semibold">{msg.attachment_name || "Download Attachment"}</p>
+                                          <p className={cn(
+                                            "text-[10px] uppercase font-mono tracking-wider",
+                                            isAdmin ? "text-blue-200" : "text-gray-500"
+                                          )}>
+                                            {msg.attachment_name?.split(".").pop() || "FILE"}
+                                          </p>
+                                        </div>
+                                        <div className={cn(
+                                          "p-1.5 rounded-lg transition-colors shrink-0",
+                                          isAdmin ? "hover:bg-white/20 text-white" : "hover:bg-gray-100 text-gray-500"
+                                        )}>
+                                          <Download className="h-4 w-4" />
+                                        </div>
                                       </a>
                                     )}
                                   </div>
@@ -1208,7 +1241,7 @@ function LiveChatSupportPageContent() {
                       style={{ background: BRAND_GRADIENT }}
                     >
                       {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                      Send
+                      {uploadingFile ? "Uploading..." : "Send"}
                     </button>
                   </div>
                 </form>
