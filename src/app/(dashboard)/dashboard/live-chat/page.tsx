@@ -21,6 +21,9 @@ import {
   Loader2,
   Edit2,
   Trash2,
+  FileText,
+  Download,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AdminUser } from "@/lib/data/users";
@@ -34,8 +37,12 @@ type Message = {
   sender: "Client" | "Admin";
   text: string;
   timestamp: string;
+  created_at: string;
   is_edited?: boolean;
   deleted_for_admin?: boolean;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
 };
 
 type ChatThread = {
@@ -53,6 +60,104 @@ type ChatThread = {
 };
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #0A3D91 0%, #1650AB 100%)";
+
+function isImageAttachment(url?: string | null, name?: string | null, type?: string | null): boolean {
+  if (type && type.startsWith("image/")) return true;
+  const cleanUrl = (url || "").split("?")[0].toLowerCase();
+  const cleanName = (name || "").toLowerCase();
+  const imageRegex = /\.(png|jpe?g|webp|gif|svg|bmp|ico|tiff)$/i;
+  return imageRegex.test(cleanUrl) || imageRegex.test(cleanName);
+}
+
+/* ─── Date & Time Formatting Utilities ────────────────────────────────────────── */
+function formatChatSidebarTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) {
+    return "Yesterday";
+  }
+
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 7 && diffDays >= 0) {
+    return date.toLocaleDateString([], { weekday: "short" });
+  }
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  }
+
+  return date.toLocaleDateString([], { month: "short", day: "numeric", year: "2-digit" });
+}
+
+function formatChatDateDivider(dateStr?: string | null): string {
+  if (!dateStr) return "Today";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Today";
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) return "Today";
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) return "Yesterday";
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  }
+
+  return date.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMessageTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatFullDateTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 /* ─── User Avatar Component with 3-tier Fallback ─────────────────────────────────────── */
 function UserAvatar({
@@ -154,8 +259,11 @@ function LiveChatSupportPageContent() {
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch threads from Supabase
   useEffect(() => {
@@ -172,8 +280,12 @@ function LiveChatSupportPageContent() {
         let authUsersMap: Record<string, { email: string; fullName: string; kycSelfieUrl: string | null; googleAvatarUrl: string | null }> = {};
         if (data && data.length > 0) {
           try {
-            const userIds = Array.from(new Set(data.map((t: any) => t.user_id))).join(",");
-            const res = await fetch(`/api/support/users?ids=${userIds}`);
+            const userIds = Array.from(new Set(data.map((t: any) => t.user_id)));
+            const res = await fetch("/api/support/users", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: userIds }),
+            });
             if (res.ok) {
               const usersData = await res.json();
               authUsersMap = usersData.reduce(
@@ -189,7 +301,9 @@ function LiveChatSupportPageContent() {
                 {}
               );
             }
-          } catch { /* silently fallback */ }
+          } catch (err) {
+            console.error("[LiveChat] Error fetching user data map:", err);
+          }
         }
 
         if (error) throw error;
@@ -225,7 +339,7 @@ function LiveChatSupportPageContent() {
               status: t.status as ChatStatus,
               unreadCount: t.unread_count_admin,
               unreadCountUser: t.unread_count_user,
-              lastMessageTime: new Date(t.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              lastMessageTime: formatChatSidebarTime(t.last_message_at),
               messages: [],
               lastMessageAtISO: t.last_message_at,
               is_ticket: t.is_ticket,
@@ -274,8 +388,12 @@ function LiveChatSupportPageContent() {
               id: m.id,
               sender: m.sender as "Client" | "Admin",
               text: m.text,
-              timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              timestamp: formatMessageTime(m.created_at),
+              created_at: m.created_at,
               is_edited: m.is_edited,
+              attachment_url: m.attachment_url || null,
+              attachment_name: m.attachment_name || null,
+              attachment_type: m.attachment_type || null,
             }));
 
           setThreads((current) =>
@@ -351,8 +469,12 @@ function LiveChatSupportPageContent() {
             id: newMsg.id,
             sender: newMsg.sender as "Client" | "Admin",
             text: newMsg.text,
-            timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            timestamp: formatMessageTime(newMsg.created_at),
+            created_at: newMsg.created_at,
             is_edited: newMsg.is_edited,
+            attachment_url: newMsg.attachment_url || null,
+            attachment_name: newMsg.attachment_name || null,
+            attachment_type: newMsg.attachment_type || null,
           };
 
           setThreads((current) =>
@@ -414,9 +536,12 @@ function LiveChatSupportPageContent() {
             const index = current.findIndex((t) => t.threadId === updatedRow.id);
             const existingThread = index !== -1 ? current[index] : null;
 
-            // Re-use the user object from the existing thread if available,
-            // so the resolved name (kyc/profile) is never lost on update.
-            const preservedUser: AdminUser = existingThread?.user ?? {
+            // Re-use user object from the existing thread or from any other thread with this user_id
+            const existingUserThread = current.find(
+              (t) => t.user.id === updatedRow.user_id && t.user.name && t.user.name !== "Unknown User"
+            );
+
+            const preservedUser: AdminUser = existingThread?.user ?? existingUserThread?.user ?? {
               id: updatedRow.user_id,
               name: "Unknown User",
               email: "N/A",
@@ -442,7 +567,7 @@ function LiveChatSupportPageContent() {
               status: updatedRow.status as ChatStatus,
               unreadCount: updatedRow.id === activeThreadId ? 0 : updatedRow.unread_count_admin,
               unreadCountUser: updatedRow.unread_count_user,
-              lastMessageTime: new Date(updatedRow.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              lastMessageTime: formatChatSidebarTime(updatedRow.last_message_at),
               messages: existingThread?.messages ?? [],
               lastMessageAtISO: updatedRow.last_message_at,
               is_ticket: updatedRow.is_ticket,
@@ -457,6 +582,9 @@ function LiveChatSupportPageContent() {
               new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime()
             );
           });
+
+          // Resolve user details immediately if this is a new thread or user is unknown
+          resolveAndApplyUsers([updatedRow.user_id]);
         }
       )
       .subscribe();
@@ -466,6 +594,50 @@ function LiveChatSupportPageContent() {
       supabase.removeChannel(threadsChannel);
     };
   }, [activeThreadId]);
+
+  // Helper to fetch and resolve user names/avatars in real-time
+  const resolveAndApplyUsers = async (targetUserIds: string[]) => {
+    const cleanIds = Array.from(new Set(targetUserIds.map((id) => id?.trim()).filter(Boolean)));
+    if (cleanIds.length === 0) return;
+    try {
+      const res = await fetch("/api/support/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: cleanIds }),
+      });
+      if (!res.ok) return;
+      const usersData = await res.json();
+      if (!Array.isArray(usersData) || usersData.length === 0) return;
+
+      setThreads((current) =>
+        current.map((th) => {
+          const found = usersData.find((u: any) => u.id === th.user.id);
+          if (!found) return th;
+          return {
+            ...th,
+            user: {
+              ...th.user,
+              name: found.full_name || th.user.name,
+              email: found.email || th.user.email,
+              kyc_selfie_url: found.kyc_selfie_url ?? th.user.kyc_selfie_url,
+              google_avatar_url: found.google_avatar_url ?? th.user.google_avatar_url,
+            },
+          };
+        })
+      );
+    } catch (err) {
+      console.error("[LiveChat] Error resolving user details in real-time:", err);
+    }
+  };
+
+  // Whenever active thread changes or threads change, ensure active thread user is resolved if Unknown
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const currentActive = threads.find((t) => t.threadId === activeThreadId);
+    if (currentActive && (currentActive.user.name === "Unknown User" || currentActive.user.email === "N/A")) {
+      resolveAndApplyUsers([currentActive.user.id]);
+    }
+  }, [activeThreadId, threads]);
 
   /* Get Active Thread */
   const activeThread = useMemo(() => {
@@ -491,21 +663,67 @@ function LiveChatSupportPageContent() {
   }, [threads, search]);
 
   /* Send Admin Message */
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim() || !activeThread) return;
+  const handleSendMessage = async (e?: React.SyntheticEvent) => {
+    if (e?.preventDefault) e.preventDefault();
+    if ((!inputText.trim() && !selectedFile) || !activeThread || uploadingFile) return;
 
-    const messageText = inputText.trim();
+    const fileToSend = selectedFile;
+    const messageText = inputText.trim() || (fileToSend ? `Sent an attachment: ${fileToSend.name}` : "");
     setInputText("");
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadingFile(true);
 
     try {
+      let uploadedUrl: string | null = null;
+      let uploadedName: string | null = null;
+      let uploadedType: string | null = null;
+
+      if (fileToSend) {
+        try {
+          const formData = new FormData();
+          formData.append("file", fileToSend);
+          formData.append("threadId", activeThread.threadId);
+
+          const res = await fetch("/api/support/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Upload failed with status ${res.status}`);
+          }
+
+          const uploadData = await res.json();
+          uploadedUrl = uploadData.url;
+          uploadedName = uploadData.name;
+          uploadedType = uploadData.type;
+        } catch (uploadErr: any) {
+          console.error("Admin chat attachment upload exception:", uploadErr);
+          alert(`Failed to upload attachment: ${uploadErr.message || "Unknown error"}`);
+          // Restore user input so it is not lost
+          setSelectedFile(fileToSend);
+          setInputText(inputText);
+          setUploadingFile(false);
+          return;
+        }
+      }
+
+      const insertPayload: any = {
+        thread_id: activeThread.threadId,
+        sender: "Admin",
+        text: messageText,
+      };
+      if (uploadedUrl) {
+        insertPayload.attachment_url = uploadedUrl;
+        insertPayload.attachment_name = uploadedName;
+        insertPayload.attachment_type = uploadedType;
+      }
+
       const { data: newMsg, error } = await supabase
         .from("support_messages")
-        .insert({
-          thread_id: activeThread.threadId,
-          sender: "Admin",
-          text: messageText,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -515,7 +733,11 @@ function LiveChatSupportPageContent() {
         id: newMsg.id,
         sender: "Admin",
         text: newMsg.text,
-        timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: formatMessageTime(newMsg.created_at),
+        created_at: newMsg.created_at,
+        attachment_url: newMsg.attachment_url || uploadedUrl,
+        attachment_name: newMsg.attachment_name || uploadedName,
+        attachment_type: newMsg.attachment_type || uploadedType,
       };
 
       setThreads((current) =>
@@ -533,6 +755,8 @@ function LiveChatSupportPageContent() {
       );
     } catch (err) {
       console.error("Error sending support response:", err);
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -801,7 +1025,12 @@ function LiveChatSupportPageContent() {
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-extrabold text-gray-900 text-xs truncate max-w-[120px]">{thread.user.name}</span>
-                          <span className="text-[9px] text-gray-600 font-bold font-mono shrink-0">{thread.lastMessageTime}</span>
+                          <span 
+                            className="text-[9px] text-gray-600 font-bold font-mono shrink-0"
+                            title={formatFullDateTime(thread.lastMessageAtISO)}
+                          >
+                            {thread.lastMessageTime}
+                          </span>
                         </div>
                         <p className="text-[11px] text-gray-600 font-medium truncate pr-1">
                           {lastMsg ? lastMsg.text : "No messages yet"}
@@ -914,16 +1143,32 @@ function LiveChatSupportPageContent() {
                       No message history in this thread.
                     </div>
                   )}
-                  {activeThread.messages.map((msg) => {
+                  {activeThread.messages.map((msg, index) => {
                     const isAdmin = msg.sender === "Admin";
+                    const prevMsg = index > 0 ? activeThread.messages[index - 1] : null;
+                    const currentDateKey = msg.created_at ? new Date(msg.created_at).toDateString() : "";
+                    const prevDateKey = prevMsg?.created_at ? new Date(prevMsg.created_at).toDateString() : "";
+                    const showDateDivider = !prevMsg || (Boolean(currentDateKey) && currentDateKey !== prevDateKey);
+
                     return (
-                      <div
-                        key={msg.id}
-                        className={cn(
-                          "flex items-end gap-2.5 max-w-[80%] group",
-                          isAdmin ? "ml-auto flex-row-reverse" : "mr-auto"
+                      <div key={msg.id} className="space-y-3">
+                        {showDateDivider && (
+                          <div className="flex items-center justify-center my-3 select-none">
+                            <div className="flex items-center gap-2">
+                              <div className="h-px w-10 bg-gray-200" />
+                              <span className="px-3 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-gray-100 text-gray-500 rounded-full border border-gray-200/80 shadow-2xs">
+                                {formatChatDateDivider(msg.created_at)}
+                              </span>
+                              <div className="h-px w-10 bg-gray-200" />
+                            </div>
+                          </div>
                         )}
-                      >
+                        <div
+                          className={cn(
+                            "flex items-end gap-2.5 max-w-[80%] group",
+                            isAdmin ? "ml-auto flex-row-reverse" : "mr-auto"
+                          )}
+                        >
                         {/* Avatar */}
                         {isAdmin ? (
                           <div className="h-7 w-7 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-xs shrink-0 select-none">
@@ -945,12 +1190,22 @@ function LiveChatSupportPageContent() {
                             style={isAdmin ? { background: BRAND_GRADIENT } : {}}
                           >
                             {editingMessageId === msg.id ? (
-                              <div className="flex flex-col gap-2 min-w-[180px]">
-                                <input
-                                  type="text"
+                              <div className="flex flex-col gap-2 min-w-[200px]">
+                                <textarea
+                                  rows={2}
                                   value={editingText}
                                   onChange={(e) => setEditingText(e.target.value)}
-                                  className="w-full p-2 text-xs text-gray-800 rounded border border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      if (editingText.trim()) {
+                                        await handleEditMessage(msg.id, editingText.trim());
+                                        setEditingMessageId(null);
+                                        setEditingText("");
+                                      }
+                                    }
+                                  }}
+                                  className="w-full p-2 text-xs text-gray-800 rounded-lg border border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white resize-y font-normal"
                                 />
                                 <div className="flex gap-2 justify-end">
                                   <button
@@ -975,7 +1230,61 @@ function LiveChatSupportPageContent() {
                               </div>
                             ) : (
                               <>
-                                <div>{msg.text}</div>
+                                <div className="whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
+                                {msg.attachment_url && (
+                                  <div className="mt-2.5">
+                                    {isImageAttachment(msg.attachment_url, msg.attachment_name, msg.attachment_type) ? (
+                                      <a
+                                        href={msg.attachment_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block overflow-hidden rounded-xl border border-white/20 shadow-sm hover:opacity-95 transition-opacity max-w-sm"
+                                      >
+                                        <img
+                                          src={msg.attachment_url}
+                                          alt={msg.attachment_name || "Attachment"}
+                                          className="max-h-60 max-w-full rounded-xl object-contain bg-black/10 cursor-zoom-in"
+                                          loading="lazy"
+                                        />
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={msg.attachment_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        download={msg.attachment_name || "attachment"}
+                                        className={cn(
+                                          "flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-xs font-semibold",
+                                          isAdmin
+                                            ? "bg-white/10 hover:bg-white/20 border-white/20 text-white"
+                                            : "bg-white hover:bg-gray-50 border-gray-200 text-gray-800 shadow-xs"
+                                        )}
+                                      >
+                                        <div className={cn(
+                                          "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                                          isAdmin ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
+                                        )}>
+                                          <FileText className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="truncate font-semibold">{msg.attachment_name || "Download Attachment"}</p>
+                                          <p className={cn(
+                                            "text-[10px] uppercase font-mono tracking-wider",
+                                            isAdmin ? "text-blue-200" : "text-gray-500"
+                                          )}>
+                                            {msg.attachment_name?.split(".").pop() || "FILE"}
+                                          </p>
+                                        </div>
+                                        <div className={cn(
+                                          "p-1.5 rounded-lg transition-colors shrink-0",
+                                          isAdmin ? "hover:bg-white/20 text-white" : "hover:bg-gray-100 text-gray-500"
+                                        )}>
+                                          <Download className="h-4 w-4" />
+                                        </div>
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
                                 {msg.is_edited && (
                                   <span className={cn(
                                     "text-[9px] block mt-1 font-normal italic",
@@ -985,10 +1294,13 @@ function LiveChatSupportPageContent() {
                               </>
                             )}
                           </div>
-                          <div className={cn(
-                            "text-[8px] text-gray-600 font-bold font-mono flex items-center gap-1.5 mt-0.5",
-                            isAdmin ? "justify-end" : "justify-start"
-                          )}>
+                          <div 
+                            className={cn(
+                              "text-[8px] text-gray-600 font-bold font-mono flex items-center gap-1.5 mt-0.5",
+                              isAdmin ? "justify-end" : "justify-start"
+                            )}
+                            title={formatFullDateTime(msg.created_at)}
+                          >
                             <span>{msg.timestamp}</span>
                             {isAdmin && (
                               <CheckCheck className={cn(
@@ -1023,6 +1335,7 @@ function LiveChatSupportPageContent() {
                           </div>
                         )}
                       </div>
+                    </div>
                     );
                   })}
 
@@ -1030,31 +1343,82 @@ function LiveChatSupportPageContent() {
                 </div>
 
                 {/* Footer Message Compose Area */}
-                <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-200 flex items-center gap-3">
-                  <button
-                    type="button"
-                    className="h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-600 hover:text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer shrink-0"
-                    title="Attach Files"
-                  >
-                    <Paperclip className="h-4.5 w-4.5 stroke-[1.8]" />
-                  </button>
+                <form onSubmit={handleSendMessage} className="bg-white border-t border-gray-200">
+                  {/* Attachment Preview Chip */}
+                  {selectedFile && (
+                    <div className="px-4 pt-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs text-blue-800 font-medium">
+                        <Paperclip className="h-3.5 w-3.5" />
+                        <span className="truncate max-w-[240px] font-semibold">{selectedFile.name}</span>
+                        <span className="text-[10px] text-gray-500">
+                          ({(selectedFile.size / 1024).toFixed(0)} KB)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                          className="ml-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                  <input
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Type your message..."
-                    className="h-10 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20"
-                  />
+                  <div className="p-4 flex items-center gap-3">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 20 * 1024 * 1024) {
+                          alert("Attachment must be under 20MB.");
+                          return;
+                        }
+                        setSelectedFile(file);
+                      }}
+                      className="hidden"
+                    />
 
-                  <button
-                    type="submit"
-                    disabled={!inputText.trim()}
-                    className="h-10 px-4.5 rounded-xl text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
-                    style={{ background: BRAND_GRADIENT }}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    Send
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-colors cursor-pointer shrink-0",
+                        selectedFile && "bg-blue-50 border-blue-300 text-blue-600"
+                      )}
+                      title="Attach Files"
+                    >
+                      <Paperclip className="h-4.5 w-4.5 stroke-[1.8]" />
+                    </button>
+
+                    <textarea
+                      rows={1}
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage(e);
+                        }
+                      }}
+                      placeholder={selectedFile ? "Add a message (optional)..." : "Type your message (Shift+Enter for new line)..."}
+                      className="min-h-[40px] max-h-32 py-2.5 flex-1 px-4 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-gray-800 placeholder:text-gray-500 bg-gray-50/20 resize-none overflow-y-auto leading-relaxed"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={(!inputText.trim() && !selectedFile) || uploadingFile}
+                      className="h-10 px-4.5 rounded-xl text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                      style={{ background: BRAND_GRADIENT }}
+                    >
+                      {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      {uploadingFile ? "Uploading..." : "Send"}
+                    </button>
+                  </div>
                 </form>
               </>
             ) : (
