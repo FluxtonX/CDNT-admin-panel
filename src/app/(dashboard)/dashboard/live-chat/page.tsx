@@ -37,6 +37,7 @@ type Message = {
   sender: "Client" | "Admin";
   text: string;
   timestamp: string;
+  created_at: string;
   is_edited?: boolean;
   deleted_for_admin?: boolean;
   attachment_url?: string | null;
@@ -66,6 +67,96 @@ function isImageAttachment(url?: string | null, name?: string | null, type?: str
   const cleanName = (name || "").toLowerCase();
   const imageRegex = /\.(png|jpe?g|webp|gif|svg|bmp|ico|tiff)$/i;
   return imageRegex.test(cleanUrl) || imageRegex.test(cleanName);
+}
+
+/* ─── Date & Time Formatting Utilities ────────────────────────────────────────── */
+function formatChatSidebarTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) {
+    return "Yesterday";
+  }
+
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 7 && diffDays >= 0) {
+    return date.toLocaleDateString([], { weekday: "short" });
+  }
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  }
+
+  return date.toLocaleDateString([], { month: "short", day: "numeric", year: "2-digit" });
+}
+
+function formatChatDateDivider(dateStr?: string | null): string {
+  if (!dateStr) return "Today";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Today";
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) return "Today";
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) return "Yesterday";
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  }
+
+  return date.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMessageTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatFullDateTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /* ─── User Avatar Component with 3-tier Fallback ─────────────────────────────────────── */
@@ -242,7 +333,7 @@ function LiveChatSupportPageContent() {
               status: t.status as ChatStatus,
               unreadCount: t.unread_count_admin,
               unreadCountUser: t.unread_count_user,
-              lastMessageTime: new Date(t.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              lastMessageTime: formatChatSidebarTime(t.last_message_at),
               messages: [],
               lastMessageAtISO: t.last_message_at,
               is_ticket: t.is_ticket,
@@ -291,7 +382,8 @@ function LiveChatSupportPageContent() {
               id: m.id,
               sender: m.sender as "Client" | "Admin",
               text: m.text,
-              timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              timestamp: formatMessageTime(m.created_at),
+              created_at: m.created_at,
               is_edited: m.is_edited,
               attachment_url: m.attachment_url || null,
               attachment_name: m.attachment_name || null,
@@ -371,7 +463,8 @@ function LiveChatSupportPageContent() {
             id: newMsg.id,
             sender: newMsg.sender as "Client" | "Admin",
             text: newMsg.text,
-            timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            timestamp: formatMessageTime(newMsg.created_at),
+            created_at: newMsg.created_at,
             is_edited: newMsg.is_edited,
             attachment_url: newMsg.attachment_url || null,
             attachment_name: newMsg.attachment_name || null,
@@ -465,7 +558,7 @@ function LiveChatSupportPageContent() {
               status: updatedRow.status as ChatStatus,
               unreadCount: updatedRow.id === activeThreadId ? 0 : updatedRow.unread_count_admin,
               unreadCountUser: updatedRow.unread_count_user,
-              lastMessageTime: new Date(updatedRow.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              lastMessageTime: formatChatSidebarTime(updatedRow.last_message_at),
               messages: existingThread?.messages ?? [],
               lastMessageAtISO: updatedRow.last_message_at,
               is_ticket: updatedRow.is_ticket,
@@ -584,7 +677,8 @@ function LiveChatSupportPageContent() {
         id: newMsg.id,
         sender: "Admin",
         text: newMsg.text,
-        timestamp: new Date(newMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: formatMessageTime(newMsg.created_at),
+        created_at: newMsg.created_at,
         attachment_url: newMsg.attachment_url || uploadedUrl,
         attachment_name: newMsg.attachment_name || uploadedName,
         attachment_type: newMsg.attachment_type || uploadedType,
@@ -875,7 +969,12 @@ function LiveChatSupportPageContent() {
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-extrabold text-gray-900 text-xs truncate max-w-[120px]">{thread.user.name}</span>
-                          <span className="text-[9px] text-gray-600 font-bold font-mono shrink-0">{thread.lastMessageTime}</span>
+                          <span 
+                            className="text-[9px] text-gray-600 font-bold font-mono shrink-0"
+                            title={formatFullDateTime(thread.lastMessageAtISO)}
+                          >
+                            {thread.lastMessageTime}
+                          </span>
                         </div>
                         <p className="text-[11px] text-gray-600 font-medium truncate pr-1">
                           {lastMsg ? lastMsg.text : "No messages yet"}
@@ -988,16 +1087,32 @@ function LiveChatSupportPageContent() {
                       No message history in this thread.
                     </div>
                   )}
-                  {activeThread.messages.map((msg) => {
+                  {activeThread.messages.map((msg, index) => {
                     const isAdmin = msg.sender === "Admin";
+                    const prevMsg = index > 0 ? activeThread.messages[index - 1] : null;
+                    const currentDateKey = msg.created_at ? new Date(msg.created_at).toDateString() : "";
+                    const prevDateKey = prevMsg?.created_at ? new Date(prevMsg.created_at).toDateString() : "";
+                    const showDateDivider = !prevMsg || (Boolean(currentDateKey) && currentDateKey !== prevDateKey);
+
                     return (
-                      <div
-                        key={msg.id}
-                        className={cn(
-                          "flex items-end gap-2.5 max-w-[80%] group",
-                          isAdmin ? "ml-auto flex-row-reverse" : "mr-auto"
+                      <div key={msg.id} className="space-y-3">
+                        {showDateDivider && (
+                          <div className="flex items-center justify-center my-3 select-none">
+                            <div className="flex items-center gap-2">
+                              <div className="h-px w-10 bg-gray-200" />
+                              <span className="px-3 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-gray-100 text-gray-500 rounded-full border border-gray-200/80 shadow-2xs">
+                                {formatChatDateDivider(msg.created_at)}
+                              </span>
+                              <div className="h-px w-10 bg-gray-200" />
+                            </div>
+                          </div>
                         )}
-                      >
+                        <div
+                          className={cn(
+                            "flex items-end gap-2.5 max-w-[80%] group",
+                            isAdmin ? "ml-auto flex-row-reverse" : "mr-auto"
+                          )}
+                        >
                         {/* Avatar */}
                         {isAdmin ? (
                           <div className="h-7 w-7 rounded-lg bg-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 font-bold font-mono text-xs shrink-0 select-none">
@@ -1123,10 +1238,13 @@ function LiveChatSupportPageContent() {
                               </>
                             )}
                           </div>
-                          <div className={cn(
-                            "text-[8px] text-gray-600 font-bold font-mono flex items-center gap-1.5 mt-0.5",
-                            isAdmin ? "justify-end" : "justify-start"
-                          )}>
+                          <div 
+                            className={cn(
+                              "text-[8px] text-gray-600 font-bold font-mono flex items-center gap-1.5 mt-0.5",
+                              isAdmin ? "justify-end" : "justify-start"
+                            )}
+                            title={formatFullDateTime(msg.created_at)}
+                          >
                             <span>{msg.timestamp}</span>
                             {isAdmin && (
                               <CheckCheck className={cn(
@@ -1161,6 +1279,7 @@ function LiveChatSupportPageContent() {
                           </div>
                         )}
                       </div>
+                    </div>
                     );
                   })}
 
