@@ -280,8 +280,12 @@ function LiveChatSupportPageContent() {
         let authUsersMap: Record<string, { email: string; fullName: string; kycSelfieUrl: string | null; googleAvatarUrl: string | null }> = {};
         if (data && data.length > 0) {
           try {
-            const userIds = Array.from(new Set(data.map((t: any) => t.user_id))).join(",");
-            const res = await fetch(`/api/support/users?ids=${userIds}`);
+            const userIds = Array.from(new Set(data.map((t: any) => t.user_id)));
+            const res = await fetch("/api/support/users", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: userIds }),
+            });
             if (res.ok) {
               const usersData = await res.json();
               authUsersMap = usersData.reduce(
@@ -297,7 +301,9 @@ function LiveChatSupportPageContent() {
                 {}
               );
             }
-          } catch { /* silently fallback */ }
+          } catch (err) {
+            console.error("[LiveChat] Error fetching user data map:", err);
+          }
         }
 
         if (error) throw error;
@@ -573,6 +579,9 @@ function LiveChatSupportPageContent() {
               new Date(b.lastMessageAtISO).getTime() - new Date(a.lastMessageAtISO).getTime()
             );
           });
+
+          // Resolve user details immediately if this is a new thread or user is unknown
+          resolveAndApplyUsers([updatedRow.user_id]);
         }
       )
       .subscribe();
@@ -582,6 +591,50 @@ function LiveChatSupportPageContent() {
       supabase.removeChannel(threadsChannel);
     };
   }, [activeThreadId]);
+
+  // Helper to fetch and resolve user names/avatars in real-time
+  const resolveAndApplyUsers = async (targetUserIds: string[]) => {
+    const cleanIds = Array.from(new Set(targetUserIds.map((id) => id?.trim()).filter(Boolean)));
+    if (cleanIds.length === 0) return;
+    try {
+      const res = await fetch("/api/support/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: cleanIds }),
+      });
+      if (!res.ok) return;
+      const usersData = await res.json();
+      if (!Array.isArray(usersData) || usersData.length === 0) return;
+
+      setThreads((current) =>
+        current.map((th) => {
+          const found = usersData.find((u: any) => u.id === th.user.id);
+          if (!found) return th;
+          return {
+            ...th,
+            user: {
+              ...th.user,
+              name: found.full_name || th.user.name,
+              email: found.email || th.user.email,
+              kyc_selfie_url: found.kyc_selfie_url ?? th.user.kyc_selfie_url,
+              google_avatar_url: found.google_avatar_url ?? th.user.google_avatar_url,
+            },
+          };
+        })
+      );
+    } catch (err) {
+      console.error("[LiveChat] Error resolving user details in real-time:", err);
+    }
+  };
+
+  // Whenever active thread changes or threads change, ensure active thread user is resolved if Unknown
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const currentActive = threads.find((t) => t.threadId === activeThreadId);
+    if (currentActive && (currentActive.user.name === "Unknown User" || currentActive.user.email === "N/A")) {
+      resolveAndApplyUsers([currentActive.user.id]);
+    }
+  }, [activeThreadId, threads]);
 
   /* Get Active Thread */
   const activeThread = useMemo(() => {
