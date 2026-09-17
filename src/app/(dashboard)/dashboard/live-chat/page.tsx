@@ -536,9 +536,12 @@ function LiveChatSupportPageContent() {
             const index = current.findIndex((t) => t.threadId === updatedRow.id);
             const existingThread = index !== -1 ? current[index] : null;
 
-            // Re-use the user object from the existing thread if available,
-            // so the resolved name (kyc/profile) is never lost on update.
-            const preservedUser: AdminUser = existingThread?.user ?? {
+            // Re-use user object from the existing thread or from any other thread with this user_id
+            const existingUserThread = current.find(
+              (t) => t.user.id === updatedRow.user_id && t.user.name && t.user.name !== "Unknown User"
+            );
+
+            const preservedUser: AdminUser = existingThread?.user ?? existingUserThread?.user ?? {
               id: updatedRow.user_id,
               name: "Unknown User",
               email: "N/A",
