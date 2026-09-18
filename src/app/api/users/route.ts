@@ -499,6 +499,7 @@ export async function POST(request: Request) {
         is_frozen: false,
         is_locked: false,
         role: "client",
+        email_verified: true,
       });
 
     if (profileError) {
@@ -581,6 +582,72 @@ export async function POST(request: Request) {
       type: "success",
       is_read: false,
     });
+
+    // 8. Send welcome email with login credentials via Brevo
+    const BREVO_API_KEY = process.env.BREVO_API_KEY;
+    if (BREVO_API_KEY) {
+      try {
+        const clientLoginUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cdntbank.com/login";
+        await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": BREVO_API_KEY,
+          },
+          body: JSON.stringify({
+            sender: { name: "Canadian National Trust Bank", email: "noreply@cdntbank.com" },
+            to: [{ email: normalizedEmail, name: fullName.trim() }],
+            subject: "Your CDNT Bank Account Details & Login Credentials",
+            htmlContent: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <h1 style="color: #0A3D91; font-size: 24px; margin: 0;">Canadian National Trust Bank</h1>
+                  <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Private Banking & Asset Custody</p>
+                </div>
+                <p style="color: #334155; font-size: 15px;">Dear <strong>${fullName.trim()}</strong>,</p>
+                <p style="color: #334155; font-size: 14px; line-height: 1.6;">
+                  Your client banking account has been successfully provisioned. You can now log into your online banking portal using the credentials below:
+                </p>
+                <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px; margin: 20px 0;">
+                  <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+                    <tr>
+                      <td style="color: #64748B; padding: 6px 0;">CAD Chequing Account:</td>
+                      <td style="color: #0A3D91; font-weight: bold; font-family: monospace; text-align: right;">${randomAccNum}</td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748B; padding: 6px 0;">Initial Balance:</td>
+                      <td style="color: #10B981; font-weight: bold; text-align: right;">$${parsedBalance.toFixed(2)} CAD</td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748B; padding: 6px 0;">Login Email:</td>
+                      <td style="color: #0F172A; font-weight: bold; text-align: right;">${normalizedEmail}</td>
+                    </tr>
+                    <tr>
+                      <td style="color: #64748B; padding: 6px 0;">Temporary Password:</td>
+                      <td style="color: #0F172A; font-weight: bold; font-family: monospace; background-color: #E2E8F0; padding: 4px 8px; border-radius: 6px; text-align: right; display: inline-block;">${finalPassword}</td>
+                    </tr>
+                  </table>
+                </div>
+                <div style="text-align: center; margin: 28px 0;">
+                  <a href="${clientLoginUrl}" style="background-color: #0A3D91; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                    Sign In to Online Banking
+                  </a>
+                </div>
+                <p style="color: #64748B; font-size: 12px; line-height: 1.5;">
+                  For security reasons, we strongly advise updating your password immediately after your initial sign-in under <em>Settings &gt; Security</em>.
+                </p>
+                <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+                <p style="color: #94A3B8; font-size: 11px; text-align: center; margin: 0;">
+                  &copy; Canadian National Trust Bank. Protected by bank-grade 256-bit encryption.
+                </p>
+              </div>
+            `,
+          }),
+        });
+      } catch (emailErr) {
+        console.error("[users POST] Failed to send credentials email via Brevo:", emailErr);
+      }
+    }
 
     // 8. Audit log
     await supabaseAdmin.from("audit_logs").insert({

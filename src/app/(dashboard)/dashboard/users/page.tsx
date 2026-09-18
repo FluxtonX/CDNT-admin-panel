@@ -620,6 +620,7 @@ function NoteModal({ onConfirm, onClose }: { onConfirm: (n: string) => void; onC
 /* ─── User Row Component ─────────────────────────────────────────── */
 function UserRow({
   user,
+  isNearBottom = false,
   onView,
   onFreeze,
   onLock,
@@ -627,6 +628,7 @@ function UserRow({
   onDelete,
 }: {
   user: AdminUser;
+  isNearBottom?: boolean;
   onView: () => void;
   onFreeze: () => void;
   onLock: () => void;
@@ -641,7 +643,10 @@ function UserRow({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={onView}
-      className="grid min-w-[1040px] grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 items-center px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors group"
+      className={cn(
+        "grid min-w-[1040px] grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 items-center px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors group",
+        isMenuOpen ? "relative z-40" : "relative z-0"
+      )}
     >
       {/* USER */}
       <div className="flex items-center gap-3 min-w-0">
@@ -701,9 +706,17 @@ function UserRow({
       </div>
 
       {/* ACTIONS */}
-      <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+      <div 
+        ref={menuRef}
+        className="relative flex items-center justify-end gap-1" 
+        onClick={e => e.stopPropagation()}
+      >
         <button
-          onClick={onView}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView();
+          }}
           title="View user overview"
           aria-label={`View ${user.name}`}
           className="h-8 w-8 flex items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-200 transition-colors"
@@ -711,71 +724,93 @@ function UserRow({
           <Eye className="h-4 w-4" />
         </button>
         <button
-          onClick={() => setIsMenuOpen(prev => !prev)}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsMenuOpen(prev => !prev);
+          }}
           title="Open actions"
           aria-label={`Open actions for ${user.name}`}
-          className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
+          className={cn(
+            "h-8 w-8 flex items-center justify-center rounded-lg border transition-colors",
+            isMenuOpen 
+              ? "border-blue-400 bg-blue-50 text-blue-700 shadow-sm" 
+              : "border-gray-200 bg-white hover:bg-gray-50 text-gray-600"
+          )}
         >
           <MoreVertical className="h-4 w-4" />
         </button>
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
-              ref={menuRef}
-              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              initial={{ opacity: 0, scale: 0.95, y: isNearBottom ? 4 : -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+              exit={{ opacity: 0, scale: 0.95, y: isNearBottom ? 4 : -4 }}
               transition={{ duration: 0.12 }}
-              className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-20 py-1"
+              className={cn(
+                "absolute right-0 w-48 bg-white rounded-xl border border-gray-200 shadow-2xl overflow-hidden z-50 py-1 divide-y divide-gray-100",
+                isNearBottom ? "bottom-full mb-1.5 origin-bottom-right" : "top-full mt-1.5 origin-top-right"
+              )}
             >
-              <button
-                onClick={() => { onView(); setIsMenuOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-              >
-                <Eye className="h-3.5 w-3.5 text-gray-600" /> View Profile
-              </button>
-              <button
-                onClick={() => { onNote(); setIsMenuOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-              >
-                <FileEdit className="h-3.5 w-3.5 text-gray-600" /> Add Admin Note
-              </button>
-              <button
-                onClick={() => { onLock(); setIsMenuOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 flex items-center gap-2 border-t border-gray-50"
-                style={{ color: user.account === "Locked" ? "#22C55E" : "#D97706" }}
-              >
-                {user.account === "Locked" ? (
-                  <>
-                    <Unlock className="h-3.5 w-3.5" /> Unlock Account
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-3.5 w-3.5" /> Lock Account
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => { onFreeze(); setIsMenuOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 flex items-center gap-2 border-t border-gray-50"
-                style={{ color: user.account === "Frozen" ? "#22C55E" : "#F59E0B" }}
-              >
-                {user.account === "Frozen" ? (
-                  <>
-                    <Unlock className="h-3.5 w-3.5" /> Unfreeze Account
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-3.5 w-3.5" /> Freeze Account
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => { onDelete(); setIsMenuOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete User
-              </button>
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onView(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Eye className="h-3.5 w-3.5 text-gray-500" /> View Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onNote(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <FileEdit className="h-3.5 w-3.5 text-gray-500" /> Add Admin Note
+                </button>
+              </div>
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onLock(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                  style={{ color: user.account === "Locked" ? "#22C55E" : "#D97706" }}
+                >
+                  {user.account === "Locked" ? (
+                    <>
+                      <Unlock className="h-3.5 w-3.5" /> Unlock Account
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-3.5 w-3.5" /> Lock Account
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onFreeze(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                  style={{ color: user.account === "Frozen" ? "#22C55E" : "#F59E0B" }}
+                >
+                  {user.account === "Frozen" ? (
+                    <>
+                      <Unlock className="h-3.5 w-3.5" /> Unfreeze Account
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-3.5 w-3.5" /> Freeze Account
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDelete(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete User
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -984,7 +1019,7 @@ function UsersPageContent() {
         </div>
 
         {/* ── Table */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="overflow-x-auto">
           {/* Table Header */}
           <div className="grid min-w-[1040px] grid-cols-[2fr_2fr_1.2fr_1.1fr_1.3fr_1fr_96px] gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50/70">
@@ -1039,10 +1074,11 @@ function UsersPageContent() {
               </motion.div>
             ) : (
               <motion.div key={`page-${safePage}-${filter}-${search}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-                {pageUsers.map((user) => (
+                {pageUsers.map((user, idx) => (
                   <UserRow
                     key={user.id}
                     user={user}
+                    isNearBottom={idx >= pageUsers.length - 2 && pageUsers.length > 2}
                     onView={() => router.push(`/dashboard/users/${user.id}`)}
                     onLock={async () => {
                       if (user.account === "Locked") {
